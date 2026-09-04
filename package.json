@@ -1,0 +1,32 @@
+{
+  "name": "proyecto-dentista-renato",
+  "version": "1.0.0",
+  "description": "Aplicacion web local para gestionar una consulta dental en un solo computador.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test",
+    "test:ui:headed": "playwright test --headed",
+    "test:ui:report": "playwright show-report",
+    "test:backend": "python -m unittest discover"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PelaoKratos/Proyecto-Dentista-Renato.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/PelaoKratos/Proyecto-Dentista-Renato/issues"
+  },
+  "homepage": "https://github.com/PelaoKratos/Proyecto-Dentista-Renato#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.62.1"
+  }
+}

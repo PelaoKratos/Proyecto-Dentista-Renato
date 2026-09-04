@@ -64,3 +64,27 @@ py -3 -m unittest discover
 - `docs/arquitectura-inicial.md`
 - `docs/modelo-base-datos.md`
 - `docs/backend-local.md`
+## Pruebas visuales con Playwright
+
+Playwright permite abrir la aplicacion en Chromium de forma automatica, revisar pantallas principales, detectar errores de consola, comprobar desbordes horizontales y generar capturas de escritorio y movil.
+
+Instalar dependencias del proyecto:
+
+```powershell
+npm install
+npx playwright install chromium
+```
+
+Ejecutar pruebas visuales:
+
+```powershell
+npm run test:ui
+```
+
+Abrir el reporte HTML despues de una ejecucion:
+
+```powershell
+npm run test:ui:report
+```
+
+Los reportes y capturas se generan en `test-results/` y `playwright-report/`, carpetas ignoradas por Git.

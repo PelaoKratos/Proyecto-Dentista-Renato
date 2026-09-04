@@ -10,3 +10,7 @@ backups/
 # Configuracion local
 .env
 *.log
+# Playwright
+test-results/
+playwright-report/
+node_modules/
