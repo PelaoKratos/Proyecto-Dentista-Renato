@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Documentos - Consulta Dental Renato</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand"><span class="brand-mark">DR</span><div><strong>Consulta Dental</strong><span>Dr. Renato</span></div></div>
+        <nav class="nav-list">
+          <a class="nav-item" href="./index.html"><span>+</span> Inicio</a>
+          <a class="nav-item" href="./pacientes.html"><span>P</span> Pacientes</a>
+          <a class="nav-item" href="./tratamientos.html"><span>T</span> Tratamientos</a>
+          <a class="nav-item" href="./agenda.html"><span>A</span> Agenda</a>
+          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
+          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
+          <a class="nav-item active" href="./documentos.html"><span>D</span> Documentos</a>
+          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+        </nav>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Documentos</strong><span>Listos para imprimir</span></div></div>
+      </aside>
+
+      <main class="main-content module-page">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Documentos</span>
+            <h1>Impresion clinica</h1>
+          </div>
+          <button class="text-button primary-action" id="printDocumentBtn" type="button">Imprimir</button>
+        </header>
+
+        <section class="module-layout documents-layout">
+          <aside class="detail-card">
+            <div class="section-heading"><div><span class="eyebrow">Preparar</span><h2>Documento</h2></div></div>
+            <form class="compact-form" id="documentForm">
+              <label>
+                Paciente
+                <select id="documentPatientSelect" required>
+                  <option value="">Seleccionar paciente</option>
+                </select>
+              </label>
+              <label>
+                Tipo
+                <select id="documentTypeSelect">
+                  <option value="clinical">Ficha clinica</option>
+                  <option value="budget">Presupuesto</option>
+                  <option value="receipt">Comprobante de pago</option>
+                  <option value="consent">Consentimiento simple</option>
+                </select>
+              </label>
+              <label>
+                Observacion visible
+                <textarea id="documentNote" rows="4" placeholder="Texto opcional para este documento"></textarea>
+              </label>
+              <button class="text-button primary-action" type="submit">Generar vista previa</button>
+              <p class="form-status" id="documentStatus" aria-live="polite"></p>
+            </form>
+          </aside>
+
+          <section class="detail-card wide-card document-preview-shell">
+            <div class="section-heading">
+              <div><span class="eyebrow">Vista previa</span><h2 id="documentPreviewTitle">Ficha clinica</h2></div>
+            </div>
+            <article class="print-sheet" id="documentPreview">
+              <div class="empty-document">
+                <strong>Selecciona un paciente</strong>
+                <p>La vista previa se generara con los datos guardados en la ficha.</p>
+              </div>
+            </article>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="./assets/api.js"></script>
+    <script src="./assets/documentos.js"></script>
+  </body>
+</html>

@@ -652,6 +652,8 @@ function renderActionForm(action, entityId = null) {
 function renderPatient(summary) {
   currentSummary = summary;
   const patient = summary.patient;
+  const documentsLink = document.querySelector("#patientDocumentsLink");
+  if (documentsLink) documentsLink.href = `./documentos.html?id=${patient.id}`;
   const treatment = activeTreatment(summary);
   const session = summary.sessions[0];
   const appointment = nextAppointment(summary);
@@ -1125,3 +1127,4 @@ async function loadPatient() {
 loadPatient().catch((error) => {
   patientPage.innerHTML = `<p class="empty-state">No se pudo cargar la ficha: ${DentalAPI.escapeHtml(error.message)}</p>`;
 });
+
