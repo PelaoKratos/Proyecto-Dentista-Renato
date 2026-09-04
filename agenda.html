@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agenda - Consulta Dental Renato</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand"><span class="brand-mark">DR</span><div><strong>Consulta Dental</strong><span>Dr. Renato</span></div></div>
+        <nav class="nav-list">
+          <a class="nav-item" href="./index.html"><span>+</span> Inicio</a>
+          <a class="nav-item" href="./pacientes.html"><span>P</span> Pacientes</a>
+          <a class="nav-item" href="./tratamientos.html"><span>T</span> Tratamientos</a>
+          <a class="nav-item active" href="./agenda.html"><span>A</span> Agenda</a>
+          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
+          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
+          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+        </nav>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Ultima copia: hoy 09:10</span></div></div>
+      </aside>
+
+      <main class="main-content module-page">
+        <header class="topbar"><div><span class="eyebrow">Agenda</span><h1>Calendario de atenciones</h1></div><button class="text-button primary-action" id="focusAppointmentForm" type="button">Nueva cita</button></header>
+        <section class="schedule-board">
+          <aside class="detail-card">
+            <div class="section-heading"><div><span class="eyebrow">Agenda</span><h2 id="calendarTitle">Hoy</h2></div></div>
+            <div class="mini-calendar" id="miniCalendar">
+              <button>31</button><button>1</button><button>2</button><button class="selected">3</button><button>4</button><button>5</button><button>6</button>
+            </div>
+            <form class="compact-form" id="appointmentForm">
+              <label>Paciente<select name="patient_id" id="appointmentPatient"></select></label>
+              <label>Fecha y hora<input name="starts_at" type="datetime-local" value="2026-09-03T14:30" /></label>
+              <label>Motivo<textarea name="reason" placeholder="Motivo de la atencion"></textarea></label>
+              <button class="text-button primary-action" type="submit">Agendar</button>
+              <p class="form-status" id="appointmentStatus" aria-live="polite"></p>
+            </form>
+          </aside>
+          <section class="detail-card wide-card">
+            <div class="section-heading">
+              <div><span class="eyebrow">Jornada</span><h2>Bloques de atencion</h2></div>
+              <div class="inline-actions">
+                <button class="text-button" id="goTodayBtn" type="button">Hoy</button>
+                <select id="agendaStatusFilter" aria-label="Filtrar citas por estado">
+                  <option value="">Todos</option>
+                  <option value="scheduled">Confirmadas</option>
+                  <option value="attended">Atendidas</option>
+                  <option value="missed">No asistio</option>
+                  <option value="cancelled">Canceladas</option>
+                </select>
+              </div>
+            </div>
+            <div class="day-timeline" id="dayTimeline">
+              <article><time>09:30</time><div><strong>Camila Torres</strong><span>Control ortodoncia · En box</span></div></article>
+              <article><time>10:15</time><div><strong>Mario Araya</strong><span>Evaluacion implante · Confirmada</span></div></article>
+              <article><time>11:00</time><div><strong>Valentina Soto</strong><span>Radiografia y diagnostico · Pendiente</span></div></article>
+              <article><time>12:30</time><div><strong>Pedro Riquelme</strong><span>Endodoncia pieza 36 · Confirmada</span></div></article>
+              <article><time>15:00</time><div><strong>Disponible</strong><span>Bloque libre para urgencia o control breve</span></div></article>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+    <script src="./assets/api.js"></script>
+    <script src="./assets/agenda.js"></script>
+  </body>
+</html>

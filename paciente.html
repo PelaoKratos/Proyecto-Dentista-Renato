@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ficha paciente - Consulta Dental Renato</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand">
+          <span class="brand-mark">DR</span>
+          <div>
+            <strong>Consulta Dental</strong>
+            <span>Dr. Renato</span>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-item" href="./index.html"><span>+</span> Inicio</a>
+          <a class="nav-item active" href="./pacientes.html"><span>P</span> Pacientes</a>
+          <a class="nav-item" href="./tratamientos.html"><span>T</span> Tratamientos</a>
+          <a class="nav-item" href="./agenda.html"><span>A</span> Agenda</a>
+          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
+          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
+          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+        </nav>
+
+        <div class="backup-status">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Respaldo local</strong>
+            <span>Ultima copia: hoy 09:10</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content patient-page">
+        <header class="patient-hero">
+          <div class="patient-identity">
+            <a class="back-link" href="./index.html">Volver al panel</a>
+            <div class="identity-row">
+              <span class="avatar large">MA</span>
+              <div>
+                <span class="eyebrow">Ficha paciente</span>
+                <h1>Mario Araya</h1>
+                <p>RUT 12.908.442-1 · 48 anos · +56 9 7441 0091</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <button class="text-button" type="button">Editar datos</button>
+            <button class="text-button" type="button">Nueva atencion</button>
+            <button class="icon-button" type="button" aria-label="Adjuntar radiografia" title="Adjuntar radiografia">+</button>
+          </div>
+        </header>
+
+        <section class="patient-alert-strip" aria-label="Avisos clinicos del paciente">
+          <div>
+            <strong>Atencion clinica</strong>
+            <span>Sin alergias registradas. Confirmar hipertension antes de cirugia.</span>
+          </div>
+          <span class="pill warning">Revisar hoy</span>
+        </section>
+
+        <section class="patient-kpis" aria-label="Resumen del paciente">
+          <article class="metric-card compact">
+            <span>Tratamiento activo</span>
+            <strong>Implante molar</strong>
+            <small>Pieza 36 · En evaluacion</small>
+          </article>
+          <article class="metric-card compact">
+            <span>Ultima atencion</span>
+            <strong>29 Ago</strong>
+            <small>Ingreso de radiografia</small>
+          </article>
+          <article class="metric-card compact">
+            <span>Saldo pendiente</span>
+            <strong>$350.000</strong>
+            <small>Presupuesto total $920.000</small>
+          </article>
+          <article class="metric-card compact">
+            <span>Proxima cita</span>
+            <strong>10:15</strong>
+            <small>Hoy · Evaluacion implante</small>
+          </article>
+        </section>
+
+        <section class="patient-tabs" aria-label="Secciones de ficha">
+          <button class="active" type="button" data-tab="clinical">Clinica</button>
+          <button type="button" data-tab="treatments">Tratamientos</button>
+          <button type="button" data-tab="attachments">Radiografias</button>
+          <button type="button" data-tab="payments">Pagos</button>
+        </section>
+
+        <section class="patient-detail-grid tab-panel active" id="clinical" aria-labelledby="clinicalHeading">
+          <section class="detail-card patient-data-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Datos</span>
+                <h2 id="clinicalHeading">Datos del paciente</h2>
+              </div>
+            </div>
+
+            <dl class="data-list">
+              <div>
+                <dt>Nombre</dt>
+                <dd>Mario Araya</dd>
+              </div>
+              <div>
+                <dt>Nacimiento</dt>
+                <dd>12/04/1978</dd>
+              </div>
+              <div>
+                <dt>Correo</dt>
+                <dd>mario.araya@example.com</dd>
+              </div>
+              <div>
+                <dt>Direccion</dt>
+                <dd>Av. Providencia 1240, Santiago</dd>
+              </div>
+              <div>
+                <dt>Contacto emergencia</dt>
+                <dd>Laura Medina · +56 9 7720 3341</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="detail-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Odontograma</span>
+                <h2>Piezas observadas</h2>
+              </div>
+              <span class="pill">FDI</span>
+            </div>
+
+            <div class="odontogram" aria-label="Odontograma simplificado">
+              <button type="button">18</button>
+              <button type="button">17</button>
+              <button type="button">16</button>
+              <button type="button">15</button>
+              <button type="button">14</button>
+              <button type="button">13</button>
+              <button type="button">12</button>
+              <button type="button">11</button>
+              <button type="button">21</button>
+              <button type="button">22</button>
+              <button type="button">23</button>
+              <button type="button">24</button>
+              <button type="button">25</button>
+              <button type="button">26</button>
+              <button type="button">27</button>
+              <button type="button">28</button>
+              <button type="button">48</button>
+              <button type="button">47</button>
+              <button type="button">46</button>
+              <button type="button">45</button>
+              <button type="button">44</button>
+              <button type="button">43</button>
+              <button type="button">42</button>
+              <button type="button">41</button>
+              <button type="button">31</button>
+              <button type="button">32</button>
+              <button type="button">33</button>
+              <button type="button">34</button>
+              <button type="button">35</button>
+              <button class="selected" type="button">36</button>
+              <button type="button">37</button>
+              <button type="button">38</button>
+            </div>
+
+            <div class="tooth-note" id="toothNote">
+              <strong>Pieza 36</strong>
+              <span>Evaluacion para implante. Requiere revisar altura osea en radiografia panoramica.</span>
+            </div>
+          </section>
+
+          <section class="detail-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Historia</span>
+                <h2>Ultimas evoluciones</h2>
+              </div>
+              <button class="text-button" type="button">Agregar nota</button>
+            </div>
+
+            <div class="clinical-timeline">
+              <article>
+                <time>03/09/2026 · 10:15</time>
+                <strong>Evaluacion implante</strong>
+                <p>Se revisa plan quirurgico inicial. Paciente trae radiografia panoramica. Se indica confirmar antecedentes cardiovasculares antes de programar.</p>
+              </article>
+              <article>
+                <time>29/08/2026 · 16:20</time>
+                <strong>Ingreso de radiografia</strong>
+                <p>Se adjunta imagen panoramica. Zona posterior inferior izquierda con perdida de pieza y volumen oseo a evaluar.</p>
+              </article>
+              <article>
+                <time>15/08/2026 · 11:00</time>
+                <strong>Primera consulta</strong>
+                <p>Paciente consulta por reposicion de molar. Se conversa alternativa de implante y se solicita estudio radiografico.</p>
+              </article>
+            </div>
+          </section>
+
+          <aside class="detail-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Antecedentes</span>
+                <h2>Ficha medica</h2>
+              </div>
+            </div>
+
+            <div class="medical-stack">
+              <article class="summary-block">
+                <strong>Alergias</strong>
+                <p>No registra alergias medicamentosas.</p>
+              </article>
+              <article class="summary-block alert-line">
+                <strong>Condiciones</strong>
+                <p>Hipertension controlada. Confirmar medicamento actual antes de cirugia.</p>
+              </article>
+              <article class="summary-block">
+                <strong>Observaciones</strong>
+                <p>Prefiere agendar controles por la manana. Buena adherencia a indicaciones.</p>
+              </article>
+            </div>
+          </aside>
+        </section>
+
+        <section class="patient-detail-grid tab-panel" id="treatments" aria-labelledby="treatmentsHeading">
+          <section class="detail-card wide-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Plan</span>
+                <h2 id="treatmentsHeading">Tratamiento activo</h2>
+              </div>
+              <button class="text-button" type="button">Nuevo tratamiento</button>
+            </div>
+
+            <div class="treatment-plan">
+              <article>
+                <header>
+                  <strong>Implante molar inferior</strong>
+                  <span class="pill warning">Evaluacion</span>
+                </header>
+                <p>Pieza 36. Pendiente confirmar estudio radiografico y presupuesto final.</p>
+                <div class="progress-track"><span style="width: 38%"></span></div>
+              </article>
+              <article>
+                <header>
+                  <strong>Limpieza periodontal</strong>
+                  <span class="pill">Planificado</span>
+                </header>
+                <p>Se recomienda realizar antes de intervencion quirurgica.</p>
+                <div class="progress-track"><span style="width: 12%"></span></div>
+              </article>
+            </div>
+          </section>
+
+          <aside class="detail-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Presupuesto</span>
+                <h2>Resumen financiero</h2>
+              </div>
+            </div>
+            <div class="money-list">
+              <div><span>Total plan</span><strong>$920.000</strong></div>
+              <div><span>Pagado</span><strong>$570.000</strong></div>
+              <div><span>Pendiente</span><strong>$350.000</strong></div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="patient-detail-grid tab-panel" id="attachments" aria-labelledby="attachmentsHeading">
+          <section class="detail-card wide-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Radiografias</span>
+                <h2 id="attachmentsHeading">Imagenes y documentos</h2>
+              </div>
+              <button class="text-button" type="button">Adjuntar archivo</button>
+            </div>
+
+            <div class="attachment-browser">
+              <img src="./assets/img/rx-muestra.png" alt="Radiografia dental de muestra" />
+              <div class="attachment-details">
+                <strong>Panoramica inicial</strong>
+                <span>29/08/2026 · Asociada a implante molar</span>
+                <p>Vista panoramica de referencia para evaluacion de pieza 36. Archivo local dentro de carpeta del paciente.</p>
+                <code>media/pacientes/000002/radiografias/2026-08-29-panoramica.png</code>
+              </div>
+            </div>
+          </section>
+
+          <aside class="detail-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Adjuntos</span>
+                <h2>Listado</h2>
+              </div>
+            </div>
+            <div class="attachment-table compact-table" role="table" aria-label="Adjuntos del paciente">
+              <div role="row" class="table-head">
+                <span role="columnheader">Tipo</span>
+                <span role="columnheader">Fecha</span>
+              </div>
+              <div role="row">
+                <span role="cell">Panoramica</span>
+                <span role="cell">29/08</span>
+              </div>
+              <div role="row">
+                <span role="cell">Consentimiento</span>
+                <span role="cell">15/08</span>
+              </div>
+              <div role="row">
+                <span role="cell">Foto intraoral</span>
+                <span role="cell">15/08</span>
+              </div>
+            </div>
+          </aside>
+        </section>
+
+        <section class="patient-detail-grid tab-panel" id="payments" aria-labelledby="paymentsHeading">
+          <section class="detail-card wide-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Pagos</span>
+                <h2 id="paymentsHeading">Historial de abonos</h2>
+              </div>
+              <button class="text-button" type="button">Registrar pago</button>
+            </div>
+
+            <div class="payment-rows">
+              <article>
+                <time>29/08/2026</time>
+                <strong>$300.000</strong>
+                <span>Transferencia · Abono implante</span>
+              </article>
+              <article>
+                <time>15/08/2026</time>
+                <strong>$270.000</strong>
+                <span>Tarjeta · Evaluacion inicial</span>
+              </article>
+            </div>
+          </section>
+
+          <aside class="detail-card">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Saldo</span>
+                <h2>Estado de cuenta</h2>
+              </div>
+            </div>
+            <div class="money-list">
+              <div><span>Presupuesto</span><strong>$920.000</strong></div>
+              <div><span>Abonos</span><strong>$570.000</strong></div>
+              <div><span>Por pagar</span><strong>$350.000</strong></div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script src="./assets/api.js"></script>
+    <script src="./assets/paciente.js"></script>
+  </body>
+</html>

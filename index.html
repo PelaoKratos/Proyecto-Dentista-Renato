@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Consulta Dental Renato</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand">
+          <span class="brand-mark">DR</span>
+          <div>
+            <strong>Consulta Dental</strong>
+            <span>Dr. Renato</span>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <a class="nav-item active" href="./index.html"><span>+</span> Inicio</a>
+          <a class="nav-item" href="./pacientes.html"><span>P</span> Pacientes</a>
+          <a class="nav-item" href="./tratamientos.html"><span>T</span> Tratamientos</a>
+          <a class="nav-item" href="./agenda.html"><span>A</span> Agenda</a>
+          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
+          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
+          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+        </nav>
+
+        <div class="backup-status">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Respaldo local</strong>
+            <span>Ultima copia: hoy 09:10</span>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Jueves 3 Sep 2026</span>
+            <h1>Panel principal</h1>
+          </div>
+
+          <div class="topbar-actions">
+            <label class="global-search">
+              <span>Buscar</span>
+              <input id="globalSearch" type="search" placeholder="Paciente, RUT o tratamiento" />
+            </label>
+            <a class="icon-button" href="./pacientes.html#nuevo" aria-label="Crear nuevo paciente" title="Crear nuevo paciente">+</a>
+          </div>
+        </header>
+
+        <section class="metrics-grid" aria-label="Resumen de la consulta">
+          <article class="metric-card">
+            <span>Citas hoy</span>
+            <strong>8</strong>
+            <small>2 pendientes de confirmar</small>
+          </article>
+          <article class="metric-card">
+            <span>Pacientes activos</span>
+            <strong>146</strong>
+            <small>12 con tratamiento abierto</small>
+          </article>
+          <article class="metric-card">
+            <span>Tratamientos en curso</span>
+            <strong>21</strong>
+            <small>5 controles esta semana</small>
+          </article>
+          <article class="metric-card">
+            <span>Saldo pendiente</span>
+            <strong>$840.000</strong>
+            <small>7 pacientes con abonos</small>
+          </article>
+        </section>
+
+        <section class="workspace-grid">
+          <section class="agenda-panel" aria-labelledby="agendaTitle">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Agenda</span>
+                <h2 id="agendaTitle">Atenciones de hoy</h2>
+              </div>
+              <a class="text-button link-button" href="./agenda.html">Ver semana</a>
+            </div>
+
+            <div class="appointment-list" id="dashboardAppointments">
+              <article class="appointment current">
+                <time>09:30</time>
+                <div>
+                  <strong>Camila Torres</strong>
+                  <span>Control ortodoncia</span>
+                </div>
+                <span class="pill attention">En box</span>
+              </article>
+              <article class="appointment">
+                <time>10:15</time>
+                <div>
+                  <strong>Mario Araya</strong>
+                  <span>Evaluacion implante</span>
+                </div>
+                <span class="pill">Confirmada</span>
+              </article>
+              <article class="appointment">
+                <time>11:00</time>
+                <div>
+                  <strong>Valentina Soto</strong>
+                  <span>Radiografia y diagnostico</span>
+                </div>
+                <span class="pill warning">Pendiente</span>
+              </article>
+              <article class="appointment">
+                <time>12:30</time>
+                <div>
+                  <strong>Pedro Riquelme</strong>
+                  <span>Endodoncia pieza 36</span>
+                </div>
+                <span class="pill">Confirmada</span>
+              </article>
+            </div>
+          </section>
+
+          <section class="patients-panel" aria-labelledby="patientsTitle">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Pacientes</span>
+                <h2 id="patientsTitle">Gestion rapida</h2>
+              </div>
+              <div class="segment-control" aria-label="Filtro de pacientes">
+                <button class="active" type="button" data-filter="all">Todos</button>
+                <button type="button" data-filter="treatment">Tratamiento</button>
+                <button type="button" data-filter="alert">Alertas</button>
+              </div>
+            </div>
+
+            <div class="patient-list" id="patientList"></div>
+          </section>
+
+          <section class="clinical-panel" aria-labelledby="clinicalTitle">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Ficha activa</span>
+                <h2 id="clinicalTitle">Resumen clinico</h2>
+              </div>
+              <a class="text-button link-button" id="openPatientLink" href="./paciente.html?id=1">Abrir ficha</a>
+            </div>
+
+            <div class="patient-summary" id="patientSummary"></div>
+          </section>
+
+          <section class="radiography-panel" aria-labelledby="rxTitle">
+            <div class="section-heading">
+              <div>
+                <span class="eyebrow">Adjuntos</span>
+                <h2 id="rxTitle">Radiografias recientes</h2>
+              </div>
+              <a class="icon-button small" href="./radiografias.html#nuevo" aria-label="Adjuntar radiografia" title="Adjuntar radiografia">+</a>
+            </div>
+
+            <div class="rx-preview">
+              <img id="dashboardAttachmentImage" src="./assets/img/rx-muestra.png" alt="Radiografia dental de muestra" />
+              <div>
+                <strong id="dashboardAttachmentTitle">Panoramica inicial</strong>
+                <span id="dashboardAttachmentText">Asociada a evaluacion de implante</span>
+                <small id="dashboardAttachmentFile">Archivo: rx-muestra.png</small>
+              </div>
+            </div>
+
+            <div class="attachment-table" id="dashboardAttachments" role="table" aria-label="Adjuntos recientes">
+              <div role="row" class="table-head">
+                <span role="columnheader">Tipo</span>
+                <span role="columnheader">Paciente</span>
+                <span role="columnheader">Fecha</span>
+              </div>
+              <div role="row">
+                <span role="cell">RX</span>
+                <span role="cell">Mario Araya</span>
+                <span role="cell">03/09</span>
+              </div>
+              <div role="row">
+                <span role="cell">Foto</span>
+                <span role="cell">Camila Torres</span>
+                <span role="cell">02/09</span>
+              </div>
+              <div role="row">
+                <span role="cell">PDF</span>
+                <span role="cell">Pedro Riquelme</span>
+                <span role="cell">01/09</span>
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="./assets/api.js"></script>
+    <script src="./assets/app.js"></script>
+  </body>
+</html>

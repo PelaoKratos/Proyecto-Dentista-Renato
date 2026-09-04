@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pacientes - Consulta Dental Renato</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand"><span class="brand-mark">DR</span><div><strong>Consulta Dental</strong><span>Dr. Renato</span></div></div>
+        <nav class="nav-list">
+          <a class="nav-item" href="./index.html"><span>+</span> Inicio</a>
+          <a class="nav-item active" href="./pacientes.html"><span>P</span> Pacientes</a>
+          <a class="nav-item" href="./tratamientos.html"><span>T</span> Tratamientos</a>
+          <a class="nav-item" href="./agenda.html"><span>A</span> Agenda</a>
+          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
+          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
+          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+        </nav>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Ultima copia: hoy 09:10</span></div></div>
+      </aside>
+
+      <main class="main-content module-page">
+        <header class="topbar">
+          <div><span class="eyebrow">Pacientes</span><h1>Gestion de pacientes</h1></div>
+          <div class="topbar-actions">
+            <label class="global-search"><span>Buscar</span><input id="patientsSearch" type="search" placeholder="Buscar por nombre, RUT o telefono" /></label>
+            <a class="icon-button" href="#nuevo" aria-label="Nuevo paciente" title="Nuevo paciente">+</a>
+          </div>
+        </header>
+
+        <section class="module-layout">
+          <section class="detail-card wide-card">
+            <div class="section-heading"><div><span class="eyebrow">Listado</span><h2>Pacientes recientes</h2></div><button class="text-button" id="exportPatientsBtn" type="button">Exportar</button></div>
+            <div class="records-table" id="patientsTable" role="table" aria-label="Listado de pacientes">
+              <div class="records-row records-head" role="row"><span>Paciente</span><span>Contacto</span><span>Estado</span><span>Proxima cita</span></div>
+              <a class="records-row" href="./paciente.html?id=2" role="row"><span><strong>Mario Araya</strong><small>12.908.442-1</small></span><span>+56 9 7441 0091</span><span><mark>Evaluacion</mark></span><span>Hoy 10:15</span></a>
+              <a class="records-row" href="./paciente.html?id=1" role="row"><span><strong>Camila Torres</strong><small>18.456.992-4</small></span><span>+56 9 6123 4420</span><span><mark>Tratamiento</mark></span><span>Hoy 09:30</span></a>
+              <a class="records-row" href="./paciente.html?id=3" role="row"><span><strong>Valentina Soto</strong><small>20.112.884-7</small></span><span>+56 9 3810 5540</span><span><mark>Diagnostico</mark></span><span>Hoy 11:00</span></a>
+              <a class="records-row" href="./paciente.html?id=4" role="row"><span><strong>Pedro Riquelme</strong><small>15.678.221-9</small></span><span>+56 9 9002 1103</span><span><mark>Tratamiento</mark></span><span>Hoy 12:30</span></a>
+            </div>
+          </section>
+
+          <aside class="detail-card" id="nuevo">
+            <div class="section-heading"><div><span class="eyebrow">Ingreso</span><h2>Nuevo paciente</h2></div></div>
+            <form class="compact-form" id="patientForm">
+              <label>Nombres<input name="first_name" type="text" placeholder="Ej. Andrea" required /></label>
+              <label>Apellidos<input name="last_name" type="text" placeholder="Ej. Morales" required /></label>
+              <label>RUT<input name="rut" type="text" placeholder="12.345.678-9" /></label>
+              <label>Telefono<input name="phone" type="tel" placeholder="+56 9 ..." /></label>
+              <label>Correo<input name="email" type="email" placeholder="correo@ejemplo.cl" /></label>
+              <label>Alerta clinica<textarea name="active_alert" placeholder="Alergias, medicamentos, condiciones relevantes"></textarea></label>
+              <button class="text-button primary-action" type="submit">Guardar ficha</button>
+              <p class="form-status" id="patientFormStatus" aria-live="polite"></p>
+            </form>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script src="./assets/api.js"></script>
+    <script src="./assets/pacientes.js"></script>
+  </body>
+</html>

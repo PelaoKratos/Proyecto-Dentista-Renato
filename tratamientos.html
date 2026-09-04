@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tratamientos - Consulta Dental Renato</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Navegacion principal">
+        <div class="brand"><span class="brand-mark">DR</span><div><strong>Consulta Dental</strong><span>Dr. Renato</span></div></div>
+        <nav class="nav-list">
+          <a class="nav-item" href="./index.html"><span>+</span> Inicio</a>
+          <a class="nav-item" href="./pacientes.html"><span>P</span> Pacientes</a>
+          <a class="nav-item active" href="./tratamientos.html"><span>T</span> Tratamientos</a>
+          <a class="nav-item" href="./agenda.html"><span>A</span> Agenda</a>
+          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
+          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
+          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+        </nav>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Ultima copia: hoy 09:10</span></div></div>
+      </aside>
+
+      <main class="main-content module-page">
+        <header class="topbar"><div><span class="eyebrow">Tratamientos</span><h1>Planes clinicos</h1></div><button class="text-button primary-action" id="focusTreatmentForm" type="button">Crear tratamiento</button></header>
+        <section class="module-layout">
+          <section class="detail-card wide-card">
+            <div class="section-heading"><div><span class="eyebrow">Activos</span><h2>Tratamientos en curso</h2></div></div>
+            <div class="kanban-grid" id="treatmentsGrid">
+              <article><span class="eyebrow">Evaluacion</span><strong>Implante molar</strong><p>Mario Araya · Pieza 36</p><div class="progress-track"><span style="width: 38%"></span></div></article>
+              <article><span class="eyebrow">En curso</span><strong>Ortodoncia</strong><p>Camila Torres · Control mensual</p><div class="progress-track"><span style="width: 64%"></span></div></article>
+              <article><span class="eyebrow">Planificado</span><strong>Limpieza periodontal</strong><p>Mario Araya · Prequirurgico</p><div class="progress-track"><span style="width: 12%"></span></div></article>
+              <article><span class="eyebrow">En curso</span><strong>Endodoncia</strong><p>Pedro Riquelme · Pieza 36</p><div class="progress-track"><span style="width: 52%"></span></div></article>
+            </div>
+          </section>
+          <aside class="detail-card">
+            <div class="section-heading"><div><span class="eyebrow">Catalogo</span><h2>Procedimientos base</h2></div></div>
+            <div class="catalog-list" id="catalogList">
+              <button type="button"><strong>Evaluacion dental</strong><span>$25.000</span></button>
+              <button type="button"><strong>Limpieza periodontal</strong><span>$65.000</span></button>
+              <button type="button"><strong>Endodoncia</strong><span>$280.000</span></button>
+              <button type="button"><strong>Implante</strong><span>$920.000</span></button>
+            </div>
+            <form class="compact-form module-form" id="newTreatmentForm">
+              <div class="section-heading compact-heading"><div><span class="eyebrow">Nuevo</span><h2>Asignar tratamiento</h2></div></div>
+              <label>Paciente<select name="patient_id" id="newTreatmentPatient" required></select></label>
+              <label>Catalogo<select name="catalog_treatment_id" id="newTreatmentCatalog"><option value="">Personalizado</option></select></label>
+              <label>Nombre<input name="title" id="newTreatmentTitle" placeholder="Ej. Implante molar" required /></label>
+              <label>Pieza dental<input name="tooth_code" placeholder="Ej. 36" /></label>
+              <label>Presupuesto<input name="estimated_price" id="newTreatmentPrice" type="number" min="0" placeholder="0" /></label>
+              <label>Estado<select name="status"><option value="planned">Planificado</option><option value="in_progress">En curso</option><option value="completed">Completado</option><option value="cancelled">Cancelado</option></select></label>
+              <label>Plan clinico<textarea name="plan_notes" placeholder="Notas del plan"></textarea></label>
+              <button class="text-button primary-action" type="submit">Guardar tratamiento</button>
+              <p class="form-status" id="newTreatmentStatus" aria-live="polite"></p>
+            </form>
+          </aside>
+        </section>
+      </main>
+    </div>
+    <script src="./assets/api.js"></script>
+    <script src="./assets/tratamientos.js"></script>
+  </body>
+</html>

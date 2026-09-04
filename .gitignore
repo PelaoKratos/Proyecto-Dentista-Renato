@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.pyc
+
+# Datos locales de la consulta
+data/
+media/
+backups/
+
+# Configuracion local
+.env
+*.log
