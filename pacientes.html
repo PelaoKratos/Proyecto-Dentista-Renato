@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Pacientes - Consulta Dental Renato</title>
     <link rel="stylesheet" href="./assets/styles.css" />
+    <link rel="stylesheet" href="./assets/ui-polish.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -20,7 +21,7 @@
           <a class="nav-item" href="./documentos.html"><span>D</span> Documentos</a>
           <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
         </nav>
-        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Ultima copia: hoy 09:10</span></div></div>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Base local protegida</span></div></div>
       </aside>
 
       <main class="main-content module-page">
@@ -46,6 +47,7 @@
 
           <aside class="detail-card" id="nuevo">
             <div class="section-heading"><div><span class="eyebrow">Ingreso</span><h2>Nuevo paciente</h2></div></div>
+            <p class="form-helper">Registra primero nombre, telefono y alerta clinica; el resto se puede completar despues desde la ficha.</p>
             <form class="compact-form" id="patientForm">
               <label>Nombres<input name="first_name" type="text" placeholder="Ej. Andrea" required /></label>
               <label>Apellidos<input name="last_name" type="text" placeholder="Ej. Morales" required /></label>
@@ -64,5 +66,3 @@
     <script src="./assets/pacientes.js"></script>
   </body>
 </html>
-
-

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Agenda - Consulta Dental Renato</title>
     <link rel="stylesheet" href="./assets/styles.css" />
+    <link rel="stylesheet" href="./assets/ui-polish.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -20,7 +21,7 @@
           <a class="nav-item" href="./documentos.html"><span>D</span> Documentos</a>
           <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
         </nav>
-        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Ultima copia: hoy 09:10</span></div></div>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Base local protegida</span></div></div>
       </aside>
 
       <main class="main-content module-page">
@@ -31,6 +32,7 @@
             <div class="mini-calendar" id="miniCalendar">
               <button>31</button><button>1</button><button>2</button><button class="selected">3</button><button>4</button><button>5</button><button>6</button>
             </div>
+            <p class="form-helper">Selecciona paciente, hora de atencion y motivo para dejar la cita lista en la jornada.</p>
             <form class="compact-form" id="appointmentForm">
               <label>Paciente<select name="patient_id" id="appointmentPatient"></select></label>
               <label>Fecha y hora<input name="starts_at" type="datetime-local" value="2026-09-03T14:30" /></label>
@@ -68,5 +70,3 @@
     <script src="./assets/agenda.js"></script>
   </body>
 </html>
-
-

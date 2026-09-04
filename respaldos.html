@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Respaldos - Consulta Dental Renato</title>
     <link rel="stylesheet" href="./assets/styles.css" />
+    <link rel="stylesheet" href="./assets/ui-polish.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -20,7 +21,7 @@
           <a class="nav-item" href="./documentos.html"><span>D</span> Documentos</a>
           <a class="nav-item active" href="./respaldos.html"><span>B</span> Respaldos</a>
         </nav>
-        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Ultima copia: hoy 09:10</span></div></div>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Base local protegida</span></div></div>
       </aside>
 
       <main class="main-content module-page">
@@ -47,6 +48,7 @@
           </section>
           <aside class="detail-card">
             <div class="section-heading"><div><span class="eyebrow">Configuracion</span><h2>Reglas sugeridas</h2></div></div>
+            <p class="form-helper">Mantener copias frecuentes protege la base SQLite y los adjuntos guardados en este computador.</p>
             <div class="settings-stack">
               <label><input type="checkbox" id="backupReminder" checked /> Recordar respaldo al cerrar la aplicacion</label>
               <label><input type="checkbox" id="backupIncludeMedia" checked /> Incluir radiografias y documentos</label>
@@ -62,5 +64,3 @@
     <script src="./assets/respaldos.js"></script>
   </body>
 </html>
-
-
