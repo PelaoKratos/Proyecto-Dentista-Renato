@@ -65,6 +65,16 @@ La aplicacion crea y usa archivos locales que no se suben al repositorio:
 
 Estas carpetas estan excluidas en `.gitignore` para evitar publicar informacion clinica o archivos sensibles.
 
+## Datos demo
+
+Para llenar la aplicacion con pacientes, tratamientos, evoluciones, agenda, pagos y radiografias de ejemplo:
+
+```powershell
+npm run seed:demo
+```
+
+El comando reinicia solo los registros con RUT `DEMO-*`, por lo que no borra pacientes reales ingresados manualmente. Ver mas detalles en `docs/datos-demo.md`.
+
 ## Respaldos
 
 La pantalla `Respaldos` crea un ZIP con:
@@ -111,3 +121,4 @@ Los reportes y capturas se generan en `test-results/` y `playwright-report/`, ca
 - `docs/modelo-base-datos.md`
 - `docs/backend-local.md`
 - `docs/flujo-funcional.md`
+- `docs/datos-demo.md`

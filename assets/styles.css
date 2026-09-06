@@ -985,6 +985,17 @@ h2 {
   text-transform: uppercase;
 }
 
+.group-summary {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .treatment-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -8,6 +8,8 @@ const newTreatmentTitle = document.querySelector("#newTreatmentTitle");
 const newTreatmentPrice = document.querySelector("#newTreatmentPrice");
 const newTreatmentStatus = document.querySelector("#newTreatmentStatus");
 
+const GROUP_RENDER_LIMIT = 8;
+
 let patients = [];
 let catalog = [];
 let treatments = [];
@@ -67,6 +69,55 @@ function renderFormOptions() {
       .join("");
 }
 
+function renderTreatmentCard(treatment, patientById) {
+  const patient = patientById.get(treatment.patient_id);
+  const canComplete = treatment.status !== "completed" && treatment.status !== "cancelled";
+
+  return `
+    <article data-treatment-card="${treatment.id}">
+      <header>
+        <div>
+          <span class="eyebrow">Tratamiento #${treatment.id}</span>
+          <strong>${DentalAPI.escapeHtml(treatment.title)}</strong>
+          <p>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")} ${treatment.tooth_code ? `· Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : ""}</p>
+        </div>
+        <span class="pill ${treatment.status === "planned" ? "warning" : treatment.status === "completed" ? "attention" : ""}">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span>
+      </header>
+      <div class="progress-track"><span style="width: ${progressForStatus(treatment.status)}%"></span></div>
+      <div class="editor-controls treatment-editor">
+        <label>Nombre<input data-treatment-title value="${DentalAPI.escapeHtml(treatment.title || "")}" /></label>
+        <label>Pieza<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" /></label>
+        <label>Estado<select data-treatment-status>${statusOptions(treatment.status)}</select></label>
+        <label>Presupuesto<input data-treatment-estimated type="number" min="0" value="${DentalAPI.escapeHtml(treatment.estimated_price || "")}" /></label>
+        <label>Valor final<input data-treatment-final type="number" min="0" value="${DentalAPI.escapeHtml(treatment.final_price || "")}" /></label>
+        <label>Inicio<input data-treatment-start type="date" value="${DentalAPI.escapeHtml(treatment.start_date || "")}" /></label>
+        <label>Termino<input data-treatment-end type="date" value="${DentalAPI.escapeHtml(treatment.end_date || "")}" /></label>
+        <label>Diagnostico<textarea data-treatment-diagnosis>${DentalAPI.escapeHtml(treatment.diagnosis || "")}</textarea></label>
+        <label>Plan clinico<textarea data-treatment-plan>${DentalAPI.escapeHtml(treatment.plan_notes || "")}</textarea></label>
+      </div>
+      <div class="inline-actions">
+        <button class="text-button" type="button" data-save-treatment="${treatment.id}">Guardar cambios</button>
+        ${canComplete ? `<button class="text-button" type="button" data-complete-treatment="${treatment.id}">Finalizar</button>` : ""}
+        <a class="text-button link-button" href="./paciente.html?id=${treatment.patient_id}">Abrir ficha</a>
+      </div>
+      <p class="form-status" data-treatment-message="${treatment.id}" aria-live="polite"></p>
+    </article>
+  `;
+}
+
+function renderTreatmentGroup(key, label, grouped, patientById) {
+  const visible = grouped.slice(0, GROUP_RENDER_LIMIT);
+  const hiddenCount = Math.max(grouped.length - visible.length, 0);
+
+  return `
+    <section class="treatment-group" data-treatment-group="${key}">
+      <h3>${label}</h3>
+      <p class="group-summary">${grouped.length} tratamientos ${hiddenCount ? `· mostrando ${visible.length}; revisa el resto desde la ficha del paciente` : ""}</p>
+      ${visible.map((treatment) => renderTreatmentCard(treatment, patientById)).join("")}
+    </section>
+  `;
+}
+
 async function loadTreatments() {
   const [loadedPatients, loadedTreatments, loadedCatalog] = await Promise.all([
     DentalAPI.get("/api/patients"),
@@ -85,49 +136,7 @@ async function loadTreatments() {
         ${renderTreatmentStats()}
         ${groupTreatments(treatments)
           .filter(([, , grouped]) => grouped.length)
-          .map(
-            ([key, label, grouped]) => `
-              <section class="treatment-group" data-treatment-group="${key}">
-                <h3>${label}</h3>
-                ${grouped
-                  .map((treatment) => {
-                    const patient = patientById.get(treatment.patient_id);
-                    const canComplete = treatment.status !== "completed" && treatment.status !== "cancelled";
-                    return `
-                      <article data-treatment-card="${treatment.id}">
-                        <header>
-                          <div>
-                            <span class="eyebrow">Tratamiento #${treatment.id}</span>
-                            <strong>${DentalAPI.escapeHtml(treatment.title)}</strong>
-                            <p>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")} ${treatment.tooth_code ? `· Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : ""}</p>
-                          </div>
-                          <span class="pill ${treatment.status === "planned" ? "warning" : treatment.status === "completed" ? "attention" : ""}">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span>
-                        </header>
-                        <div class="progress-track"><span style="width: ${progressForStatus(treatment.status)}%"></span></div>
-                        <div class="editor-controls treatment-editor">
-                          <label>Nombre<input data-treatment-title value="${DentalAPI.escapeHtml(treatment.title || "")}" /></label>
-                          <label>Pieza<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" /></label>
-                          <label>Estado<select data-treatment-status>${statusOptions(treatment.status)}</select></label>
-                          <label>Presupuesto<input data-treatment-estimated type="number" min="0" value="${DentalAPI.escapeHtml(treatment.estimated_price || "")}" /></label>
-                          <label>Valor final<input data-treatment-final type="number" min="0" value="${DentalAPI.escapeHtml(treatment.final_price || "")}" /></label>
-                          <label>Inicio<input data-treatment-start type="date" value="${DentalAPI.escapeHtml(treatment.start_date || "")}" /></label>
-                          <label>Termino<input data-treatment-end type="date" value="${DentalAPI.escapeHtml(treatment.end_date || "")}" /></label>
-                          <label>Diagnostico<textarea data-treatment-diagnosis>${DentalAPI.escapeHtml(treatment.diagnosis || "")}</textarea></label>
-                          <label>Plan clinico<textarea data-treatment-plan>${DentalAPI.escapeHtml(treatment.plan_notes || "")}</textarea></label>
-                        </div>
-                        <div class="inline-actions">
-                          <button class="text-button" type="button" data-save-treatment="${treatment.id}">Guardar cambios</button>
-                          ${canComplete ? `<button class="text-button" type="button" data-complete-treatment="${treatment.id}">Finalizar</button>` : ""}
-                          <a class="text-button link-button" href="./paciente.html?id=${treatment.patient_id}">Abrir ficha</a>
-                        </div>
-                        <p class="form-status" data-treatment-message="${treatment.id}" aria-live="polite"></p>
-                      </article>
-                    `;
-                  })
-                  .join("")}
-              </section>
-            `
-          )
+          .map(([key, label, grouped]) => renderTreatmentGroup(key, label, grouped, patientById))
           .join("")}
       `
       : `<p class="empty-state">No hay tratamientos registrados.</p>`;
