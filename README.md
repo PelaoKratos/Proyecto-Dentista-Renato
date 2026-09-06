@@ -2,7 +2,7 @@
 
 Aplicacion web local para gestionar una consulta dental en un solo computador.
 
-Permite administrar pacientes, tratamientos, evoluciones clinicas, agenda, pagos, radiografias/documentos adjuntos y respaldos locales.
+Permite administrar pacientes, tratamientos, evoluciones clinicas, agenda, pagos, radiografias/documentos adjuntos, documentos imprimibles y respaldos locales.
 
 ## Stack
 
@@ -11,15 +11,16 @@ Permite administrar pacientes, tratamientos, evoluciones clinicas, agenda, pagos
 - Base de datos: SQLite local.
 - Archivos adjuntos: carpeta local `media/`.
 - Respaldos: archivos ZIP en `backups/`.
+- Pruebas visuales: Playwright con Chromium.
 
-No requiere instalar paquetes externos.
+La aplicacion no requiere paquetes externos para funcionar en el computador local. Las dependencias npm se usan para pruebas automatizadas.
 
 ## Ejecutar en Windows
 
 Desde PowerShell, en la carpeta del proyecto:
 
 ```powershell
-.\iniciar_backend.ps1
+npm start
 ```
 
 Luego abrir:
@@ -28,10 +29,30 @@ Luego abrir:
 http://127.0.0.1:8000/
 ```
 
-Tambien se puede iniciar manualmente:
+Tambien se puede iniciar solo el backend:
 
 ```powershell
-py -3 .\backend\server.py
+npm run start:backend
+```
+
+## Acceso directo
+
+Para crear o actualizar el acceso directo del Escritorio:
+
+```powershell
+npm run shortcut
+```
+
+El acceso se llama `Consulta Dental Renato` y abre la aplicacion en `http://127.0.0.1:8000/`. Si el servidor local no esta corriendo, lo inicia automaticamente en segundo plano.
+
+## Estructura del proyecto
+
+```text
+assets/      Estilos, JavaScript, imagenes e iconos de la app
+backend/     Servidor local, SQLite y validaciones
+docs/        Documentacion tecnica del proyecto
+scripts/     Arranque, apertura, pruebas e instalacion del acceso directo
+tests/       Pruebas backend y pruebas visuales Playwright
 ```
 
 ## Datos locales
@@ -53,20 +74,15 @@ La pantalla `Respaldos` crea un ZIP con:
 
 Para restaurar datos manualmente, primero cierre el servidor, descomprima el respaldo y copie esos elementos dentro de la carpeta del proyecto.
 
-## Pruebas
+## Pruebas backend
 
 ```powershell
-py -3 -m unittest discover
+npm run test:backend
 ```
 
-## Documentacion
-
-- `docs/arquitectura-inicial.md`
-- `docs/modelo-base-datos.md`
-- `docs/backend-local.md`
 ## Pruebas visuales con Playwright
 
-Playwright permite abrir la aplicacion en Chromium de forma automatica, revisar pantallas principales, detectar errores de consola, comprobar desbordes horizontales y generar capturas de escritorio y movil.
+Playwright abre la aplicacion en Chromium de forma automatica, revisa pantallas principales, detecta errores de consola, comprueba desbordes horizontales y genera capturas de escritorio y movil.
 
 Instalar dependencias del proyecto:
 
@@ -78,7 +94,7 @@ npx playwright install chromium
 Ejecutar pruebas visuales:
 
 ```powershell
-npm run test:ui
+npm test
 ```
 
 Abrir el reporte HTML despues de una ejecucion:
@@ -88,3 +104,10 @@ npm run test:ui:report
 ```
 
 Los reportes y capturas se generan en `test-results/` y `playwright-report/`, carpetas ignoradas por Git.
+
+## Documentacion
+
+- `docs/arquitectura-inicial.md`
+- `docs/modelo-base-datos.md`
+- `docs/backend-local.md`
+- `docs/flujo-funcional.md`
