@@ -5,6 +5,7 @@ param(
 $Root = Split-Path -Parent $PSScriptRoot
 $Url = "http://127.0.0.1:$Port/"
 $HealthUrl = "http://127.0.0.1:$Port/api/health"
+$PowerShellPath = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
 
 function Test-ConsultaDentalServer {
   try {
@@ -15,13 +16,13 @@ function Test-ConsultaDentalServer {
   }
 }
 
+if (-not (Test-Path -LiteralPath $PowerShellPath)) {
+  throw "No se encontro PowerShell en la ruta esperada: $PowerShellPath"
+}
+
 if (-not (Test-ConsultaDentalServer)) {
   $startScript = Join-Path $Root 'scripts\start-backend.ps1'
-  Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -WorkingDirectory $Root -ArgumentList @(
-    '-ExecutionPolicy', 'Bypass',
-    '-File', $startScript,
-    '-Port', $Port
-  )
+  Start-Process -FilePath $PowerShellPath -WindowStyle Hidden -WorkingDirectory $Root -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$startScript`" -Port $Port"
 
   $ready = $false
   for ($i = 0; $i -lt 30; $i++) {
