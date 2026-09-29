@@ -4,6 +4,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from backend.validation import validate_appointment, validate_session
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 DB_PATH = DATA_DIR / "consulta_dental.sqlite3"
@@ -94,6 +96,7 @@ def insert_record(table: str, data: dict[str, Any], allowed_fields: set[str]) ->
         connection.execute("BEGIN IMMEDIATE")
         if table == "appointments":
             validate_appointment_link(connection, data)
+        validate_patient_relationships(connection, table, data)
         cursor = connection.execute(
             f"INSERT INTO {table} ({field_list}) VALUES ({placeholders})",
             values,
@@ -101,6 +104,8 @@ def insert_record(table: str, data: dict[str, Any], allowed_fields: set[str]) ->
         record_id = cursor.lastrowid
         if table == "appointments":
             sync_appointment_treatment(connection, data)
+        elif table == "clinical_sessions":
+            start_session_treatment(connection, data)
         connection.commit()
         row = connection.execute(f"SELECT * FROM {table} WHERE id = ?", (record_id,)).fetchone()
         return row_to_dict(row) or {}
@@ -119,17 +124,40 @@ def update_record(table: str, record_id: int, data: dict[str, Any], allowed_fiel
     connection = get_connection()
     try:
         connection.execute("BEGIN IMMEDIATE")
-        if table == "appointments":
-            existing = connection.execute("SELECT * FROM appointments WHERE id = ?", (record_id,)).fetchone()
+        existing = None
+        merged = data
+        if table in {"appointments", "clinical_sessions", "payments", "attachments"}:
+            existing = connection.execute(f"SELECT * FROM {table} WHERE id = ?", (record_id,)).fetchone()
             if existing:
-                validate_appointment_link(connection, {**dict(existing), **data}, record_id)
+                merged = {**dict(existing), **data}
+                if table == "appointments":
+                    validate_appointment(merged, partial=True)
+                    validate_appointment_link(connection, merged, record_id)
+        if existing is not None or table not in {"appointments", "clinical_sessions", "payments", "attachments"}:
+            validate_patient_relationships(connection, table, merged)
+        if table == "patient_treatments" and "patient_id" in fields:
+            patient_id = merged.get("patient_id")
+            dependent_records = connection.execute(
+                """
+                SELECT 1 FROM clinical_sessions WHERE patient_treatment_id = ? AND patient_id != ?
+                UNION ALL
+                SELECT 1 FROM payments WHERE patient_treatment_id = ? AND patient_id != ?
+                UNION ALL
+                SELECT 1 FROM attachments WHERE patient_treatment_id = ? AND patient_id != ?
+                LIMIT 1
+                """,
+                (record_id, patient_id, record_id, patient_id, record_id, patient_id),
+            ).fetchone()
+            if dependent_records:
+                raise ValueError("No se puede cambiar el paciente: el tratamiento ya tiene evoluciones, pagos o adjuntos vinculados.")
         cursor = connection.execute(f"UPDATE {table} SET {assignments} WHERE id = ?", values)
         if cursor.rowcount == 0:
             return None
         if table == "appointments" and existing:
-            updated = {**dict(existing), **data}
-            if updated.get("status") != existing["status"] or updated.get("patient_treatment_id") != existing["patient_treatment_id"]:
-                sync_appointment_treatment(connection, updated)
+            if merged.get("status") != existing["status"] or merged.get("patient_treatment_id") != existing["patient_treatment_id"]:
+                sync_appointment_treatment(connection, merged)
+        if table == "clinical_sessions":
+            start_session_treatment(connection, merged)
         if table == "patient_treatments" and ({"patient_id", "tooth_code"} & set(fields)):
             for appointment in connection.execute("SELECT * FROM appointments WHERE patient_treatment_id = ?", (record_id,)).fetchall():
                 validate_appointment_link(connection, dict(appointment), appointment["id"])
@@ -306,6 +334,32 @@ def seed_demo_data() -> None:
         connection.close()
 
 
+
+def validate_patient_relationships(connection, table, data):
+    """Ensure child records only reference treatments/sessions of their patient."""
+    if table not in {"clinical_sessions", "payments", "attachments"}:
+        return
+
+    patient_id = data.get("patient_id")
+    treatment_id = data.get("patient_treatment_id")
+    if treatment_id is not None:
+        treatment = connection.execute(
+            "SELECT patient_id FROM patient_treatments WHERE id = ?", (treatment_id,)
+        ).fetchone()
+        if not treatment or str(treatment["patient_id"]) != str(patient_id):
+            raise ValueError("El tratamiento vinculado debe pertenecer al mismo paciente.")
+
+    if table == "attachments" and data.get("clinical_session_id") is not None:
+        session = connection.execute(
+            "SELECT patient_id, patient_treatment_id FROM clinical_sessions WHERE id = ?",
+            (data["clinical_session_id"],),
+        ).fetchone()
+        if not session or str(session["patient_id"]) != str(patient_id):
+            raise ValueError("La evolucion vinculada debe pertenecer al mismo paciente.")
+        if treatment_id is not None and session["patient_treatment_id"] is not None and str(session["patient_treatment_id"]) != str(treatment_id):
+            raise ValueError("La evolucion y el tratamiento del adjunto deben coincidir.")
+
+
 def validate_appointment_link(connection, data, appointment_id=None):
     treatment_id = data.get("patient_treatment_id")
     if treatment_id is None:
@@ -336,6 +390,53 @@ def sync_appointment_treatment(connection, data):
     elif status in ("scheduled", "attended"):
         attended = status == "attended" or connection.execute("SELECT 1 FROM appointments WHERE patient_treatment_id = ? AND status = 'attended'", (treatment_id,)).fetchone()
         connection.execute("UPDATE patient_treatments SET status = ? WHERE id = ? AND status IN ('planned', 'cancelled')", ("in_progress" if attended else "planned", treatment_id))
+
+
+def start_session_treatment(connection, data):
+    treatment_id = data.get("patient_treatment_id")
+    if treatment_id:
+        connection.execute(
+            "UPDATE patient_treatments SET status = ? WHERE id = ? AND status = ?",
+            ("in_progress", treatment_id, "planned"),
+        )
+
+
+def attend_appointment_with_session(appointment_id: int, session_data: dict[str, Any], session_fields: set[str]) -> dict[str, Any] | None:
+    """Save the clinical session and close its appointment in one transaction."""
+    connection = get_connection()
+    try:
+        with connection:
+            connection.execute("BEGIN IMMEDIATE")
+            appointment = connection.execute("SELECT * FROM appointments WHERE id = ?", (appointment_id,)).fetchone()
+            if appointment is None:
+                return None
+            if appointment["status"] != "scheduled":
+                raise ValueError("Solo se puede registrar la atencion de una cita pendiente.")
+            if "patient_id" in session_data and str(session_data["patient_id"]) != str(appointment["patient_id"]):
+                raise ValueError("La evolucion debe pertenecer al paciente de la cita.")
+            linked_treatment = appointment["patient_treatment_id"]
+            if linked_treatment is not None and session_data.get("patient_treatment_id") not in (None, linked_treatment, str(linked_treatment)):
+                raise ValueError("La evolucion debe corresponder al tratamiento de la cita.")
+            payload = validate_session({
+                **session_data,
+                "patient_id": appointment["patient_id"],
+                **({"patient_treatment_id": linked_treatment} if linked_treatment is not None else {}),
+            })
+            validate_patient_relationships(connection, "clinical_sessions", payload)
+            fields = [field for field in payload if field in session_fields]
+            cursor = connection.execute(
+                f"INSERT INTO clinical_sessions ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                tuple(payload[field] for field in fields),
+            )
+            connection.execute("UPDATE appointments SET status = 'attended' WHERE id = ?", (appointment_id,))
+            sync_appointment_treatment(connection, {"patient_treatment_id": linked_treatment, "status": "attended"})
+            start_session_treatment(connection, payload)
+            return {
+                "session": row_to_dict(connection.execute("SELECT * FROM clinical_sessions WHERE id = ?", (cursor.lastrowid,)).fetchone()),
+                "appointment": row_to_dict(connection.execute("SELECT * FROM appointments WHERE id = ?", (appointment_id,)).fetchone()),
+            }
+    finally:
+        connection.close()
 
 
 def create_treatment_appointment(data, appointment_fields, treatment_fields):

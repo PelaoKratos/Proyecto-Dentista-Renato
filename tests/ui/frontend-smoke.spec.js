@@ -5,7 +5,7 @@ const pages = [
   { name: 'pacientes', path: '/pacientes.html', heading: 'Gestion de pacientes' },
   { name: 'ficha-paciente', path: '/paciente.html?id=2', heading: /Mario Araya|Ficha/ },
   { name: 'tratamientos', path: '/tratamientos.html', heading: 'Planes clinicos' },
-  { name: 'agenda', path: '/agenda.html', heading: 'Calendario de atenciones' },
+  { name: 'agenda', path: '/agenda.html', heading: 'Jornada de atenciones' },
   { name: 'radiografias', path: '/radiografias.html', heading: 'Biblioteca de adjuntos' },
   { name: 'pagos', path: '/pagos.html', heading: 'Control financiero' },
   { name: 'documentos', path: '/documentos.html?id=2', heading: 'Impresion clinica' },
@@ -24,6 +24,9 @@ for (const appPage of pages) {
     await expect(page.locator('body')).toBeVisible();
     await expect(page.getByRole('heading', { name: appPage.heading }).first()).toBeVisible();
     await expect(page.locator('.sidebar')).toBeVisible();
+    await expect(page.locator('.sidebar nav .nav-item')).toHaveCount(7);
+    await expect(page.locator('.sidebar a[href="./radiografias.html"]')).toHaveCount(0);
+    await expect(page.locator('.sidebar a[href="./documentos.html"]')).toHaveCount(0);
 
     const overflow = await page.evaluate(() => {
       const root = document.documentElement;
@@ -44,6 +47,37 @@ test('formulario de pacientes mantiene campos clave faciles de encontrar', async
   await expect(page.getByRole('button', { name: 'Guardar ficha' })).toBeVisible();
 });
 
+test('calendario del panel cambia entre semana, mes y dia', async ({ page }) => {
+  await page.goto('/index.html', { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: 'Mes', exact: true }).click();
+  await expect(page.locator('#dashboardCalendar .month-grid')).toBeVisible();
+  await page.getByRole('button', { name: 'Dia', exact: true }).click();
+  await expect(page.locator('#dashboardCalendar .day-grid')).toBeVisible();
+  await page.getByRole('button', { name: 'Semana', exact: true }).click();
+  await expect(page.locator('#dashboardCalendar .week-grid')).toBeVisible();
+});
+
+test('respaldo respeta la preferencia para incluir adjuntos', async ({ page }) => {
+  const writes = [];
+  await page.route('**/api/**', async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/backup-status') return route.fulfill({ json: { database: {}, media: {}, backups: {} } });
+    if (path === '/api/backups' && route.request().method() === 'POST') {
+      writes.push(route.request().postDataJSON());
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (path === '/api/backups') return route.fulfill({ json: [] });
+    return route.fulfill({ json: [] });
+  });
+  await page.goto('/respaldos.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#backupReminder')).toHaveCount(0);
+  await expect(page.locator('#backupRequireKey')).toHaveCount(0);
+  await page.locator('#backupIncludeMedia').uncheck();
+  await page.getByRole('button', { name: 'Crear respaldo' }).click();
+  await expect.poll(() => writes.length).toBe(1);
+  expect(writes[0]).toEqual({ include_media: false });
+});
+
 test('documentos genera vista previa imprimible desde un paciente', async ({ page }) => {
   await page.goto('/documentos.html?id=2', { waitUntil: 'networkidle' });
   await expect(page.locator('.print-sheet')).toContainText('Mario Araya');
@@ -56,7 +90,7 @@ test('navegacion principal recorre todas las secciones', async ({ page }) => {
   const links = [
     ['Pacientes', /Gestion de pacientes/],
     ['Tratamientos', /Planes clinicos/],
-    ['Agenda', /Calendario de atenciones/],
+    ['Agenda', /Jornada de atenciones/],
     ['Pagos', /Control financiero/],
     ['Respaldos', /Copias locales/]
   ];
@@ -69,8 +103,8 @@ test('navegacion principal recorre todas las secciones', async ({ page }) => {
 
 test('botones principales enfocan los formularios de trabajo', async ({ page }) => {
   await page.goto('/agenda.html', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Nueva cita' }).click();
-  await expect(page.locator('#appointmentForm')).toBeInViewport();
+  await expect(page.locator('.agenda-day-card')).toBeVisible();
+  await expect(page.locator('#miniCalendar button')).toHaveCount(7);
 
   await page.goto('/tratamientos.html', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Crear tratamiento' }).click();

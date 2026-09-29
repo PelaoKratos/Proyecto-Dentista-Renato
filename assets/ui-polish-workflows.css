@@ -1,0 +1,171 @@
+/* Dashboard and clinical layout corrections. */
+.dashboard-page .topbar-actions,
+.dashboard-page .global-search {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.dashboard-page .topbar-actions {
+  position: relative;
+}
+.patient-page .odontogram {
+  display: block;
+}
+.patient-page .odontogram > .odontogram-shell {
+  width: 100%;
+}
+.day-timeline article.appointment-editor > .inline-actions {
+  display: grid;
+  grid-template-columns: repeat(4, max-content) minmax(120px, 1fr);
+  align-items: center;
+}
+@media (max-width: 820px) {
+  .day-timeline article.appointment-editor > .inline-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .day-timeline article.appointment-editor > .inline-actions .form-status {
+    grid-column: 1 / -1;
+  }
+}
+.day-timeline article.appointment-editor > .inline-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.day-timeline article.appointment-editor > .inline-actions .form-status {
+  flex: 1 0 100%;
+  min-height: 18px;
+}
+/* Appointment form opened from the odontogram. */
+.action-drawer:has(.appointment-form) {
+  max-width: 760px;
+  margin: 0 auto 22px;
+  background: #ffffff;
+}
+.appointment-form {
+  gap: 14px;
+}
+.appointment-form-patient,
+.appointment-tooth-description,
+.appointment-form .appointment-wide,
+.appointment-form .appointment-total,
+.appointment-form .appointment-form-actions,
+.appointment-form .form-status {
+  grid-column: 1 / -1;
+}
+.appointment-form-patient {
+  margin-top: -8px;
+  color: #64748b;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.appointment-tooth-description {
+  margin: -9px 0 0;
+  color: var(--figma-teal-dark);
+  font-size: .86rem;
+  font-weight: 800;
+}
+.appointment-form input[readonly] {
+  background: #f8fafc;
+  color: #334155;
+}
+.appointment-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 10px 13px;
+  border: 1px solid rgba(13, 148, 136, .22);
+  border-radius: 9px;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+.appointment-total span {
+  font-size: .84rem;
+  font-weight: 800;
+}
+.appointment-total strong {
+  color: #0f766e;
+  font-family: var(--font-ui);
+  font-size: 1.1rem;
+}
+.appointment-form .upload-field {
+  position: relative;
+  display: grid;
+  gap: 7px;
+}
+.appointment-form .upload-field input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.appointment-form .upload-field span {
+  display: flex;
+  align-items: center;
+  min-height: 54px;
+  padding: 10px 14px;
+  border: 1px dashed #94a3b8;
+  border-radius: 9px;
+  background: #f8fafc;
+  color: #64748b;
+  font-weight: 800;
+}
+.appointment-form .upload-field:hover span {
+  border-color: var(--teal);
+  background: #f0fdfa;
+  color: var(--figma-teal-dark);
+}
+.appointment-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 4px;
+}
+.appointment-form-actions .text-button {
+  justify-content: center;
+  min-height: 44px;
+}
+@media (max-width: 820px) {
+  .appointment-form-actions { grid-template-columns: 1fr; }
+}
+/* Search results extend the topbar action area instead of floating beside it. */
+.dashboard-page .topbar {
+  position: relative;
+  z-index: 2;
+}
+.dashboard-page .topbar-actions {
+  position: relative;
+  flex: 0 1 560px;
+}
+.dashboard-page .search-results {
+  top: calc(100% + 8px);
+  right: 0;
+  left: 0;
+  width: auto;
+}
+@media (max-width: 820px) {
+  .dashboard-page .search-results {
+    top: calc(100% + 8px);
+    right: 0;
+    left: 0;
+    width: auto;
+  }
+}
+.dashboard-page .search-results[hidden] {
+  display: none !important;
+}
+.appointment-form [hidden] { display: none !important; }
+
+/* Administracion del catalogo de procedimientos. */
+.procedure-layout { align-items: start; }
+.procedure-search { display: grid; gap: 8px; margin-bottom: 18px; }
+.procedure-list { display: grid; gap: 12px; }
+.procedure-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; border: 1px solid #e1e9e7; border-radius: 12px; }
+.procedure-item > div { min-width: 0; overflow-wrap: anywhere; }
+.procedure-item h3 { margin: 0 0 6px; }
+.procedure-item p { margin: 0 0 10px; color: #60736f; white-space: pre-wrap; }
+.procedure-item button { flex-shrink: 0; }
+#procedureForm [hidden], #retryProcedures[hidden] { display: none !important; }
+@media (max-width: 820px) { .procedure-layout { grid-template-columns: 1fr; } }

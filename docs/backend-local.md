@@ -27,6 +27,10 @@ http://127.0.0.1:8000
 | Metodo | Ruta | Uso |
 | --- | --- | --- |
 | GET | `/api/health` | Estado del servidor |
+| GET | `/api/auth/status` | Estado de configuracion y sesion |
+| POST | `/api/auth/setup` | Define la clave inicial de administrador |
+| POST | `/api/auth/login` | Inicia una sesion de 30 minutos |
+| POST | `/api/auth/logout` | Cierra la sesion actual |
 | GET | `/api/dashboard-stats?date=YYYY-MM-DD` | Metricas agregadas para el panel principal |
 | GET | `/api/patients` | Listado de pacientes |
 | GET | `/api/patients?search=texto` | Buscar pacientes |
@@ -36,22 +40,23 @@ http://127.0.0.1:8000
 | GET | `/api/patients/{id}/summary` | Ficha completa del paciente |
 | GET/POST | `/api/treatment-catalog` | Catalogo de tratamientos |
 | GET/POST | `/api/patient-treatments` | Tratamientos por paciente |
-| GET/POST | `/api/clinical-sessions` | Evoluciones clinicas |
+| GET/POST | `/api/clinical-sessions` | Evoluciones clinicas; inicia el tratamiento vinculado en la misma transaccion |
+| POST | `/api/appointments/{id}/attend` | Registra la evolucion y marca la cita como atendida en una sola transaccion |
 | GET/POST | `/api/appointments` | Agenda |
 | GET/POST | `/api/payments` | Pagos |
 | GET/POST | `/api/attachments` | Adjuntos/radiografias |
 | GET | `/api/backup-status` | Estado de base, adjuntos y ultimo respaldo |
 | POST | `/api/backups` | Crear respaldo ZIP |
 
-## Validaciones iniciales
+## Validaciones y seguridad
 
-El backend ahora valida datos antes de escribir en SQLite:
+El backend valida los datos antes de escribirlos en SQLite: identificadores positivos, fechas y horas, fin posterior al inicio de una cita, montos finitos no negativos, longitudes máximas de texto, formato de correo y relaciones entre paciente, tratamiento, sesión, pago y adjunto. Los conflictos con restricciones de la base responden HTTP 409; los errores internos no exponen detalles de implementación.
 
-- Paciente: requiere nombres y apellidos al crear.
-- Tratamientos: valida estados `planned`, `in_progress`, `completed`, `cancelled`.
-- Agenda: valida fechas `YYYY-MM-DD HH:MM`.
-- Pagos: valida fecha, monto numerico y monto no negativo.
-- Adjuntos: valida tipo `radiography`, `photo`, `document` u `other`.
+Las escrituras HTTP aceptan únicamente solicitudes del mismo origen local. El servidor publica las páginas y recursos de la aplicación, pero no expone carpetas privadas como `data/`, `backups/`, `backend/` o `docs/`.
+
+Los adjuntos admitidos son JPG, PNG, GIF, WEBP y PDF, con validación de firma y un máximo de 25 MB por archivo. Documentos deben ser PDF; radiografías y fotos deben ser imágenes. El MIME se determina desde el contenido.
+
+El respaldo usa una copia consistente de SQLite. Las copias automaticas diarias incluyen base y adjuntos; las manuales pueden omitir adjuntos. Cada ZIP incorpora metadatos y hashes SHA-256 y se restaura en una carpeta temporal para comprobar SQLite antes de publicarlo.
 
 ## Eliminaciones
 
@@ -79,7 +84,7 @@ Para subir archivos, enviar `multipart/form-data` a `/api/attachments` con:
 - `notes`
 - `taken_at`
 
-El servidor guarda el archivo en:
+El servidor limita el tamaño a 25 MB y valida extensión, firma y compatibilidad entre tipo y formato. Guarda el archivo con un nombre aleatorio en:
 
 ```text
 media/pacientes/000002/radiografias/

@@ -1,14 +1,9 @@
 const dayTimeline = document.querySelector("#dayTimeline");
 const miniCalendar = document.querySelector("#miniCalendar");
 const calendarTitle = document.querySelector("#calendarTitle");
-const focusAppointmentForm = document.querySelector("#focusAppointmentForm");
 const goTodayBtn = document.querySelector("#goTodayBtn");
 const agendaStatusFilter = document.querySelector("#agendaStatusFilter");
-const appointmentForm = document.querySelector("#appointmentForm");
-const appointmentPatient = document.querySelector("#appointmentPatient");
-const appointmentStatus = document.querySelector("#appointmentStatus");
 
-let treatments = [];
 let patients = [];
 let appointments = [];
 let selectedDate = localDateString();
@@ -80,38 +75,21 @@ function renderAppointments() {
 }
 
 async function loadAgenda() {
-  [patients, appointments, treatments] = await Promise.all([DentalAPI.get("/api/patients"), DentalAPI.get("/api/appointments"), DentalAPI.get("/api/patient-treatments")]);
-  appointmentPatient.innerHTML = patients
-    .map((patient) => `<option value="${patient.id}">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</option>`)
-    .join("");
-  appointmentForm.querySelector("input[name='starts_at']").value = `${selectedDate}T14:30`;
-  renderTreatmentChoices();
+  [patients, appointments] = await Promise.all([DentalAPI.get("/api/patients"), DentalAPI.get("/api/appointments")]);
   renderCalendar();
   renderAppointments();
 }
-
-function renderTreatmentChoices() {
-  document.querySelector("#appointmentTreatment").innerHTML = `<option value="">Control general</option>` + treatments.filter((item) => Number(item.patient_id) === Number(appointmentPatient.value) && item.status !== "completed").map((item) => `<option value="${item.id}">${DentalAPI.escapeHtml(item.title)}${item.tooth_code ? ` - Pieza ${DentalAPI.escapeHtml(item.tooth_code)}` : ""}</option>`).join("");
-}
-appointmentPatient.addEventListener("change", renderTreatmentChoices);
-
-focusAppointmentForm.addEventListener("click", () => {
-  appointmentForm.scrollIntoView({ behavior: "smooth", block: "start" });
-  appointmentForm.querySelector("select").focus();
-});
 
 miniCalendar.addEventListener("click", (event) => {
   const button = event.target.closest("[data-date]");
   if (!button) return;
   selectedDate = button.dataset.date;
-  appointmentForm.querySelector("input[name='starts_at']").value = `${selectedDate}T14:30`;
   renderCalendar();
   renderAppointments();
 });
 
 goTodayBtn.addEventListener("click", () => {
   selectedDate = localDateString();
-  appointmentForm.querySelector("input[name='starts_at']").value = `${selectedDate}T14:30`;
   renderCalendar();
   renderAppointments();
 });
@@ -119,34 +97,6 @@ goTodayBtn.addEventListener("click", () => {
 agendaStatusFilter.addEventListener("change", () => {
   selectedStatus = agendaStatusFilter.value;
   renderAppointments();
-});
-
-appointmentForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const formData = new FormData(appointmentForm);
-  const startsAt = String(formData.get("starts_at") || "").replace("T", " ");
-  const submitButton = appointmentForm.querySelector("button[type='submit']");
-  appointmentStatus.textContent = "Guardando cita...";
-  submitButton.disabled = true;
-
-  try {
-    await DentalAPI.post("/api/appointments", {
-      patient_id: Number(formData.get("patient_id")),
-      patient_treatment_id: Number(formData.get("patient_treatment_id")) || null,
-      starts_at: startsAt,
-      reason: formData.get("reason"),
-      status: "scheduled",
-      notes: "Confirmada"
-    });
-    appointmentStatus.textContent = "Cita guardada.";
-    selectedDate = String(formData.get("starts_at") || selectedDate).slice(0, 10);
-    appointmentForm.reset();
-    await loadAgenda();
-    submitButton.disabled = false;
-  } catch (error) {
-    appointmentStatus.textContent = error.message;
-    submitButton.disabled = false;
-  }
 });
 
 dayTimeline.addEventListener("click", async (event) => {

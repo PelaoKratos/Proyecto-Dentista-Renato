@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Acceso · Consulta Dental Renato</title>
+  <link rel="icon" href="./assets/icons/app-icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./assets/auth.css" />
+</head>
+<body>
+  <main class="auth-card">
+    <div class="auth-icon"><img src="./assets/icons/app-icon.svg" alt="" /></div>
+    <span class="eyebrow">Consulta Dental Renato</span>
+    <h1 id="authTitle">Acceso a la consulta</h1>
+    <p id="authDescription">Comprobando la configuración de seguridad...</p>
+    <form id="authForm" hidden>
+      <label for="password">Clave de administrador</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="256" required autofocus />
+      <label id="confirmLabel" for="confirmPassword" hidden>Repite la clave</label>
+      <input id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" hidden />
+      <button id="authSubmit" type="submit">Ingresar</button>
+      <p id="authMessage" role="status" aria-live="polite"></p>
+    </form>
+  </main>
+  <script src="./assets/auth.js"></script>
+</body>
+</html>

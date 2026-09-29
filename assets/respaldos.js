@@ -3,9 +3,7 @@ const backupTable = document.querySelector("#backupTable");
 const backupStats = document.querySelector("#backupStats");
 const backupStatusTitle = document.querySelector("#backupStatusTitle");
 const backupStatusText = document.querySelector("#backupStatusText");
-const backupReminder = document.querySelector("#backupReminder");
 const backupIncludeMedia = document.querySelector("#backupIncludeMedia");
-const backupRequireKey = document.querySelector("#backupRequireKey");
 const saveBackupSettings = document.querySelector("#saveBackupSettings");
 const backupSettingsStatus = document.querySelector("#backupSettingsStatus");
 const SETTINGS_KEY = "consultaDental.backupSettings";
@@ -26,8 +24,8 @@ function renderStatus(status) {
   const latest = status.backups?.latest;
   backupStatusTitle.textContent = latest ? "Ultimo respaldo disponible" : "Aun no hay respaldos creados";
   backupStatusText.textContent = latest
-    ? `La ultima copia pesa ${fileSize(latest.size)} y fue creada el ${backupDate(latest.created_at)}.`
-    : "Crea una copia antes de usar la aplicacion con pacientes reales o antes de mover el computador.";
+    ? `La ultima copia fue ${fileSize(latest.size)}, creada el ${backupDate(latest.created_at)} y ${latest.includes_media ? "incluye" : "no incluye"} los adjuntos.`
+    : "La aplicacion crea una copia automatica diaria mientras el servidor esta en uso.";
 
   backupStats.innerHTML = `
     <div class="backup-stat">
@@ -58,7 +56,7 @@ function renderBackups(backups) {
             <div class="records-row">
               <span>${DentalAPI.escapeHtml(backup.name)}</span>
               <span>${backupDate(backup.created_at)}</span>
-              <span>${fileSize(backup.size)}</span>
+              <span>${fileSize(backup.size)}<small>${backup.mode === "automatic" ? "Automatico" : "Manual"} · ${backup.includes_media ? "Base y adjuntos" : "Solo base de datos"}</small></span>
               <span><a class="inline-link" href="${DentalAPI.escapeHtml(backup.download_url || backup.backup_path)}" download>Descargar</a></span>
             </div>
           `
@@ -79,9 +77,7 @@ function loadBackupSettings() {
   if (!raw) return;
   try {
     const settings = JSON.parse(raw);
-    backupReminder.checked = Boolean(settings.reminder);
     backupIncludeMedia.checked = settings.includeMedia !== false;
-    backupRequireKey.checked = Boolean(settings.requireKey);
   } catch {
     backupSettingsStatus.textContent = "No se pudo leer la configuracion guardada.";
   }
@@ -91,9 +87,7 @@ saveBackupSettings.addEventListener("click", () => {
   localStorage.setItem(
     SETTINGS_KEY,
     JSON.stringify({
-      reminder: backupReminder.checked,
-      includeMedia: backupIncludeMedia.checked,
-      requireKey: backupRequireKey.checked
+      includeMedia: backupIncludeMedia.checked
     })
   );
   backupSettingsStatus.textContent = "Configuracion guardada en este computador.";
@@ -103,7 +97,8 @@ createBackupBtn.addEventListener("click", async () => {
   createBackupBtn.textContent = "Creando...";
   createBackupBtn.disabled = true;
   try {
-    await DentalAPI.post("/api/backups", {});
+    const includesMedia = backupIncludeMedia.checked;
+    await DentalAPI.post("/api/backups", { include_media: includesMedia });
     await loadBackupPage();
   } catch (error) {
     backupTable.innerHTML = `<p class="empty-state">No se pudo crear el respaldo: ${DentalAPI.escapeHtml(error.message)}</p>`;

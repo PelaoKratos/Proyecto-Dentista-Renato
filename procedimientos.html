@@ -8,22 +8,13 @@
     <link rel="icon" href="./assets/icons/app-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./assets/styles.css" />
     <link rel="stylesheet" href="./assets/ui-polish.css" />
+    <link rel="stylesheet" href="./assets/ui-polish-workflows.css" />
+    <link rel="stylesheet" href="./assets/ui-polish-patient.css" />
+    <link rel="stylesheet" href="./assets/ui-polish-layout.css" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegacion principal">
-        <div class="brand"><span class="brand-mark"><img src="./assets/icons/app-icon.svg" alt="" /></span><div><strong>Consulta Dental</strong><span>Dr. Renato</span></div></div>
-        <nav class="nav-list">
-          <a class="nav-item" href="./index.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 7.2 8 3l5 4.2v5.3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 13.5v-3h3v3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Inicio</a>
-          <a class="nav-item" href="./pacientes.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 13.5a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Pacientes</a>
-          <a class="nav-item" href="./tratamientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4l1 3h2l-1 8H4L3 5h2l1-3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6 8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Tratamientos</a>
-          <a class="nav-item active" aria-current="page" href="./procedimientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M6 5h4M6 8h4M6 11h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Procedimientos</a>
-          <a class="nav-item" href="./agenda.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10.5" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M5 1.5v3M11 1.5v3M2.5 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Agenda</a>
-          <a class="nav-item" href="./pagos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 7h12M5 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Pagos</a>
-          <a class="nav-item" href="./respaldos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.5v7M5.5 7 8 9.5 10.5 7M3 11.5v1.2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Respaldos</a>
-        </nav>
-        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Base local protegida</span></div></div>
-      </aside>
+      <aside class="sidebar" aria-label="Navegacion principal" data-navigation></aside>
 
       <main class="main-content module-page">
         <header class="topbar"><div><span class="eyebrow">Catalogo</span><h1>Procedimientos base</h1></div><button class="text-button primary-action" id="newProcedure" type="button">Nuevo procedimiento</button></header>
@@ -48,6 +39,7 @@
         </section>
       </main>
     </div>
+    <script src="./assets/navigation.js"></script>
     <script src="./assets/api.js"></script>
     <script src="./assets/procedimientos.js"></script>
   </body>

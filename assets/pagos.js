@@ -194,7 +194,7 @@ paymentForm.addEventListener("submit", async (event) => {
     await DentalAPI.post("/api/payments", {
       patient_id: Number(formData.get("patient_id")),
       patient_treatment_id: Number(formData.get("patient_treatment_id")) || null,
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: DentalAPI.localDateString(),
       amount: Number(formData.get("amount")),
       method: formData.get("method"),
       notes: "Pago registrado desde la aplicacion"

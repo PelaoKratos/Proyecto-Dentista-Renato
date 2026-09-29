@@ -197,7 +197,7 @@ newTreatmentForm.addEventListener("submit", async (event) => {
       patient_id: Number(data.patient_id),
       catalog_treatment_id: data.catalog_treatment_id ? Number(data.catalog_treatment_id) : null,
       estimated_price: data.estimated_price ? Number(data.estimated_price) : null,
-      start_date: new Date().toISOString().slice(0, 10)
+      start_date: DentalAPI.localDateString()
     });
     newTreatmentStatus.textContent = "Tratamiento guardado.";
     newTreatmentForm.reset();
@@ -224,7 +224,7 @@ treatmentsGrid.addEventListener("click", async (event) => {
     if (completeButton) {
       await DentalAPI.put(`/api/patient-treatments/${treatmentId}`, {
         status: "completed",
-        end_date: new Date().toISOString().slice(0, 10)
+        end_date: DentalAPI.localDateString()
       });
     } else {
       const title = card.querySelector("[data-treatment-title]").value.trim();

@@ -75,14 +75,41 @@ npm run seed:demo
 
 El comando reinicia solo los registros con RUT `DEMO-*`, por lo que no borra pacientes reales ingresados manualmente. Ver mas detalles en `docs/datos-demo.md`.
 
-## Respaldos
+## Acceso y respaldos
 
-La pantalla `Respaldos` crea un ZIP con:
+En el primer ingreso se crea una clave de administrador de al menos 12 caracteres.
+No hay clave predeterminada. La sesion dura 30 minutos; se puede cerrar desde
+la navegacion lateral. La clave se guarda como verificador scrypt en
+data/admin-auth.json, fuera del repositorio. Los respaldos clinicos no contienen
+esta clave.
 
-- `data/consulta_dental.sqlite3`
-- `media/`
+El servidor crea un respaldo automatico una vez por dia local mientras esta en uso,
+incluidos la base y los adjuntos. Si estuvo apagado, crea la copia al siguiente
+arranque. Las copias manuales pueden omitir adjuntos. Cada ZIP se restaura en
+una carpeta temporal y se comprueba antes de quedar disponible. Los archivos se
+guardan en backups/ en el mismo computador; conviene copiar periodicamente los
+ZIP verificados a un medio externo seguro.
 
-Para restaurar datos manualmente, primero cierre el servidor, descomprima el respaldo y copie esos elementos dentro de la carpeta del proyecto.
+Para comprobar cualquier respaldo sin modificar la consulta activa:
+
+```powershell
+python .\scripts\verify-backup.py .\backups\nombre-del-respaldo.zip
+```
+
+Para restaurar de verdad: detén el servidor, conserva una copia de los datos
+actuales, verifica el ZIP y copia data/consulta_dental.sqlite3 y media/ desde
+el respaldo. Reinicia el servidor. Si el respaldo no incluye media/, conserva
+los adjuntos de otra copia. La clave de administrador actual permanece en
+data/admin-auth.json.
+
+## Comprobacion rapida de codigo
+
+Para revisar sintaxis de todos los modulos JavaScript del frontend y las pruebas:
+
+```powershell
+npm run check:syntax
+npm run check:format
+```
 
 ## Pruebas backend
 

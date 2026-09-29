@@ -1,0 +1,94 @@
+/* Ajuste global para evitar desbordes y descuadres en tarjetas y formularios. */
+.app-shell, .app-shell * { box-sizing: border-box; }
+.main-content, .module-page, .patient-page, .detail-card, .metric-card, .wide-card, .module-layout, .patient-detail-grid, .patient-hero, .patient-kpis, .patient-tabs, .action-drawer, .appointment-flow-card { min-width: 0; max-width: 100%; }
+.detail-card, .metric-card, .appointment-flow-card, .patient-visit, .history-card, .procedure-item, .calendar-panel, .agenda-panel, .patients-panel, .clinical-panel, .radiography-panel { overflow: hidden; }
+.detail-card *, .metric-card *, .appointment-flow-card *, .patient-visit *, .history-card *, .procedure-item * { max-width: 100%; }
+input, select, textarea, button { max-width: 100%; min-width: 0; }
+textarea { overflow-wrap: anywhere; resize: vertical; }
+table { max-width: 100%; }
+td, th, p, strong, span, label, a, time, small, h1, h2, h3, h4 { overflow-wrap: anywhere; }
+.inline-actions { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+.inline-actions > * { min-width: 0; }
+.records-table, .attachment-table, .compact-table, .attachment-admin-table, .procedure-list, .history-list, .patient-visit-list, .day-timeline, .appointment-list { min-width: 0; max-width: 100%; overflow-x: auto; }
+.records-row, .attachment-table [role="row"], .compact-table [role="row"], .attachment-admin-table [role="row"] { min-width: 0; }
+.records-row > *, .attachment-table [role="row"] > *, .compact-table [role="row"] > *, .attachment-admin-table [role="row"] > * { min-width: 0; overflow-wrap: anywhere; }
+.odontogram-shell { max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+.document-section { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.document-section table { display: block; overflow-x: auto; white-space: normal; }
+.document-section table thead, .document-section table tbody { min-width: 520px; display: table; width: 100%; table-layout: fixed; }
+.document-section td, .document-section th { overflow-wrap: anywhere; }
+.appointment-form, .compact-form, .action-form, .editor-controls, .treatment-editor { min-width: 0; max-width: 100%; }
+.appointment-form label, .compact-form label, .editor-controls label { min-width: 0; }
+.patient-contact-line { min-width: 0; max-width: 100%; }
+
+/* Agenda: the day strip is the date filter for the full-width jornada. */
+.schedule-board {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.agenda-day-card {
+  min-width: 0;
+  width: 100%;
+}
+
+.agenda-date-filter {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  scrollbar-width: thin;
+}
+
+.agenda-date-filter button {
+  flex: 0 0 48px;
+  width: 48px;
+  min-height: 50px;
+  border: 1px solid #cfe0dc;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.agenda-date-filter button.selected {
+  border-color: var(--figma-teal, var(--teal));
+  background: var(--figma-teal, var(--teal));
+  color: #fff;
+  box-shadow: 0 5px 12px rgba(13, 148, 136, .2);
+}
+.patient-page .clinical-field-fold {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #fbfdfc;
+}
+
+.patient-page .clinical-field-fold summary {
+  padding: 2px 0;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.patient-page .clinical-field-fold label {
+  display: block;
+  margin-top: 10px;
+}
+
+.patient-page .clinical-field-fold textarea {
+  min-height: 84px;
+}
+
+.sidebar-logout {
+  width: calc(100% - 24px);
+  margin: 12px;
+  border: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}

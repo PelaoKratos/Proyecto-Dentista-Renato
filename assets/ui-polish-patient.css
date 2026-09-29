@@ -1,0 +1,58 @@
+/* Ficha: agenda operativa e historial compacto. */
+.patient-detail-grid#clinical, .patient-detail-grid#history { grid-template-columns: minmax(0, 1fr); }
+.patient-agenda, .history-card { min-width: 0; }
+.patient-visit-list, .history-list { display: grid; gap: 12px; }
+.patient-visit { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 20px; padding: 20px; border: 1px solid #dfe8e5; border-radius: 14px; background: #fff; }
+.visit-date { display: grid; align-content: start; gap: 6px; padding-right: 18px; border-right: 1px solid #e5ece9; }
+.visit-date strong { font-size: 17px; }
+.visit-date > span { font-size: 24px; font-weight: 650; color: #256d59; }
+.visit-date small { color: #8c6020; }
+.visit-description { min-width: 0; }
+.visit-description h3, .history-card h3 { margin: 4px 0 10px; font-size: 17px; overflow-wrap: anywhere; }
+.visit-description p { color: #61726d; overflow-wrap: anywhere; }
+.history-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr); gap: 12px; margin: 8px 0 20px; }
+.history-filters label { display: grid; gap: 8px; }
+.history-card { border: 1px solid #dfe8e5; border-radius: 14px; padding: 20px; background: white; }
+.history-card header { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+.history-card .history-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: #61726d; font-size: 13px; }
+.history-next { color: #256d59; font-size: 13px; }
+.history-card details, .unlinked-history { margin-top: 16px; border-top: 1px solid #e5ece9; padding-top: 14px; }
+.patient-page summary { cursor: pointer; font-weight: 600; color: #356759; padding: 6px 0; }
+.visit-history { padding: 0; list-style: none; }
+.visit-history li { padding: 12px 0; border-bottom: 1px solid #edf1ef; }
+.visit-history li > div { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.history-card p, .unlinked-history p { overflow-wrap: anywhere; }
+.patient-page [hidden] { display: none !important; }
+.booking-extras label { display: grid; gap: 8px; margin: 12px 0; }
+.patient-page .appointment-form .form-status { min-height: 20px; }
+@media (max-width: 600px) {
+  .patient-visit { grid-template-columns: 1fr; padding: 16px; gap: 12px; }
+  .visit-date { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; border: 0; padding: 0; }
+  .visit-date > span { font-size: 18px; }
+  .history-filters { grid-template-columns: 1fr; }
+  .history-card { padding: 16px; }
+  .patient-agenda .section-heading { flex-wrap: wrap; gap: 10px; }
+  .patient-tabs { flex-wrap: wrap; }
+}
+
+.history-filters input, .history-filters select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #d3dfda; border-radius: 9px; background: #fff; font: inherit; color: #25473c; }
+.history-filters input:focus, .history-filters select:focus { outline: 2px solid #0d9488; outline-offset: 2px; }
+.patient-alert-strip.patient-alert-normal { background: #edf7f3; border-color: #d9eae2; }
+
+.patient-page .action-drawer:has(.appointment-form) { width: 100%; max-width: 720px; margin: 0 auto 24px; }
+.patient-page .appointment-form-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.patient-page .appointment-form-actions .text-button { width: auto; min-width: 140px; }
+@media (max-width: 600px) { .patient-page .appointment-form-actions .text-button { flex: 1 1 140px; } }
+
+/* Datos de contacto compactos en la ficha del paciente. */
+.patient-page .patient-hero { padding: 16px 20px; gap: 14px; }
+.patient-page .patient-hero h1 { margin: 2px 0; }
+.patient-page .identity-row { gap: 12px; }
+.patient-page .identity-row .avatar.large { width: 44px; height: 44px; font-size: 17px; }
+.patient-page .patient-contact-line { display: flex; flex-wrap: wrap; gap: 3px 0; margin-top: 3px; font-size: 12px; line-height: 1.35; }
+.patient-page .patient-contact-line span { min-width: 0; padding-right: 11px; margin-right: 10px; border-right: 1px solid #d3dfda; overflow-wrap: anywhere; }
+.patient-page .patient-contact-line span:last-child { border-right: 0; }
+.patient-page .patient-contact-line b { font-weight: 600; color: #3b6457; }
+.patient-page .hero-actions { gap: 6px; }
+.patient-page .hero-actions .text-button { padding: 8px 10px; font-size: 12px; }
+@media (max-width: 600px) { .patient-page .patient-contact-line span { border-right: 0; } }

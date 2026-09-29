@@ -11,6 +11,10 @@ const DentalAPI = (() => {
     const contentType = response.headers.get("Content-Type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : await response.text();
 
+    if (response.status === 401 && !location.pathname.endsWith("/login.html")) {
+      const next = encodeURIComponent(location.pathname + location.search);
+      location.assign("/login.html?next=" + next);
+    }
     if (!response.ok) {
       const message = typeof payload === "object" && payload.error ? payload.error : "No se pudo completar la accion.";
       throw new Error(message);
@@ -50,6 +54,13 @@ const DentalAPI = (() => {
       currency: "CLP",
       maximumFractionDigits: 0
     });
+  }
+
+  function localDateString(value = new Date()) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return year + "-" + month + "-" + day;
   }
 
   function date(value, options = {}) {
@@ -108,6 +119,7 @@ const DentalAPI = (() => {
     fullName,
     get,
     initials,
+    localDateString,
     money,
     post,
     put,

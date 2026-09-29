@@ -29,7 +29,7 @@ test('gestionar citas y filtrar historial desde la ficha', async ({ page }, test
   await page.locator('[data-patient-appointment="1"]').getByRole('button',{name:'Marcar atendida'}).click();
   await expect(page.locator('[data-patient-appointment="1"]')).toHaveCount(0);
   expect(summary.appointments[0].notes).toBe('Conservar indicaciones');
-  await page.getByRole('button',{name:'Historial',exact:true}).click();
+  await page.getByRole('tab',{name:'Historial',exact:true}).click();
   await page.getByLabel('Buscar tratamiento o pieza').fill('36');
   await expect(page.locator('[data-treatment-history="7"]')).toBeVisible();
   await expect(page.locator('[data-treatment-history="8"]')).toBeHidden();
@@ -39,7 +39,7 @@ test('gestionar citas y filtrar historial desde la ficha', async ({ page }, test
   await expect(page.getByLabel('Buscar tratamiento o pieza')).toHaveValue('36');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
   await page.screenshot({path:testInfo.outputPath('historial.png'),fullPage:true});
-  await page.getByRole('button',{name:'Agenda y piezas',exact:true}).click();
+  await page.getByRole('tab',{name:'Agenda y piezas',exact:true}).click();
   await page.locator('.patient-agenda').getByRole('button',{name:'Agendar cita',exact:true}).click();
   await page.getByLabel('1. Pieza dental').selectOption('46');
   await expect(page.locator('select[name="tooth_code"]')).toHaveValue('46');

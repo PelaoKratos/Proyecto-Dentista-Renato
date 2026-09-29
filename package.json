@@ -12,6 +12,8 @@
     "start:backend": "powershell -ExecutionPolicy Bypass -File ./scripts/start-backend.ps1",
     "shortcut": "powershell -ExecutionPolicy Bypass -File ./scripts/install-desktop-shortcut.ps1",
     "seed:demo": "powershell -ExecutionPolicy Bypass -File ./scripts/seed-demo.ps1",
+    "check:syntax": "node ./scripts/check-javascript.js",
+    "check:format": "node ./scripts/check-format.js",
     "test": "playwright test",
     "test:ui": "playwright test",
     "test:ui:headed": "playwright test --headed",

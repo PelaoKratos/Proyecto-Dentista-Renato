@@ -10,7 +10,7 @@
 - Radiografias: permite listar, filtrar, previsualizar, adjuntar y eliminar registros de adjuntos.
 - Pagos: permite registrar abonos, asociarlos a tratamientos y revisar saldos.
 - Documentos: genera ficha clinica, presupuesto, comprobante y consentimiento imprimibles.
-- Respaldos: crea ZIP local con base SQLite y carpeta `media/`, y muestra estado real de respaldo.
+- Respaldos: crea ZIP local con una copia consistente de SQLite y permite incluir o excluir `media/`; muestra si el último respaldo incluye adjuntos.
 
 ## Conexiones API cubiertas
 
@@ -42,7 +42,7 @@ El acceso directo del Escritorio ejecuta `scripts/open-app.ps1`. Ese script veri
 
 Desde la ficha, el historial de tratamientos permite usar **Agendar continuacion**. Tambien se puede seleccionar un tratamiento vigente al agendar desde una pieza o desde Agenda. Cada nueva cita queda vinculada al mismo tratamiento y pieza; conserva su presupuesto y abonos, sin crear otra deuda. Para iniciar un tratamiento distinto se selecciona **Nuevo tratamiento / control general**.
 
-El historial muestra por separado el estado clinico, el estado de pago, el numero de citas registradas y las atendidas, con fechas y estados al desplegar **Ver citas**. Las cancelaciones e inasistencias se conservan pero no cuentan como atenciones. Finalizar una cita no finaliza automaticamente el tratamiento; se finaliza desde Tratamientos o desde la pieza.
+El historial muestra por separado el estado clinico, el estado de pago, el numero de citas registradas y las atendidas, con fechas y estados al desplegar **Ver citas**. Las cancelaciones e inasistencias se conservan pero no cuentan como atenciones. Finalizar una cita no finaliza automaticamente el tratamiento; se finaliza desde Tratamientos o desde la pieza. Al registrar una evolucion desde una cita pendiente, la evolucion y el cambio de estado a atendida se guardan en una misma transaccion; si falla uno de los pasos no queda una evolucion suelta ni se pierden las notas de la cita.
 
 Al iniciar el backend se agrega automaticamente el vinculo a las bases existentes. Se recupera el vinculo de una cita antigua solo cuando su paciente, motivo exacto generado por el formulario (tratamiento y pieza) y fecha de inicio coinciden con un unico tratamiento. Las coincidencias ambiguas permanecen en el historial general. El alta de un nuevo tratamiento junto con su primera cita es atomica.
 

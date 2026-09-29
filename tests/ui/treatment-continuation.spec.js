@@ -27,7 +27,7 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
     return route.fulfill({ json: [] });
   });
   await page.goto('/paciente.html?id=1');
-  await page.getByRole('button', { name: 'Historial', exact: true }).click();
+  await page.getByRole('tab', { name: 'Historial', exact: true }).click();
   const history = page.locator('[data-treatment-history="7"]');
   await expect(history).toContainText('Pagado');
   await expect(history).toContainText('1 citas registradas');
@@ -43,7 +43,7 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
   await expect(history).toContainText('Pagado');
   await expect(history).toContainText('Cita pendiente:');
   await expect(history.getByRole('button', { name: 'Agendar continuacion' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Agenda y piezas', exact: true }).click();
+  await page.getByRole('tab', { name: 'Agenda y piezas', exact: true }).click();
   await page.locator('[data-tooth="36"]').click();
   await page.locator('#toothNote').getByRole('button', { name: 'Agendar tratamiento para esta pieza' }).click();
   await expect(page.locator('[data-duplicate-message]')).toBeVisible();
@@ -51,7 +51,7 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
   await page.locator('#actionDrawer [data-action-close]').first().click();
   page.on('dialog', dialog => dialog.accept());
   await page.locator('[data-patient-appointment="2"]').getByRole('button', { name: 'Cancelar cita', exact: true }).click();
-  await page.getByRole('button', { name: 'Historial', exact: true }).click();
+  await page.getByRole('tab', { name: 'Historial', exact: true }).click();
   await expect(history).toContainText('Cancelado');
   await expect(history).not.toContainText('Pendiente');
   await expect(history).toContainText('Abonos registrados');
