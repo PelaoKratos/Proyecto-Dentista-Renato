@@ -140,18 +140,21 @@ function treatmentPaymentLabel(summary, treatment) {
 }
 
 function renderTreatmentHistory(summary) {
-  return [...summary.treatments].sort((a, b) => String(b.created_at || b.start_date || "").localeCompare(String(a.created_at || a.start_date || "")) || b.id - a.id).map((treatment) => {
+  return [...summary.treatments].sort((a, b) => {
+    const rank = (item) => item.status === "in_progress" || item.status === "planned" ? 0 : item.status === "completed" ? 1 : 2;
+    return rank(a) - rank(b) || String(b.created_at || b.start_date || "").localeCompare(String(a.created_at || a.start_date || "")) || b.id - a.id;
+  }).map((treatment) => {
     const visits = summary.appointments.filter(item => Number(item.patient_treatment_id) === treatment.id).sort((a, b) => b.starts_at.localeCompare(a.starts_at));
     const sessions = summary.sessions.filter(item => Number(item.patient_treatment_id) === treatment.id);
     const attended = visits.filter(item => item.status === "attended").length;
     const pending = visits.find(item => item.status === "scheduled") || pendingToothAppointment(treatment.tooth_code);
     return `<article class="history-card" data-treatment-history="${treatment.id}" data-history-state="${treatment.status}" data-history-search="${DentalAPI.escapeHtml(`${treatment.title} ${treatment.tooth_code || ""}`.toLowerCase())}">
       <header><div><span class="eyebrow">${treatment.tooth_code ? `Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : "Tratamiento general"}</span><h3>${DentalAPI.escapeHtml(treatment.title)}</h3></div><span class="pill">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span></header>
-      <p class="history-meta">${visits.length} citas registradas · ${attended} atendidas <span>Pago: ${treatmentPaymentLabel(summary, treatment)}</span></p>
+      <div class="history-meta"><span><b>${visits.length}</b> citas registradas · <b>${attended}</b> atendidas</span><span>Pago: <b>${treatmentPaymentLabel(summary, treatment)}</b></span></div>
       ${pending ? `<p class="history-next">Cita pendiente: ${DentalAPI.date(pending.starts_at)} · ${DentalAPI.time(pending.starts_at)}</p>` : ""}
       <div class="inline-actions">${pending ? `<button class="text-button" data-action="reschedule" data-entity-id="${pending.id}">Cambiar fecha</button>` : treatment.status !== "completed" ? `<button class="text-button primary-action" data-action="appointment" data-entity-id="${treatment.id}" data-tooth-code="${DentalAPI.escapeHtml(treatment.tooth_code || "")}">${treatment.status === "cancelled" ? "Reagendar tratamiento" : "Agendar continuacion"}</button>` : ""}
       ${!pending && !["completed", "cancelled"].includes(treatment.status) ? `<button class="text-button" data-finish-history="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>
-      <details><summary>Ver historial y notas</summary>
+      <details class="history-details"><summary>Ver historial y notas</summary>
         <p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin notas del tratamiento.")}</p>
         <ol class="visit-history">${visits.map(visit => `<li><div><time>${DentalAPI.date(visit.starts_at)} · ${DentalAPI.time(visit.starts_at)}</time><span class="pill">${DentalAPI.escapeHtml(DentalAPI.statusLabel(visit.status))}</span></div>${visit.notes ? `<p>${DentalAPI.escapeHtml(visit.notes)}</p>` : ""}</li>`).join("") || "<li>Sin citas vinculadas.</li>"}</ol>
         ${sessions.length ? `<h4>Notas clinicas</h4>${renderSessions(sessions, summary.treatments)}` : ""}
@@ -380,7 +383,7 @@ function upcomingAppointments(summary) {
 }
 
 function nextAppointment(summary) {
-  return upcomingAppointments(summary)[0] || summary.appointments.find((item) => item.status === "scheduled") || null;
+  return upcomingAppointments(summary)[0] || null;
 }
 
 function renderTreatmentOptions(selectedId = "") {
@@ -404,7 +407,7 @@ function renderAppointmentFlow(summary) {
     <section class="appointment-flow-card" aria-label="Atencion desde agenda">
       <div>
         <span class="eyebrow">Atencion desde agenda</span>
-        <strong>${DentalAPI.time(appointment.starts_at)} · ${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")}</strong>
+        <strong>${String(appointment.starts_at || "").slice(11, 16)} · ${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")}</strong>
         <span>${DentalAPI.escapeHtml(appointment.notes || DentalAPI.statusLabel(appointment.status))}</span>
       </div>
       <div class="inline-actions">
@@ -425,12 +428,12 @@ function renderAppointmentFlow(summary) {
 function renderPatientAppointments(summary) {
   const pending = summary.appointments.filter(item => item.status === "scheduled").sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   return `<section class="detail-card patient-agenda"><div class="section-heading"><div><span class="eyebrow">Agenda del paciente</span><h2>Citas pendientes <span class="pill">${pending.length}</span></h2></div><button class="text-button primary-action" data-action="appointment">Agendar cita</button></div>
-    <p class="form-helper">Marca la cita como atendida para registrar la visita. Finaliza el tratamiento cuando ya no necesite mas sesiones.</p>
+    <p class="form-helper">Al atender una cita queda registrada la visita. El tratamiento sigue disponible para futuras sesiones.</p>
     <div class="patient-visit-list">${pending.map(appointment => {
       const treatment = summary.treatments.find(item => item.id === Number(appointment.patient_treatment_id));
       const overdue = new Date(appointment.starts_at.replace(" ", "T")) < new Date();
       return `<article class="patient-visit" data-patient-appointment="${appointment.id}">
-        <div class="visit-date"><strong>${DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "short" })}</strong><span>${DentalAPI.time(appointment.starts_at)}</span>${overdue ? '<small>Por registrar</small>' : ""}</div>
+        <div class="visit-date"><strong>${DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "short" })}</strong><span>${String(appointment.starts_at || "").slice(11, 16)}</span>${overdue ? '<small>Por registrar</small>' : ""}</div>
         <div class="visit-description"><span class="eyebrow">${treatment?.tooth_code ? `Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : "Control general"}</span><h3>${DentalAPI.escapeHtml(treatment?.title || appointment.reason || "Control clinico")}</h3>${appointment.notes ? `<p>${DentalAPI.escapeHtml(appointment.notes)}</p>` : ""}
         <div class="inline-actions"><button class="text-button primary-action" data-update-patient-appointment="${appointment.id}" data-status="attended">Marcar atendida</button><button class="text-button" data-action="reschedule" data-entity-id="${appointment.id}">Cambiar fecha</button><button class="text-button danger-action" data-update-patient-appointment="${appointment.id}" data-status="cancelled">Cancelar cita</button><button class="text-button" data-update-patient-appointment="${appointment.id}" data-status="missed">No asistio</button></div>
         <p class="form-status" data-patient-appointment-message="${appointment.id}" role="status"></p></div>
@@ -444,8 +447,6 @@ function renderPatient(summary) {
   const documentsLink = document.querySelector("#patientDocumentsLink");
   if (documentsLink) documentsLink.href = `./documentos.html?id=${patient.id}`;
   const treatment = summary.treatments.find(item => ["planned", "in_progress"].includes(item.status));
-  const lastAttended = summary.appointments.filter(item => item.status === "attended").sort((a,b) => b.starts_at.localeCompare(a.starts_at))[0];
-  const lastAttention = [summary.sessions[0]?.session_date, lastAttended?.starts_at].filter(Boolean).sort().at(-1);
   const appointment = nextAppointment(summary);
   const selectedTooth = treatment?.tooth_code || "36";
 
@@ -478,10 +479,9 @@ function renderPatient(summary) {
     ${renderAppointmentFlow(summary)}
 
     <section class="patient-kpis" aria-label="Resumen del paciente">
+      <article class="metric-card compact"><span>Proxima cita</span><strong>${appointment ? DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "short" }) : "Sin cita"}</strong><small>${appointment ? `${String(appointment.starts_at || "").slice(11, 16)} · ${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")}` : "No hay citas futuras"}</small></article>
       <article class="metric-card compact"><span>Tratamiento activo</span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento activo")}</strong><small>${DentalAPI.escapeHtml(treatment?.tooth_code ? `Pieza ${treatment.tooth_code}` : "Ficha general")}</small></article>
-      <article class="metric-card compact"><span>Ultima atencion</span><strong>${DentalAPI.date(lastAttention, { day: "2-digit", month: "short" })}</strong><small>${DentalAPI.escapeHtml(lastAttention ? "Atencion registrada" : "Sin atenciones")}</small></article>
       <article class="metric-card compact"><span>Saldo pendiente</span><strong>${DentalAPI.money(balance(summary))}</strong><small>Total plan ${DentalAPI.money(totalTreatments(summary))}</small></article>
-      <article class="metric-card compact"><span>Proxima cita</span><strong>${appointment ? DentalAPI.time(appointment.starts_at) : "Sin cita"}</strong><small>${DentalAPI.escapeHtml(appointment?.reason || "No programada")}</small></article>
     </section>
 
     <section class="patient-tabs" role="tablist" aria-label="Secciones de ficha">
@@ -817,6 +817,12 @@ async function bindActionForm(returnFocus) {
   };
 
   if (form.dataset.form === "appointment") bindAppointmentPriceForm(form);
+  form.addEventListener("input", () => {
+    if (status.dataset.state === "error") {
+      status.textContent = "";
+      delete status.dataset.state;
+    }
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -825,14 +831,17 @@ async function bindActionForm(returnFocus) {
     const submitButton = form.querySelector("button[type='submit']");
 
     status.textContent = "Guardando...";
+    status.dataset.state = "working";
     submitButton.disabled = true;
 
     try {
       await saveAction(action, form, patientId, submitButton);
       status.textContent = "Guardado correctamente.";
+      status.dataset.state = "success";
       await loadPatient();
     } catch (error) {
       status.textContent = error.message;
+      status.dataset.state = "error";
       submitButton.disabled = submitButton.dataset.appointmentSaved === "true";
       if (submitButton.disabled) status.textContent = `La cita fue guardada. No se pudo adjuntar el archivo: ${error.message}. Puedes adjuntarlo desde Radiografias.`;
     }

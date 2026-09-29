@@ -96,7 +96,7 @@ test('navegacion principal recorre todas las secciones', async ({ page }) => {
   ];
 
   for (const [label, heading] of links) {
-    await page.getByRole('link', { name: new RegExp(label) }).click();
+    await page.locator('.sidebar').getByRole('link', { name: new RegExp(label) }).click();
     await expect(page.getByRole('heading', { name: heading }).first()).toBeVisible();
   }
 });

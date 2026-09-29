@@ -3,6 +3,7 @@ const miniCalendar = document.querySelector("#miniCalendar");
 const calendarTitle = document.querySelector("#calendarTitle");
 const goTodayBtn = document.querySelector("#goTodayBtn");
 const agendaStatusFilter = document.querySelector("#agendaStatusFilter");
+const agendaCount = document.querySelector("#agendaCount");
 
 let patients = [];
 let appointments = [];
@@ -33,45 +34,54 @@ function renderCalendar() {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
     const value = localDateString(date);
-    return `<button class="${value === selectedDate ? "selected" : ""}" type="button" data-date="${value}">${date.getDate()}</button>`;
+    const weekday = date.toLocaleDateString("es-CL", { weekday: "short" }).replace(".", "");
+    const fullDate = date.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" });
+    const selected = value === selectedDate;
+    return `<button class="${selected ? "selected" : ""}" type="button" data-date="${value}" aria-label="${fullDate}" aria-pressed="${selected}"><span>${weekday}</span><strong>${date.getDate()}</strong></button>`;
   }).join("");
 }
 
 function renderAppointments() {
   const patientById = new Map(patients.map((patient) => [patient.id, patient]));
-  const visibleAppointments = appointments.filter((appointment) => {
-    const matchesDate = String(appointment.starts_at || "").startsWith(selectedDate);
-    const matchesStatus = !selectedStatus || appointment.status === selectedStatus;
-    return matchesDate && matchesStatus;
-  });
-  dayTimeline.innerHTML =
-    visibleAppointments
-      .map((appointment) => {
-        const patient = patientById.get(appointment.patient_id);
-        return `
-          <article class="appointment-editor" data-appointment-card="${appointment.id}">
-            <time>${DentalAPI.time(appointment.starts_at)}</time>
-            <div>
-              <strong>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")}</strong>
-              <span>${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")} · ${DentalAPI.escapeHtml(appointment.notes || DentalAPI.statusLabel(appointment.status))}</span>
+  const visibleAppointments = appointments
+    .filter((appointment) => {
+      const matchesDate = String(appointment.starts_at || "").startsWith(selectedDate);
+      const matchesStatus = !selectedStatus || appointment.status === selectedStatus;
+      return matchesDate && matchesStatus;
+    })
+    .sort((first, second) => String(first.starts_at || "").localeCompare(String(second.starts_at || "")));
+  agendaCount.textContent = `${visibleAppointments.length} ${visibleAppointments.length === 1 ? "cita" : "citas"} en esta vista`;
+  dayTimeline.innerHTML = visibleAppointments.map((appointment) => {
+    const patient = patientById.get(appointment.patient_id);
+    const status = appointment.status || "scheduled";
+    return `
+      <article class="appointment-editor status-${DentalAPI.escapeHtml(status)}" data-appointment-card="${appointment.id}">
+        <time>${String(appointment.starts_at || "").slice(11, 16)}</time>
+        <div class="appointment-main">
+          <strong>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")}</strong>
+          <span>${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")}</span>
+          ${appointment.notes ? `<small>${DentalAPI.escapeHtml(appointment.notes)}</small>` : ""}
+        </div>
+        <div class="appointment-actions">
+          <span class="pill appointment-status">${DentalAPI.escapeHtml(DentalAPI.statusLabel(status))}</span>
+          ${status !== "attended" && status !== "cancelled"
+            ? `<a class="text-button primary-action link-button" href="./paciente.html?id=${appointment.patient_id}&appointment=${appointment.id}">Atender</a>`
+            : ""}
+          <a class="text-button link-button" href="./paciente.html?id=${appointment.patient_id}">Ficha</a>
+          <details class="appointment-more">
+            <summary>Más acciones</summary>
+            <div class="appointment-more-panel">
+              <label>Estado de la cita<select data-appointment-status>${statusOptions(status)}</select></label>
+              <button class="text-button" type="button" data-save-appointment="${appointment.id}">Guardar estado</button>
+              ${status === "scheduled" ? `<button class="text-button" type="button" data-miss-appointment="${appointment.id}">No asistió</button>` : ""}
+              ${status !== "cancelled" ? `<button class="text-button danger-action" type="button" data-cancel-appointment="${appointment.id}">Cancelar cita</button>` : ""}
+              <span class="form-status" data-appointment-message="${appointment.id}" role="status"></span>
             </div>
-            <div class="inline-actions">
-              ${
-                appointment.status !== "attended" && appointment.status !== "cancelled"
-                  ? `<a class="text-button primary-action link-button" href="./paciente.html?id=${appointment.patient_id}&appointment=${appointment.id}">Atender</a>`
-                  : ""
-              }
-              <a class="text-button link-button" href="./paciente.html?id=${appointment.patient_id}">Ficha</a>
-              <select aria-label="Estado de cita" data-appointment-status>${statusOptions(appointment.status)}</select>
-              <button class="text-button" type="button" data-save-appointment="${appointment.id}">Guardar</button>
-              ${appointment.status === "scheduled" ? `<button class="text-button" type="button" data-miss-appointment="${appointment.id}">No asistio</button>` : ""}
-              <button class="text-button danger-action" type="button" data-cancel-appointment="${appointment.id}">Cancelar</button>
-              <span class="form-status" data-appointment-message="${appointment.id}" aria-live="polite"></span>
-            </div>
-          </article>
-        `;
-      })
-      .join("") || `<p class="empty-state">No hay citas registradas para este dia.</p>`;
+          </details>
+        </div>
+      </article>
+    `;
+  }).join("") || `<div class="empty-state agenda-empty"><strong>Sin citas para este día</strong><span>Cambia la fecha o el estado para revisar otras citas.</span><a class="text-button link-button" href="./pacientes.html">Buscar paciente</a></div>`;
 }
 
 async function loadAgenda() {
@@ -117,10 +127,7 @@ dayTimeline.addEventListener("click", async (event) => {
   message.textContent = "Guardando...";
 
   try {
-    await DentalAPI.put(`/api/appointments/${appointmentId}`, {
-      status,
-      notes: DentalAPI.statusLabel(status)
-    });
+    await DentalAPI.put(`/api/appointments/${appointmentId}`, { status });
     message.textContent = "Estado actualizado.";
     await loadAgenda();
   } catch (error) {

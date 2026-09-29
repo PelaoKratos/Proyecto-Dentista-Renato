@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap");
+
+/* Fuente unica de colores, tipografia, espacios y superficies compartidas. */
+:root {
+  --font-ui: "DM Sans", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --bg: #eef7f6;
+  --surface: #ffffff;
+  --surface-strong: #e8f6f2;
+  --ink: #172623;
+  --muted: #5a6b67;
+  --line: #cfe0dc;
+  --teal: #009688;
+  --teal-dark: #006b63;
+  --mint: #d9f3ec;
+  --coral: #e85d4f;
+  --amber: #c77c15;
+  --amber-soft: #fff0c7;
+  --blue: #2563eb;
+  --violet: #7357d8;
+  --rose-soft: #fff0ef;
+  --blue-soft: #e9f1ff;
+  --shadow: 0 16px 36px rgba(23, 38, 35, 0.1);
+  --shadow-soft: 0 8px 22px rgba(23, 38, 35, 0.08);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius-control: 10px;
+  --radius-card: 12px;
+  /* Alias conservados mientras se migran las reglas anteriores. */
+  --figma-teal: var(--teal);
+  --figma-teal-dark: var(--teal-dark);
+  --figma-mint: var(--mint);
+  --figma-amber: var(--amber);
+  --figma-slate: var(--muted);
+  --figma-border: var(--line);
+  font-family: var(--font-ui);
+}

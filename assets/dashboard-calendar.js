@@ -2,6 +2,9 @@ const calendarRoot = document.querySelector("#dashboardCalendar");
 const calendarPeriod = document.querySelector("#calendarPeriod");
 const globalSearch = document.querySelector("#globalSearch");
 const searchResults = document.querySelector("#searchResults");
+document.querySelector("#dashboardDate").textContent = new Date().toLocaleDateString("es-CL", {
+  weekday: "long", day: "numeric", month: "long", year: "numeric"
+});
 
 let patients = [];
 let appointments = [];
@@ -228,10 +231,10 @@ Promise.all([
   };
 
   updateMetric("#metricToday", dashboardStats.today_appointments ?? appointmentsOn(new Date()).length,
-    `${dashboardStats.scheduled_appointments ?? 0} citas confirmadas`);
+    `${dashboardStats.scheduled_appointments ?? appointmentsOn(new Date()).filter(item => item.status === "scheduled").length} citas confirmadas`);
   updateMetric("#metricPatients", dashboardStats.active_patients ?? patients.length,
     `${dashboardStats.patients_with_alerts ?? 0} con alerta clinica`);
-  updateMetric("#metricTreatments", dashboardStats.active_treatments ?? "-",
+  updateMetric("#metricTreatments", dashboardStats.active_treatments ?? 0,
     `${dashboardStats.in_progress_treatments ?? 0} en curso`);
   updateMetric("#metricBalance", DentalAPI.money(dashboardStats.pending_balance ?? 0),
     `${dashboardStats.patients_with_balance ?? 0} pacientes con saldo`);

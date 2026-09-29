@@ -6,6 +6,7 @@
     <title>Consulta Dental Renato</title>
     <link rel="icon" href="./assets/icons/app-icon.ico" sizes="any" />
     <link rel="icon" href="./assets/icons/app-icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./assets/design-system.css" />
     <link rel="stylesheet" href="./assets/styles.css" />
     <link rel="stylesheet" href="./assets/ui-polish.css" />
     <link rel="stylesheet" href="./assets/ui-polish-workflows.css" />
@@ -19,7 +20,7 @@
       <main class="main-content dashboard-page">
         <header class="topbar">
           <div>
-            <span class="eyebrow">Jueves 3 Sep 2026</span>
+            <span class="eyebrow" id="dashboardDate"></span>
             <h1>Panel principal</h1>
           </div>
 
@@ -34,26 +35,26 @@
         </header>
 
         <section class="metrics-grid" aria-label="Resumen de la consulta">
-          <article class="metric-card">
+          <a class="metric-card" href="./agenda.html">
             <span>Citas hoy</span>
-            <strong>8</strong>
-            <small>2 pendientes de confirmar</small>
-          </article>
-          <article class="metric-card">
+            <strong id="metricToday">—</strong>
+            <small id="metricTodayNote">Cargando agenda</small>
+          </a>
+          <a class="metric-card" href="./pacientes.html">
             <span>Pacientes activos</span>
-            <strong>146</strong>
-            <small>12 con tratamiento abierto</small>
-          </article>
-          <article class="metric-card">
-            <span>Tratamientos en curso</span>
-            <strong>21</strong>
-            <small>5 controles esta semana</small>
-          </article>
-          <article class="metric-card">
+            <strong id="metricPatients">—</strong>
+            <small id="metricPatientsNote">Cargando pacientes</small>
+          </a>
+          <a class="metric-card" href="./tratamientos.html">
+            <span>Tratamientos activos</span>
+            <strong id="metricTreatments">—</strong>
+            <small id="metricTreatmentsNote">Cargando tratamientos</small>
+          </a>
+          <a class="metric-card" href="./pagos.html">
             <span>Saldo pendiente</span>
-            <strong>$840.000</strong>
-            <small>7 pacientes con abonos</small>
-          </article>
+            <strong id="metricBalance">—</strong>
+            <small id="metricBalanceNote">Cargando pagos</small>
+          </a>
         </section>
 
         <section class="calendar-panel" aria-labelledby="calendarHeading"><div class="section-heading calendar-toolbar"><div><span class="eyebrow">Agenda</span><h2 id="calendarHeading">Calendario de atenciones</h2></div><div class="calendar-actions"><button class="text-button" id="calendarToday" type="button">Hoy</button><button class="calendar-arrow" id="calendarPrev" type="button" aria-label="Periodo anterior">&#8249;</button><button class="calendar-arrow" id="calendarNext" type="button" aria-label="Periodo siguiente">&#8250;</button><div class="segment-control"><button type="button" data-calendar-view="month">Mes</button><button class="active" type="button" data-calendar-view="week">Semana</button><button type="button" data-calendar-view="day">Dia</button></div></div></div><div class="calendar-period" id="calendarPeriod"></div><div class="dashboard-calendar" id="dashboardCalendar"><p class="empty-state">Cargando agenda desde SQLite...</p></div></section>      </main>
