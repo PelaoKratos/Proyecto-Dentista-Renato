@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 CREATE TABLE IF NOT EXISTS appointments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   patient_id INTEGER NOT NULL,
+  patient_treatment_id INTEGER REFERENCES patient_treatments(id),
   starts_at DATETIME NOT NULL,
   ends_at DATETIME,
   reason TEXT,

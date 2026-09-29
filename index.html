@@ -21,14 +21,13 @@
         </div>
 
         <nav class="nav-list">
-          <a class="nav-item active" href="./index.html"><span>+</span> Inicio</a>
-          <a class="nav-item" href="./pacientes.html"><span>P</span> Pacientes</a>
-          <a class="nav-item" href="./tratamientos.html"><span>T</span> Tratamientos</a>
-          <a class="nav-item" href="./agenda.html"><span>A</span> Agenda</a>
-          <a class="nav-item" href="./radiografias.html"><span>RX</span> Radiografias</a>
-          <a class="nav-item" href="./pagos.html"><span>$</span> Pagos</a>
-          <a class="nav-item" href="./documentos.html"><span>D</span> Documentos</a>
-          <a class="nav-item" href="./respaldos.html"><span>B</span> Respaldos</a>
+          <a class="nav-item active" href="./index.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 7.2 8 3l5 4.2v5.3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 13.5v-3h3v3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Inicio</a>
+          <a class="nav-item" href="./pacientes.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 13.5a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Pacientes</a>
+          <a class="nav-item" href="./tratamientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4l1 3h2l-1 8H4L3 5h2l1-3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6 8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Tratamientos</a>
+          <a class="nav-item" href="./procedimientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M6 5h4M6 8h4M6 11h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Procedimientos</a>
+          <a class="nav-item" href="./agenda.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10.5" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M5 1.5v3M11 1.5v3M2.5 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Agenda</a>
+          <a class="nav-item" href="./pagos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 7h12M5 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Pagos</a>
+          <a class="nav-item" href="./respaldos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.5v7M5.5 7 8 9.5 10.5 7M3 11.5v1.2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Respaldos</a>
         </nav>
 
         <div class="backup-status">
@@ -40,7 +39,7 @@
         </div>
       </aside>
 
-      <main class="main-content">
+      <main class="main-content dashboard-page">
         <header class="topbar">
           <div>
             <span class="eyebrow">Jueves 3 Sep 2026</span>
@@ -52,6 +51,7 @@
               <span>Buscar</span>
               <input id="globalSearch" type="search" placeholder="Paciente, RUT o tratamiento" />
             </label>
+            <div class="search-results" id="searchResults" hidden></div>
             <a class="icon-button" href="./pacientes.html#nuevo" aria-label="Crear nuevo paciente" title="Crear nuevo paciente">+</a>
           </div>
         </header>
@@ -79,126 +79,10 @@
           </article>
         </section>
 
-        <section class="workspace-grid">
-          <section class="agenda-panel" aria-labelledby="agendaTitle">
-            <div class="section-heading">
-              <div>
-                <span class="eyebrow">Agenda</span>
-                <h2 id="agendaTitle">Atenciones de hoy</h2>
-              </div>
-              <a class="text-button link-button" href="./agenda.html">Ver semana</a>
-            </div>
-
-            <div class="appointment-list" id="dashboardAppointments">
-              <article class="appointment current">
-                <time>09:30</time>
-                <div>
-                  <strong>Camila Torres</strong>
-                  <span>Control ortodoncia</span>
-                </div>
-                <span class="pill attention">En box</span>
-              </article>
-              <article class="appointment">
-                <time>10:15</time>
-                <div>
-                  <strong>Mario Araya</strong>
-                  <span>Evaluacion implante</span>
-                </div>
-                <span class="pill">Confirmada</span>
-              </article>
-              <article class="appointment">
-                <time>11:00</time>
-                <div>
-                  <strong>Valentina Soto</strong>
-                  <span>Radiografia y diagnostico</span>
-                </div>
-                <span class="pill warning">Pendiente</span>
-              </article>
-              <article class="appointment">
-                <time>12:30</time>
-                <div>
-                  <strong>Pedro Riquelme</strong>
-                  <span>Endodoncia pieza 36</span>
-                </div>
-                <span class="pill">Confirmada</span>
-              </article>
-            </div>
-          </section>
-
-          <section class="patients-panel" aria-labelledby="patientsTitle">
-            <div class="section-heading">
-              <div>
-                <span class="eyebrow">Pacientes</span>
-                <h2 id="patientsTitle">Gestion rapida</h2>
-              </div>
-              <div class="segment-control" aria-label="Filtro de pacientes">
-                <button class="active" type="button" data-filter="all">Todos</button>
-                <button type="button" data-filter="treatment">Tratamiento</button>
-                <button type="button" data-filter="alert">Alertas</button>
-              </div>
-            </div>
-
-            <div class="patient-list" id="patientList"></div>
-          </section>
-
-          <section class="clinical-panel" aria-labelledby="clinicalTitle">
-            <div class="section-heading">
-              <div>
-                <span class="eyebrow">Ficha activa</span>
-                <h2 id="clinicalTitle">Resumen clinico</h2>
-              </div>
-              <a class="text-button link-button" id="openPatientLink" href="./paciente.html?id=1">Abrir ficha</a>
-            </div>
-
-            <div class="patient-summary" id="patientSummary"></div>
-          </section>
-
-          <section class="radiography-panel" aria-labelledby="rxTitle">
-            <div class="section-heading">
-              <div>
-                <span class="eyebrow">Adjuntos</span>
-                <h2 id="rxTitle">Radiografias recientes</h2>
-              </div>
-              <a class="icon-button small" href="./radiografias.html#nuevo" aria-label="Adjuntar radiografia" title="Adjuntar radiografia">+</a>
-            </div>
-
-            <div class="rx-preview">
-              <img id="dashboardAttachmentImage" src="./assets/img/rx-muestra.png" alt="Radiografia dental de muestra" />
-              <div>
-                <strong id="dashboardAttachmentTitle">Panoramica inicial</strong>
-                <span id="dashboardAttachmentText">Asociada a evaluacion de implante</span>
-                <small id="dashboardAttachmentFile">Archivo: rx-muestra.png</small>
-              </div>
-            </div>
-
-            <div class="attachment-table" id="dashboardAttachments" role="table" aria-label="Adjuntos recientes">
-              <div role="row" class="table-head">
-                <span role="columnheader">Tipo</span>
-                <span role="columnheader">Paciente</span>
-                <span role="columnheader">Fecha</span>
-              </div>
-              <div role="row">
-                <span role="cell">RX</span>
-                <span role="cell">Mario Araya</span>
-                <span role="cell">03/09</span>
-              </div>
-              <div role="row">
-                <span role="cell">Foto</span>
-                <span role="cell">Camila Torres</span>
-                <span role="cell">02/09</span>
-              </div>
-              <div role="row">
-                <span role="cell">PDF</span>
-                <span role="cell">Pedro Riquelme</span>
-                <span role="cell">01/09</span>
-              </div>
-            </div>
-          </section>
-        </section>
-      </main>
+        <section class="calendar-panel" aria-labelledby="calendarHeading"><div class="section-heading calendar-toolbar"><div><span class="eyebrow">Agenda</span><h2 id="calendarHeading">Calendario de atenciones</h2></div><div class="calendar-actions"><button class="text-button" id="calendarToday" type="button">Hoy</button><button class="calendar-arrow" id="calendarPrev" type="button" aria-label="Periodo anterior">&#8249;</button><button class="calendar-arrow" id="calendarNext" type="button" aria-label="Periodo siguiente">&#8250;</button><div class="segment-control"><button type="button" data-calendar-view="month">Mes</button><button class="active" type="button" data-calendar-view="week">Semana</button><button type="button" data-calendar-view="day">Dia</button></div></div></div><div class="calendar-period" id="calendarPeriod"></div><div class="dashboard-calendar" id="dashboardCalendar"><p class="empty-state">Cargando agenda desde SQLite...</p></div></section>      </main>
     </div>
 
     <script src="./assets/api.js"></script>
-    <script src="./assets/app.js"></script>
+    <script src="./assets/dashboard-calendar.js"></script>
   </body>
 </html>

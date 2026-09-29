@@ -8,6 +8,7 @@ const appointmentForm = document.querySelector("#appointmentForm");
 const appointmentPatient = document.querySelector("#appointmentPatient");
 const appointmentStatus = document.querySelector("#appointmentStatus");
 
+let treatments = [];
 let patients = [];
 let appointments = [];
 let selectedDate = localDateString();
@@ -79,14 +80,20 @@ function renderAppointments() {
 }
 
 async function loadAgenda() {
-  [patients, appointments] = await Promise.all([DentalAPI.get("/api/patients"), DentalAPI.get("/api/appointments")]);
+  [patients, appointments, treatments] = await Promise.all([DentalAPI.get("/api/patients"), DentalAPI.get("/api/appointments"), DentalAPI.get("/api/patient-treatments")]);
   appointmentPatient.innerHTML = patients
     .map((patient) => `<option value="${patient.id}">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</option>`)
     .join("");
   appointmentForm.querySelector("input[name='starts_at']").value = `${selectedDate}T14:30`;
+  renderTreatmentChoices();
   renderCalendar();
   renderAppointments();
 }
+
+function renderTreatmentChoices() {
+  document.querySelector("#appointmentTreatment").innerHTML = `<option value="">Control general</option>` + treatments.filter((item) => Number(item.patient_id) === Number(appointmentPatient.value) && item.status !== "completed").map((item) => `<option value="${item.id}">${DentalAPI.escapeHtml(item.title)}${item.tooth_code ? ` - Pieza ${DentalAPI.escapeHtml(item.tooth_code)}` : ""}</option>`).join("");
+}
+appointmentPatient.addEventListener("change", renderTreatmentChoices);
 
 focusAppointmentForm.addEventListener("click", () => {
   appointmentForm.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -125,6 +132,7 @@ appointmentForm.addEventListener("submit", async (event) => {
   try {
     await DentalAPI.post("/api/appointments", {
       patient_id: Number(formData.get("patient_id")),
+      patient_treatment_id: Number(formData.get("patient_treatment_id")) || null,
       starts_at: startsAt,
       reason: formData.get("reason"),
       status: "scheduled",

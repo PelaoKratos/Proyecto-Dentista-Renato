@@ -20,6 +20,7 @@ if __package__ is None or __package__ == "":
 
 from backend.database import (  # noqa: E402
     DB_PATH,
+    create_treatment_appointment,
     ROOT_DIR,
     execute,
     fetch_all,
@@ -82,7 +83,7 @@ SESSION_FIELDS = {
     "notes",
     "next_steps",
 }
-APPOINTMENT_FIELDS = {"patient_id", "starts_at", "ends_at", "reason", "status", "notes"}
+APPOINTMENT_FIELDS = {"patient_treatment_id", "patient_id", "starts_at", "ends_at", "reason", "status", "notes"}
 PAYMENT_FIELDS = {"patient_id", "patient_treatment_id", "payment_date", "amount", "method", "notes"}
 ATTACHMENT_FIELDS = {
     "patient_id",
@@ -135,7 +136,7 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             elif path == "/api/clinical-sessions":
                 self._send_json(insert_record("clinical_sessions", validate_session(data), SESSION_FIELDS), 201)
             elif path == "/api/appointments":
-                self._send_json(insert_record("appointments", validate_appointment(data), APPOINTMENT_FIELDS), 201)
+                self._send_json(create_treatment_appointment(validate_appointment(data), APPOINTMENT_FIELDS, PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/payments":
                 self._send_json(insert_record("payments", validate_payment(data), PAYMENT_FIELDS), 201)
             else:

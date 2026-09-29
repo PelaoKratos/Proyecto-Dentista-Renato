@@ -23,6 +23,30 @@ def init_db() -> None:
     connection = get_connection()
     try:
         connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(appointments)")}
+        if "patient_treatment_id" not in columns:
+            connection.execute("ALTER TABLE appointments ADD COLUMN patient_treatment_id INTEGER REFERENCES patient_treatments(id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_appointments_treatment ON appointments(patient_treatment_id)")
+        # Repair linked cancellations saved before appointment/treatment synchronization.
+        connection.execute("CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY)")
+        if {"status", "reason"}.issubset(columns) and not connection.execute("SELECT 1 FROM app_migrations WHERE name = 'legacy_appointment_links_v1'").fetchone():
+            for appointment in connection.execute("SELECT * FROM appointments WHERE patient_treatment_id IS NULL").fetchall():
+                candidates = connection.execute("SELECT * FROM patient_treatments WHERE patient_id = ? AND start_date = ?", (appointment["patient_id"], str(appointment["starts_at"])[:10])).fetchall()
+                matches = [t for t in candidates if t["tooth_code"] and appointment["reason"] == f"{t['title']} {chr(183)} Pieza {t['tooth_code']}"]
+                if len(matches) == 1:
+                    connection.execute("UPDATE appointments SET patient_treatment_id = ? WHERE id = ?", (matches[0]["id"], appointment["id"]))
+            connection.execute("INSERT INTO app_migrations (name) VALUES ('legacy_appointment_links_v1')")
+        if "status" in columns and not connection.execute("SELECT 1 FROM app_migrations WHERE name = 'appointment_cancellations_v1'").fetchone():
+            connection.execute("""
+                UPDATE patient_treatments SET status = 'cancelled'
+                WHERE status IN ('planned', 'in_progress')
+                  AND (SELECT a.status FROM appointments a
+                       WHERE a.patient_treatment_id = patient_treatments.id
+                       ORDER BY a.id DESC LIMIT 1) = 'cancelled'
+                  AND NOT EXISTS (SELECT 1 FROM appointments a
+                      WHERE a.patient_treatment_id = patient_treatments.id AND a.status = 'scheduled')
+            """)
+            connection.execute("INSERT INTO app_migrations (name) VALUES ('appointment_cancellations_v1')")
         connection.commit()
     finally:
         connection.close()
@@ -67,11 +91,16 @@ def insert_record(table: str, data: dict[str, Any], allowed_fields: set[str]) ->
 
     connection = get_connection()
     try:
+        connection.execute("BEGIN IMMEDIATE")
+        if table == "appointments":
+            validate_appointment_link(connection, data)
         cursor = connection.execute(
             f"INSERT INTO {table} ({field_list}) VALUES ({placeholders})",
             values,
         )
         record_id = cursor.lastrowid
+        if table == "appointments":
+            sync_appointment_treatment(connection, data)
         connection.commit()
         row = connection.execute(f"SELECT * FROM {table} WHERE id = ?", (record_id,)).fetchone()
         return row_to_dict(row) or {}
@@ -89,9 +118,21 @@ def update_record(table: str, record_id: int, data: dict[str, Any], allowed_fiel
 
     connection = get_connection()
     try:
+        connection.execute("BEGIN IMMEDIATE")
+        if table == "appointments":
+            existing = connection.execute("SELECT * FROM appointments WHERE id = ?", (record_id,)).fetchone()
+            if existing:
+                validate_appointment_link(connection, {**dict(existing), **data}, record_id)
         cursor = connection.execute(f"UPDATE {table} SET {assignments} WHERE id = ?", values)
         if cursor.rowcount == 0:
             return None
+        if table == "appointments" and existing:
+            updated = {**dict(existing), **data}
+            if updated.get("status") != existing["status"] or updated.get("patient_treatment_id") != existing["patient_treatment_id"]:
+                sync_appointment_treatment(connection, updated)
+        if table == "patient_treatments" and ({"patient_id", "tooth_code"} & set(fields)):
+            for appointment in connection.execute("SELECT * FROM appointments WHERE patient_treatment_id = ?", (record_id,)).fetchall():
+                validate_appointment_link(connection, dict(appointment), appointment["id"])
         connection.commit()
         row = connection.execute(f"SELECT * FROM {table} WHERE id = ?", (record_id,)).fetchone()
         return row_to_dict(row)
@@ -261,5 +302,68 @@ def seed_demo_data() -> None:
         )
 
         connection.commit()
+    finally:
+        connection.close()
+
+
+def validate_appointment_link(connection, data, appointment_id=None):
+    treatment_id = data.get("patient_treatment_id")
+    if treatment_id is None:
+        return
+    treatment = connection.execute("SELECT * FROM patient_treatments WHERE id = ?", (treatment_id,)).fetchone()
+    if not treatment or str(treatment["patient_id"]) != str(data.get("patient_id")):
+        raise ValueError("El tratamiento debe pertenecer al paciente de la cita.")
+    if data.get("status", "scheduled") == "scheduled" and treatment["tooth_code"]:
+        duplicate = connection.execute("""
+            SELECT a.id FROM appointments a
+            JOIN patient_treatments t ON t.id = a.patient_treatment_id
+            WHERE a.patient_id = ? AND TRIM(t.tooth_code) = TRIM(?)
+              AND a.status = 'scheduled' AND a.id != ? LIMIT 1
+        """, (data["patient_id"], treatment["tooth_code"], appointment_id or -1)).fetchone()
+        if duplicate:
+            raise ValueError(f"Ya existe una cita pendiente para la pieza {treatment['tooth_code']}. Atiende, cancela o modifica esa cita antes de agendar otra.")
+
+
+def sync_appointment_treatment(connection, data):
+    treatment_id = data.get("patient_treatment_id")
+    if not treatment_id:
+        return
+    status = data.get("status", "scheduled")
+    if status == "cancelled":
+        if connection.execute("SELECT 1 FROM appointments WHERE patient_treatment_id = ? AND status = 'scheduled'", (treatment_id,)).fetchone():
+            return
+        connection.execute("UPDATE patient_treatments SET status = 'cancelled' WHERE id = ? AND status != 'completed'", (treatment_id,))
+    elif status in ("scheduled", "attended"):
+        attended = status == "attended" or connection.execute("SELECT 1 FROM appointments WHERE patient_treatment_id = ? AND status = 'attended'", (treatment_id,)).fetchone()
+        connection.execute("UPDATE patient_treatments SET status = ? WHERE id = ? AND status IN ('planned', 'cancelled')", ("in_progress" if attended else "planned", treatment_id))
+
+
+def create_treatment_appointment(data, appointment_fields, treatment_fields):
+    """Create a treatment and its first appointment in one transaction."""
+    from backend.validation import validate_patient_treatment
+    new_treatment = data.pop("new_treatment", None)
+    if new_treatment is None:
+        return insert_record("appointments", data, appointment_fields)
+    if data.get("patient_treatment_id"):
+        raise ValueError("Selecciona un tratamiento existente o uno nuevo.")
+    treatment = validate_patient_treatment({**new_treatment, "patient_id": data["patient_id"]})
+    connection = get_connection()
+    try:
+        with connection:
+            connection.execute("BEGIN IMMEDIATE")
+            fields = [key for key in treatment if key in treatment_fields]
+            cursor = connection.execute(
+                f"INSERT INTO patient_treatments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                tuple(treatment[key] for key in fields),
+            )
+            data["patient_treatment_id"] = cursor.lastrowid
+            validate_appointment_link(connection, data)
+            fields = [key for key in data if key in appointment_fields]
+            cursor = connection.execute(
+                f"INSERT INTO appointments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                tuple(data[key] for key in fields),
+            )
+            sync_appointment_treatment(connection, data)
+            return dict(connection.execute("SELECT * FROM appointments WHERE id = ?", (cursor.lastrowid,)).fetchone())
     finally:
         connection.close()

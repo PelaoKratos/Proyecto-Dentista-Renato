@@ -1,6 +1,10 @@
 const patientPage = document.querySelector(".patient-page");
 let currentSummary = null;
+let patientActiveTab = "clinical";
+let historyFilter = "all";
+let historySearch = "";
 let currentCatalog = [];
+let selectedToothForAppointment = null;
 
 const toothNotes = {
   36: "Evaluacion para implante. Requiere revisar altura osea en radiografia panoramica.",
@@ -8,7 +12,37 @@ const toothNotes = {
   17: "Sin hallazgos actuales. Mantener observacion preventiva.",
   11: "Control estetico normal. Sin indicacion activa."
 };
+function toothDescription(code) {
+  const value = String(code || "");
+  const quadrant = value.charAt(0);
+  const position = value.charAt(1);
+  const positions = { 1: "Incisivo central", 2: "Incisivo lateral", 3: "Canino", 4: "Primer premolar", 5: "Segundo premolar", 6: "Primer molar", 7: "Segundo molar", 8: "Tercer molar" };
+  const quadrants = { 1: "superior derecho", 2: "superior izquierdo", 3: "inferior izquierdo", 4: "inferior derecho" };
+  return positions[position] && quadrants[quadrant] ? `${positions[position]} ${quadrants[quadrant]}` : "Pieza dental seleccionada";
+}
 
+function catalogGroup(name) {
+  const value = String(name || "").toLowerCase();
+  if (value.includes("limpieza") || value.includes("evaluacion")) return "Preventivo";
+  if (value.includes("extraccion") || value.includes("implante")) return "Cirugia";
+  if (value.includes("resina")) return "Restauracion";
+  if (value.includes("endodoncia")) return "Endodoncia";
+  if (value.includes("corona") || value.includes("protesis") || value.includes("plano")) return "Protesis";
+  if (value.includes("blanqueamiento") || value.includes("carilla")) return "Estetico";
+  return "Periodontal";
+}
+
+function appointmentCatalogOptions() {
+  const groups = currentCatalog.reduce((result, item) => {
+    const group = catalogGroup(item.name);
+    if (!result[group]) result[group] = [];
+    result[group].push(item);
+    return result;
+  }, {});
+  return Object.entries(groups)
+    .map(([group, items]) => `<optgroup label="${DentalAPI.escapeHtml(group)}">${items.map((item) => `<option value="${item.id}" data-price="${Number(item.default_price || 0)}">${DentalAPI.escapeHtml(item.name)} - ${DentalAPI.money(item.default_price || 0)}</option>`).join("")}</optgroup>`)
+    .join("");
+}
 function getPatientId() {
   const params = new URLSearchParams(window.location.search);
   const parsed = Number(params.get("id"));
@@ -33,7 +67,7 @@ function ageFromBirthDate(birthDate) {
 }
 
 function totalTreatments(summary) {
-  return summary.treatments.reduce((total, treatment) => total + Number(treatment.final_price || treatment.estimated_price || 0), 0);
+  return summary.treatments.reduce((total, treatment) => total + Number(treatment.final_price ?? treatment.estimated_price ?? 0), 0);
 }
 
 function totalPayments(summary) {
@@ -45,7 +79,7 @@ function balance(summary) {
 }
 
 function treatmentTotal(treatment) {
-  return Number(treatment.final_price || treatment.estimated_price || 0);
+  return Number(treatment.final_price ?? treatment.estimated_price ?? 0);
 }
 
 function treatmentPaid(summary, treatmentId) {
@@ -129,11 +163,45 @@ function attachmentTypeLabel(type) {
   return labels[type] || type || "Adjunto";
 }
 
-function renderOdontogram(selectedTooth = "36") {
+function renderOdontogram(selectedTooth = "36", treatments = []) {
   const teeth = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28", "48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
-  return teeth.map((tooth) => `<button class="${tooth === selectedTooth ? "selected" : ""}" type="button">${tooth}</button>`).join("");
+  const treatmentByTooth = new Map();
+  treatments.filter((item) => item.tooth_code).forEach((item) => {
+    const tooth = String(item.tooth_code);
+    if (!treatmentByTooth.has(tooth)) treatmentByTooth.set(tooth, item);
+  });
+  const shapeFor = (tooth) => {
+    const digit = Number(String(tooth).slice(-1));
+    if ([1, 2].includes(digit)) return "incisor";
+    if (digit === 3) return "canine";
+    if ([4, 5].includes(digit)) return "premolar";
+    return "molar";
+  };
+  const toothMarkup = (tooth, upper) => {
+    const treatment = treatmentByTooth.get(tooth);
+    const status = treatment?.status || "none";
+    const shape = shapeFor(tooth);
+    const width = shape === "molar" ? 30 : shape === "premolar" ? 24 : shape === "canine" ? 21 : 17;
+    const fill = status === "completed" ? "#ccfbf1" : status === "in_progress" ? "#fef3c7" : status === "planned" ? "#dbeafe" : "#ffffff";
+    const stroke = status === "completed" ? "#0d9488" : status === "in_progress" ? "#f59e0b" : status === "planned" ? "#3b82f6" : "#94a3b8";
+    const rootCount = shape === "molar" ? 3 : shape === "premolar" ? 2 : 1;
+    const roots = Array.from({ length: rootCount }, (_, index) => {
+      const rootWidth = width / rootCount - 2;
+      const rootX = 2 + index * (width / rootCount) + 1;
+      const rootPath = upper ? `M${rootX},24 C${rootX},38 ${rootX + rootWidth},38 ${rootX + rootWidth},24` : `M${rootX},15 C${rootX},2 ${rootX + rootWidth},2 ${rootX + rootWidth},15`;
+      return `<path d="${rootPath}" fill="${fill}" stroke="${stroke}" stroke-width="1.4" />`;
+    }).join("");
+    const crown = upper ? `<rect x="2" y="3" width="${width}" height="21" rx="${shape === "incisor" ? 3 : 5}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />` : `<rect x="2" y="15" width="${width}" height="21" rx="${shape === "incisor" ? 3 : 5}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />`;
+    const labelY = upper ? 16 : 29;
+    const marker = treatment ? `<circle cx="${width + 2}" cy="${upper ? 5 : 40}" r="4" fill="${stroke}" />` : "";
+    return `<button type="button" class="tooth-button ${tooth === selectedTooth ? "selected" : ""}" data-tooth="${tooth}" title="Pieza ${tooth}"><svg width="${width + 8}" height="54" viewBox="0 0 ${width + 8} 54" aria-hidden="true">${upper ? crown + roots : roots + crown}<text x="${(width + 4) / 2}" y="${labelY}" text-anchor="middle" font-size="7" font-family="monospace" font-weight="700" fill="${stroke}">${tooth}</text>${marker}</svg></button>`;
+  };
+  const upperRight = teeth.slice(0, 8).map((tooth) => toothMarkup(tooth, true)).join("");
+  const upperLeft = teeth.slice(8, 16).map((tooth) => toothMarkup(tooth, true)).join("");
+  const lowerRight = teeth.slice(16, 24).map((tooth) => toothMarkup(tooth, false)).join("");
+  const lowerLeft = teeth.slice(24).map((tooth) => toothMarkup(tooth, false)).join("");
+  return `<div class="odontogram-shell"><div class="odontogram-legend"><span><i class="legend-tooth"></i>Sin tratamiento</span><span><i class="legend-tooth planned"></i>Planificado</span><span><i class="legend-tooth in-progress"></i>En curso</span><span><i class="legend-tooth completed"></i>Completado</span></div><div class="jaw-labels"><span>Der.</span><strong>Superior</strong><span>Izq.</span></div><div class="tooth-row upper"><div>${upperRight}</div><em></em><div>${upperLeft}</div></div><div class="midline"><span>LINEA MEDIA</span></div><div class="tooth-row lower"><div>${lowerRight}</div><em></em><div>${lowerLeft}</div></div><div class="jaw-labels"><span>Der.</span><strong>Inferior</strong><span>Izq.</span></div></div>`;
 }
-
 function renderDataList(patient) {
   return `
     <dl class="data-list">
@@ -210,6 +278,51 @@ function renderQuickEvolution(summary) {
   `;
 }
 
+function pendingToothAppointment(toothCode) {
+  if (!toothCode) return null;
+  return currentSummary.appointments.find((appointment) => appointment.status === "scheduled" && currentSummary.treatments.some((treatment) => Number(treatment.id) === Number(appointment.patient_treatment_id) && String(treatment.tooth_code || "").trim() === String(toothCode).trim()));
+}
+
+function treatmentPaymentLabel(summary, treatment) {
+  return treatment.status === "cancelled"
+    ? `Abonos registrados: ${DentalAPI.money(treatmentPaid(summary, treatment.id))}`
+    : paymentState(treatmentTotal(treatment), treatmentPaid(summary, treatment.id));
+}
+
+function renderTreatmentHistory(summary) {
+  return [...summary.treatments].sort((a, b) => String(b.created_at || b.start_date || "").localeCompare(String(a.created_at || a.start_date || "")) || b.id - a.id).map((treatment) => {
+    const visits = summary.appointments.filter(item => Number(item.patient_treatment_id) === treatment.id).sort((a, b) => b.starts_at.localeCompare(a.starts_at));
+    const sessions = summary.sessions.filter(item => Number(item.patient_treatment_id) === treatment.id);
+    const attended = visits.filter(item => item.status === "attended").length;
+    const pending = visits.find(item => item.status === "scheduled") || pendingToothAppointment(treatment.tooth_code);
+    return `<article class="history-card" data-treatment-history="${treatment.id}" data-history-state="${treatment.status}" data-history-search="${DentalAPI.escapeHtml(`${treatment.title} ${treatment.tooth_code || ""}`.toLowerCase())}">
+      <header><div><span class="eyebrow">${treatment.tooth_code ? `Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : "Tratamiento general"}</span><h3>${DentalAPI.escapeHtml(treatment.title)}</h3></div><span class="pill">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span></header>
+      <p class="history-meta">${visits.length} citas registradas · ${attended} atendidas <span>Pago: ${treatmentPaymentLabel(summary, treatment)}</span></p>
+      ${pending ? `<p class="history-next">Cita pendiente: ${DentalAPI.date(pending.starts_at)} · ${DentalAPI.time(pending.starts_at)}</p>` : ""}
+      <div class="inline-actions">${pending ? `<button class="text-button" data-action="reschedule" data-entity-id="${pending.id}">Cambiar fecha</button>` : treatment.status !== "completed" ? `<button class="text-button primary-action" data-action="appointment" data-entity-id="${treatment.id}" data-tooth-code="${DentalAPI.escapeHtml(treatment.tooth_code || "")}">${treatment.status === "cancelled" ? "Reagendar tratamiento" : "Agendar continuacion"}</button>` : ""}
+      ${!pending && !["completed", "cancelled"].includes(treatment.status) ? `<button class="text-button" data-finish-history="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>
+      <details><summary>Ver historial y notas</summary>
+        <p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin notas del tratamiento.")}</p>
+        <ol class="visit-history">${visits.map(visit => `<li><div><time>${DentalAPI.date(visit.starts_at)} · ${DentalAPI.time(visit.starts_at)}</time><span class="pill">${DentalAPI.escapeHtml(DentalAPI.statusLabel(visit.status))}</span></div>${visit.notes ? `<p>${DentalAPI.escapeHtml(visit.notes)}</p>` : ""}</li>`).join("") || "<li>Sin citas vinculadas.</li>"}</ol>
+        ${sessions.length ? `<h4>Notas clinicas</h4>${renderSessions(sessions)}` : ""}
+        <p>Presupuesto: ${DentalAPI.money(treatmentTotal(treatment))} · Abonos: ${DentalAPI.money(treatmentPaid(summary, treatment.id))}</p>
+      </details><p class="form-status" data-history-message="${treatment.id}" role="status"></p>
+    </article>`;
+  }).join("") || `<p class="empty-state">Aun no hay tratamientos. Empieza con Agendar cita.</p>`;
+}
+
+function filterPatientHistory() {
+  const query = historySearch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  let count = 0;
+  document.querySelectorAll("[data-treatment-history]").forEach(card => {
+    const state = card.dataset.historyState;
+    const matches = historyFilter === "all" || (historyFilter === "active" ? ["planned", "in_progress"].includes(state) : state === historyFilter);
+    card.hidden = !matches || !card.dataset.historySearch.normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(query);
+    if (!card.hidden) count++;
+  });
+  document.querySelector("#historyEmpty").hidden = count > 0 || !currentSummary.treatments.length;
+}
+
 function renderTreatments(treatments) {
   if (!treatments.length) return `<p class="empty-state">No hay tratamientos registrados para este paciente.</p>`;
 
@@ -239,12 +352,13 @@ function renderTreatmentCard(treatment) {
       <header>
         <div>
           <strong>${DentalAPI.escapeHtml(treatment.title)}</strong>
-          <span>${DentalAPI.escapeHtml(treatment.tooth_code ? `Pieza ${treatment.tooth_code}` : "Sin pieza asignada")} · ${DentalAPI.money(treatment.final_price || treatment.estimated_price || 0)}</span>
+          <span>${DentalAPI.escapeHtml(treatment.tooth_code ? `Pieza ${treatment.tooth_code}` : "Sin pieza asignada")} · ${DentalAPI.money(treatment.final_price ?? treatment.estimated_price ?? 0)}</span>
         </div>
         <span class="pill ${treatment.status === "planned" ? "warning" : treatment.status === "completed" ? "attention" : ""}">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span>
       </header>
+      <p>Pago: ${treatmentPaymentLabel(currentSummary, treatment)}</p>
       <p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin notas del plan.")}</p>
-      <div class="progress-track"><span style="width: ${progressForStatus(treatment.status)}%"></span></div>
+      <details><summary>Editar datos y presupuesto</summary>
       <div class="editor-controls treatment-editor">
         <label>Nombre<input data-treatment-title value="${DentalAPI.escapeHtml(treatment.title || "")}" /></label>
         <label>Pieza<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" /></label>
@@ -261,6 +375,7 @@ function renderTreatmentCard(treatment) {
         ${canComplete ? `<button class="text-button" type="button" data-complete-patient-treatment="${treatment.id}">Finalizar</button>` : ""}
         <span class="form-status" data-treatment-message="${treatment.id}" aria-live="polite"></span>
       </div>
+      </details>
     </article>
   `;
 }
@@ -415,7 +530,7 @@ function upcomingAppointments(summary) {
 }
 
 function nextAppointment(summary) {
-  return upcomingAppointments(summary)[0] || summary.appointments.find((item) => item.status === "scheduled") || summary.appointments[0];
+  return upcomingAppointments(summary)[0] || summary.appointments.find((item) => item.status === "scheduled") || null;
 }
 
 function renderTreatmentOptions(selectedId = "") {
@@ -458,49 +573,26 @@ function renderAppointmentFlow(summary) {
 }
 
 function renderPatientAppointments(summary) {
-  const pending = upcomingAppointments(summary);
-  if (!pending.length) {
-    return `
-      <article class="summary-block appointment-summary">
-        <header><strong>Proximas citas</strong><span class="pill">Sin agenda</span></header>
-        <p>No hay controles programados para este paciente.</p>
-        <button class="text-button" type="button" data-action="appointment">Agendar control</button>
-      </article>
-    `;
-  }
-
-  return `
-    <article class="summary-block appointment-summary">
-      <header><strong>Proximas citas</strong><span class="pill">${pending.length}</span></header>
-      <div class="appointment-stack">
-        ${pending
-          .slice(0, 4)
-          .map(
-            (appointment) => `
-              <div data-patient-appointment="${appointment.id}">
-                <time>${DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "short" })} · ${DentalAPI.time(appointment.starts_at)}</time>
-                <strong>${DentalAPI.escapeHtml(appointment.reason || "Control clinico")}</strong>
-                <span>${DentalAPI.escapeHtml(appointment.notes || DentalAPI.statusLabel(appointment.status))}</span>
-                <div class="inline-actions">
-                  <a class="text-button primary-action link-button" href="./paciente.html?id=${summary.patient.id}&appointment=${appointment.id}">Atender</a>
-                  <button class="text-button" type="button" data-update-patient-appointment="${appointment.id}" data-status="missed">No asistio</button>
-                  <button class="text-button danger-action" type="button" data-update-patient-appointment="${appointment.id}" data-status="cancelled">Cancelar</button>
-                </div>
-                <small class="form-status" data-patient-appointment-message="${appointment.id}" aria-live="polite"></small>
-              </div>
-            `
-          )
-          .join("")}
-      </div>
-      <button class="text-button" type="button" data-action="appointment">Agendar otro control</button>
-    </article>
-  `;
+  const pending = summary.appointments.filter(item => item.status === "scheduled").sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+  return `<section class="detail-card patient-agenda"><div class="section-heading"><div><span class="eyebrow">Agenda del paciente</span><h2>Citas pendientes <span class="pill">${pending.length}</span></h2></div><button class="text-button primary-action" data-action="appointment">Agendar cita</button></div>
+    <p class="form-helper">Marca la cita como atendida para registrar la visita. Finaliza el tratamiento cuando ya no necesite mas sesiones.</p>
+    <div class="patient-visit-list">${pending.map(appointment => {
+      const treatment = summary.treatments.find(item => item.id === Number(appointment.patient_treatment_id));
+      const overdue = new Date(appointment.starts_at.replace(" ", "T")) < new Date();
+      return `<article class="patient-visit" data-patient-appointment="${appointment.id}">
+        <div class="visit-date"><strong>${DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "short" })}</strong><span>${DentalAPI.time(appointment.starts_at)}</span>${overdue ? '<small>Por registrar</small>' : ""}</div>
+        <div class="visit-description"><span class="eyebrow">${treatment?.tooth_code ? `Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : "Control general"}</span><h3>${DentalAPI.escapeHtml(treatment?.title || appointment.reason || "Control clinico")}</h3>${appointment.notes ? `<p>${DentalAPI.escapeHtml(appointment.notes)}</p>` : ""}
+        <div class="inline-actions"><button class="text-button primary-action" data-update-patient-appointment="${appointment.id}" data-status="attended">Marcar atendida</button><button class="text-button" data-action="reschedule" data-entity-id="${appointment.id}">Cambiar fecha</button><button class="text-button danger-action" data-update-patient-appointment="${appointment.id}" data-status="cancelled">Cancelar cita</button><button class="text-button" data-update-patient-appointment="${appointment.id}" data-status="missed">No asistio</button></div>
+        <p class="form-status" data-patient-appointment-message="${appointment.id}" role="status"></p></div>
+      </article>`;
+    }).join("") || '<p class="empty-state">No hay citas pendientes. Agenda un nuevo tratamiento o continua uno desde el historial.</p>'}</div></section>`;
 }
 
 function renderActionForm(action, entityId = null) {
   const patient = currentSummary.patient;
   const treatment = activeTreatment(currentSummary);
-  const appointment = selectedAppointment();
+  const toothTreatment = selectedToothForAppointment ? currentSummary.treatments.find((item) => String(item.tooth_code) === String(selectedToothForAppointment) && item.status !== "completed") : null;
+  const appointment = action === "reschedule" ? currentSummary.appointments.find(item => item.id === Number(entityId)) : selectedAppointment();
   const session = currentSummary.sessions.find((item) => item.id === Number(entityId));
   const attachmentSessionTarget = action === "attachment" ? session : null;
   const continuingSession = action === "continue-session" ? session : null;
@@ -513,13 +605,18 @@ function renderActionForm(action, entityId = null) {
     "edit-session": "Editar evolucion clinica",
     "continue-session": "Continuar evolucion anterior",
     "appointment-session": "Registrar atencion de la cita",
-    appointment: "Agendar control",
+    appointment: "Agendar cita",
+    reschedule: "Cambiar fecha de la cita",
     treatment: "Nuevo tratamiento",
     attachment: "Adjuntar radiografia o documento",
     payment: "Registrar pago"
   };
 
   const forms = {
+    reschedule: `<form class="compact-form action-form" data-form="reschedule" data-entity-id="${appointment?.id || ""}">
+      <p>${DentalAPI.escapeHtml(appointment?.reason || "Cita del paciente")}</p><p class="form-helper">Se cambia la fecha de esta misma cita. El tratamiento, su precio y sus pagos se conservan.</p>
+      <label>Nueva fecha y hora<input name="starts_at" type="datetime-local" value="${dateTimeForInput(appointment?.starts_at)}" required /></label>
+      <button class="text-button primary-action" type="submit">Guardar nueva fecha</button><p class="form-status" role="status"></p></form>`,
     edit: `
       <form class="compact-form action-form" data-form="edit">
         <label>Nombres<input name="first_name" value="${DentalAPI.escapeHtml(patient.first_name || "")}" required /></label>
@@ -578,7 +675,7 @@ function renderActionForm(action, entityId = null) {
     "appointment-session": `
       <form class="compact-form action-form" data-form="appointment-session">
         <label>Fecha y hora<input name="session_date" type="datetime-local" value="${dateTimeForInput(appointment?.starts_at)}" required /></label>
-        <label>Tratamiento<select name="patient_treatment_id"><option value="">Sin tratamiento asociado</option>${renderTreatmentOptions(treatment?.id)}</select></label>
+        <label>Tratamiento<select name="patient_treatment_id"><option value="">Sin tratamiento asociado</option>${renderTreatmentOptions(appointment?.patient_treatment_id || treatment?.id)}</select></label>
         <label>Motivo<input name="reason" value="${DentalAPI.escapeHtml(appointment?.reason || "Atencion dental")}" required /></label>
         <label>Diagnostico<textarea name="diagnosis" placeholder="Diagnostico observado"></textarea></label>
         <label>Procedimiento realizado<textarea name="procedure_done" placeholder="Procedimiento realizado durante la cita"></textarea></label>
@@ -589,12 +686,24 @@ function renderActionForm(action, entityId = null) {
       </form>
     `,
     appointment: `
-      <form class="compact-form action-form" data-form="appointment">
-        <label>Fecha y hora<input name="starts_at" type="datetime-local" value="${nextControlInput()}" required /></label>
-        <label>Motivo<input name="reason" value="Control clinico" required /></label>
-        <label>Estado<select name="status"><option value="scheduled">Confirmada</option><option value="missed">No asistio</option><option value="cancelled">Cancelada</option></select></label>
-        <label>Notas<textarea name="notes" placeholder="Indicaciones para el proximo control">Control programado desde la ficha del paciente</textarea></label>
-        <button class="text-button primary-action" type="submit">Guardar cita</button>
+      <form class="compact-form action-form appointment-form" data-form="appointment" enctype="multipart/form-data">
+        <div class="appointment-form-patient">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</div>
+        <label class="appointment-wide">1. Pieza dental<select name="tooth_code" data-booking-tooth><option value="">Control general / sin pieza</option>${[1,2,3,4].flatMap(q => Array.from({length:8}, (_, i) => `${q}${i+1}`)).map(code => `<option value="${code}" ${String(selectedToothForAppointment) === code ? "selected" : ""}>Pieza ${code} - ${toothDescription(code)}</option>`).join("")}</select></label>
+        <p class="appointment-tooth-description">${DentalAPI.escapeHtml(selectedToothForAppointment ? toothDescription(selectedToothForAppointment) : "Selecciona la pieza aqui o desde el odontograma.")}</p>
+        <label class="appointment-wide">2. Tratamiento del paciente<select name="patient_treatment_id" data-existing-treatment><option value="">Nuevo tratamiento / control general</option>${currentSummary.treatments.filter((item) => item.status !== "completed" && (!selectedToothForAppointment || String(item.tooth_code) === String(selectedToothForAppointment))).map((item) => `<option value="${item.id}" ${Number(entityId) === item.id || (!entityId && item.id === toothTreatment?.id) ? "selected" : ""}>${DentalAPI.escapeHtml(item.title)}${item.tooth_code ? ` - Pieza ${DentalAPI.escapeHtml(item.tooth_code)}` : ""} (sin nuevo cobro)</option>`).join("")}</select></label>
+        <p class="appointment-wide form-status" data-duplicate-message role="status" hidden></p>
+        <p class="appointment-wide" data-continuation-message hidden>Esta cita conserva el presupuesto y los pagos del tratamiento. No genera un nuevo cobro.</p>
+        <label class="appointment-wide">Tratamiento<select name="catalog_treatment_id" data-appointment-catalog ${selectedToothForAppointment ? "required" : ""}><option value="">Seleccionar tratamiento...</option>${appointmentCatalogOptions()}</select></label>
+        <label>Costo<input name="cost" type="number" min="0" step="1" placeholder="$" data-appointment-cost /></label>
+        <label>Descuento<input name="discount" type="number" min="0" step="1" value="0" placeholder="$" data-appointment-discount /></label>
+        <div class="appointment-total"><span>Total con descuento</span><strong data-appointment-total>$0</strong></div>
+        <h3 class="appointment-wide">3. Fecha de la cita</h3>
+        <label>Fecha<input name="appointment_date" type="date" value="${nextControlInput().slice(0, 10)}" required /></label>
+        <label>Hora<input name="appointment_time" type="time" value="${nextControlInput().slice(11, 16)}" required /></label>
+        <details class="appointment-wide booking-extras"><summary>Notas y radiografia (opcional)</summary>
+        <label class="appointment-wide">Notas (opcional)<textarea name="notes" placeholder="Indicaciones para la cita o tratamiento"></textarea></label>
+        <label class="appointment-wide upload-field">Adjuntar radiografia<input name="file" type="file" accept="image/*,.pdf" /><span>Subir imagen o PDF</span></label></details>
+        <div class="appointment-form-actions"><button class="text-button" type="button" data-action-close>Cancelar</button><button class="text-button primary-action" type="submit">Agendar cita</button></div>
         <p class="form-status" aria-live="polite"></p>
       </form>
     `,
@@ -641,12 +750,13 @@ function renderActionForm(action, entityId = null) {
   drawer.innerHTML = `
     <div class="section-heading">
       <div><span class="eyebrow">Accion</span><h2>${titleByAction[action]}</h2></div>
-      <button class="text-button" type="button" data-action-close>Cerrar</button>
+      <button class="${action === "appointment" ? "icon-button appointment-close" : "text-button"}" type="button" data-action-close aria-label="Cerrar">${action === "appointment" ? "×" : "Cerrar"}</button>
     </div>
     ${forms[action]}
   `;
   drawer.scrollIntoView({ behavior: "smooth", block: "start" });
   bindActionForm();
+  drawer.querySelector("input, select, textarea")?.focus({ preventScroll: true });
 }
 
 function renderPatient(summary) {
@@ -654,8 +764,9 @@ function renderPatient(summary) {
   const patient = summary.patient;
   const documentsLink = document.querySelector("#patientDocumentsLink");
   if (documentsLink) documentsLink.href = `./documentos.html?id=${patient.id}`;
-  const treatment = activeTreatment(summary);
-  const session = summary.sessions[0];
+  const treatment = summary.treatments.find(item => ["planned", "in_progress"].includes(item.status));
+  const lastAttended = summary.appointments.filter(item => item.status === "attended").sort((a,b) => b.starts_at.localeCompare(a.starts_at))[0];
+  const lastAttention = [summary.sessions[0]?.session_date, lastAttended?.starts_at].filter(Boolean).sort().at(-1);
   const appointment = nextAppointment(summary);
   const selectedTooth = treatment?.tooth_code || "36";
 
@@ -668,20 +779,19 @@ function renderPatient(summary) {
           <div>
             <span class="eyebrow">Ficha paciente</span>
             <h1>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</h1>
-            <p>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")} · ${ageFromBirthDate(patient.birth_date)} · ${DentalAPI.escapeHtml(patient.phone || "Sin telefono")}</p>
+            <div class="identity-meta patient-contact-line"><span><b>RUT</b> ${DentalAPI.escapeHtml(patient.rut || "Sin RUT")}</span><span><b>Tel.</b> ${DentalAPI.escapeHtml(patient.phone || "Sin telefono")}</span><span><b>Correo</b> ${DentalAPI.escapeHtml(patient.email || "Sin correo")}</span><span><b>Nacimiento</b> ${DentalAPI.date(patient.birth_date)}</span><span><b>Direccion</b> ${DentalAPI.escapeHtml(patient.address || "Sin direccion")}</span></div>
           </div>
         </div>
       </div>
       <div class="hero-actions">
+        <button class="text-button" type="button" id="exportClinicalBtn">Exportar ficha clinica</button>
         <button class="text-button" type="button" data-action="edit">Editar datos</button>
-        <button class="text-button" type="button" data-action="session">Nueva atencion</button>
-        <button class="text-button" type="button" data-action="appointment">Agendar control</button>
         <button class="text-button danger-action" type="button" data-action="deactivate">Desactivar</button>
         <button class="icon-button" type="button" data-action="attachment" aria-label="Adjuntar radiografia" title="Adjuntar radiografia">+</button>
       </div>
     </header>
 
-    <section class="patient-alert-strip" aria-label="Avisos clinicos del paciente">
+    <section class="patient-alert-strip ${patient.active_alert ? "" : "patient-alert-normal"}" aria-label="Avisos clinicos del paciente">
       <div><strong>Atencion clinica</strong><span>${DentalAPI.escapeHtml(patient.active_alert || patient.medical_notes || "Sin alertas clinicas registradas.")}</span></div>
       <span class="pill ${patient.active_alert ? "warning" : ""}">${patient.active_alert ? "Revisar" : "Normal"}</span>
     </section>
@@ -689,35 +799,29 @@ function renderPatient(summary) {
     ${renderAppointmentFlow(summary)}
 
     <section class="patient-kpis" aria-label="Resumen del paciente">
-      <article class="metric-card compact"><span>Tratamiento activo</span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento")}</strong><small>${DentalAPI.escapeHtml(treatment?.tooth_code ? `Pieza ${treatment.tooth_code}` : "Ficha general")}</small></article>
-      <article class="metric-card compact"><span>Ultima atencion</span><strong>${DentalAPI.date(session?.session_date, { day: "2-digit", month: "short" })}</strong><small>${DentalAPI.escapeHtml(session?.reason || "Sin atenciones")}</small></article>
+      <article class="metric-card compact"><span>Tratamiento activo</span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento activo")}</strong><small>${DentalAPI.escapeHtml(treatment?.tooth_code ? `Pieza ${treatment.tooth_code}` : "Ficha general")}</small></article>
+      <article class="metric-card compact"><span>Ultima atencion</span><strong>${DentalAPI.date(lastAttention, { day: "2-digit", month: "short" })}</strong><small>${DentalAPI.escapeHtml(lastAttention ? "Atencion registrada" : "Sin atenciones")}</small></article>
       <article class="metric-card compact"><span>Saldo pendiente</span><strong>${DentalAPI.money(balance(summary))}</strong><small>Total plan ${DentalAPI.money(totalTreatments(summary))}</small></article>
       <article class="metric-card compact"><span>Proxima cita</span><strong>${appointment ? DentalAPI.time(appointment.starts_at) : "Sin cita"}</strong><small>${DentalAPI.escapeHtml(appointment?.reason || "No programada")}</small></article>
     </section>
 
     <section class="patient-tabs" aria-label="Secciones de ficha">
-      <button class="active" type="button" data-tab="clinical">Clinica</button>
-      <button type="button" data-tab="treatments">Tratamientos</button>
+      <button class="active" type="button" data-tab="clinical">Agenda y piezas</button>
+      <button type="button" data-tab="history">Historial</button>
+      <button type="button" data-tab="treatments">Plan y presupuesto</button>
       <button type="button" data-tab="attachments">Radiografias</button>
       <button type="button" data-tab="payments">Pagos</button>
     </section>
 
     <section class="detail-card action-drawer" id="actionDrawer" hidden></section>
 
-    <section class="patient-detail-grid tab-panel active" id="clinical" aria-labelledby="clinicalHeading">
-      <section class="detail-card patient-data-card">
-        <div class="section-heading"><div><span class="eyebrow">Datos</span><h2 id="clinicalHeading">Datos del paciente</h2></div></div>
-        ${renderDataList(patient)}
-      </section>
+    <section class="patient-detail-grid tab-panel active" id="clinical" aria-label="Agenda y piezas">
+      ${renderPatientAppointments(summary)}
+
       <section class="detail-card">
         <div class="section-heading"><div><span class="eyebrow">Odontograma</span><h2>Piezas observadas</h2></div><span class="pill">FDI</span></div>
-        <div class="odontogram" aria-label="Odontograma simplificado">${renderOdontogram(selectedTooth)}</div>
-        <div class="tooth-note" id="toothNote"><strong>Pieza ${DentalAPI.escapeHtml(selectedTooth)}</strong><span>${DentalAPI.escapeHtml(toothNotes[selectedTooth] || treatment?.plan_notes || "Sin observaciones registradas para esta pieza.")}</span></div>
-      </section>
-      <section class="detail-card">
-        <div class="section-heading"><div><span class="eyebrow">Historia</span><h2>Ultimas evoluciones</h2></div><button class="text-button" type="button" data-action="session">Agregar nota</button></div>
-        ${renderQuickEvolution(summary)}
-        <div class="clinical-timeline">${renderSessions(summary.sessions)}</div>
+        <div class="odontogram" aria-label="Odontograma simplificado">${renderOdontogram(selectedTooth, summary.treatments)}</div>
+        <div class="tooth-note" id="toothNote"><strong>Pieza ${DentalAPI.escapeHtml(selectedTooth)}</strong><span>${DentalAPI.escapeHtml(treatment?.plan_notes || "Sin observaciones registradas para esta pieza.")}</span></div>
       </section>
       <aside class="detail-card">
         <div class="section-heading"><div><span class="eyebrow">Antecedentes</span><h2>Ficha medica</h2></div></div>
@@ -725,11 +829,18 @@ function renderPatient(summary) {
           <article class="summary-block"><strong>Alergias</strong><p>${DentalAPI.escapeHtml(patient.allergies || "No registra alergias medicamentosas.")}</p></article>
           <article class="summary-block ${patient.active_alert ? "alert-line" : ""}"><strong>Condiciones</strong><p>${DentalAPI.escapeHtml(patient.medical_notes || "Sin antecedentes registrados.")}</p></article>
           <article class="summary-block"><strong>Observaciones</strong><p>${DentalAPI.escapeHtml(treatment?.plan_notes || "Sin observaciones clinicas adicionales.")}</p></article>
-          ${renderPatientAppointments(summary)}
+
         </div>
       </aside>
     </section>
 
+    <section class="patient-detail-grid tab-panel" id="history" aria-label="Historial del paciente">
+      <section class="detail-card wide-card"><div class="section-heading"><div><span class="eyebrow">Por pieza y tratamiento</span><h2>Historial del paciente</h2></div><button class="text-button" data-action="session">Agregar nota clinica</button></div>
+        <div class="history-filters"><label>Buscar tratamiento o pieza<input type="search" id="historySearch" value="${DentalAPI.escapeHtml(historySearch)}" placeholder="Ej. Endodoncia o 36" /></label><label>Estado<select id="historyFilter"><option value="all">Todos</option><option value="active">En curso y planificados</option><option value="completed">Finalizados</option><option value="cancelled">Cancelados</option></select></label></div>
+        <div class="history-list">${renderTreatmentHistory(summary)}</div><p id="historyEmpty" class="empty-state" hidden>No hay tratamientos con estos filtros.</p>
+        <details class="unlinked-history"><summary>Otros registros y notas generales</summary>${summary.appointments.filter(item => !item.patient_treatment_id).map(item => `<p>${DentalAPI.date(item.starts_at)} · ${DentalAPI.escapeHtml(item.reason || "Control general")} · ${DentalAPI.escapeHtml(DentalAPI.statusLabel(item.status))}</p>`).join("")}${renderSessions(summary.sessions.filter(item => !item.patient_treatment_id))}</details>
+      </section>
+    </section>
     <section class="patient-detail-grid tab-panel" id="treatments" aria-labelledby="treatmentsHeading">
       <section class="detail-card wide-card">
         <div class="section-heading"><div><span class="eyebrow">Plan</span><h2 id="treatmentsHeading">Tratamientos</h2></div><button class="text-button" type="button" data-action="treatment">Nuevo tratamiento</button></div>
@@ -765,7 +876,22 @@ function renderPatient(summary) {
     </section>
   `;
 
+  document.querySelector("#exportClinicalBtn").addEventListener("click", () => {
+    try { DentalClinicalExport.print(currentSummary); }
+    catch (error) { window.alert(error.message); }
+  });
   bindTabs();
+  document.querySelector(`[data-tab="${patientActiveTab}"]`)?.click();
+  document.querySelector("#historyFilter").value = historyFilter;
+  document.querySelector("#historyFilter").addEventListener("change", event => { historyFilter = event.target.value; filterPatientHistory(); });
+  document.querySelector("#historySearch").addEventListener("input", event => { historySearch = event.target.value; filterPatientHistory(); });
+  filterPatientHistory();
+  document.querySelectorAll("[data-finish-history]").forEach(button => button.addEventListener("click", async () => {
+    if (!window.confirm("Finalizar este tratamiento? Su historial y pagos se conservaran.")) return;
+    button.disabled = true;
+    try { await DentalAPI.put(`/api/patient-treatments/${button.dataset.finishHistory}`, {status:"completed", end_date:localDateString()}); await loadPatient(); }
+    catch (error) { document.querySelector(`[data-history-message="${button.dataset.finishHistory}"]`).textContent = error.message; button.disabled = false; }
+  }));
   bindOdontogram();
   bindActions();
   bindTreatmentEditors();
@@ -781,6 +907,7 @@ function bindTabs() {
   tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.tab;
+      patientActiveTab = target;
       tabButtons.forEach((item) => item.classList.toggle("active", item === button));
       tabPanels.forEach((panel) => panel.classList.toggle("active", panel.id === target));
     });
@@ -788,22 +915,48 @@ function bindTabs() {
 }
 
 function bindOdontogram() {
-  const toothButtons = document.querySelectorAll(".odontogram button");
+  const toothButtons = document.querySelectorAll("[data-tooth]");
   const toothNote = document.querySelector("#toothNote");
-
   toothButtons.forEach((button) => {
     button.addEventListener("click", () => {
       toothButtons.forEach((item) => item.classList.toggle("selected", item === button));
-      const code = button.textContent.trim();
-      toothNote.innerHTML = `<strong>Pieza ${code}</strong><span>${DentalAPI.escapeHtml(toothNotes[code] || "Sin observaciones registradas para esta pieza.")}</span>`;
+      const code = button.dataset.tooth;
+      selectedToothForAppointment = code;
+      const treatment = currentSummary.treatments.find((item) => String(item.tooth_code) === String(code));
+      toothNote.innerHTML = treatment
+         ? `<strong>Pieza ${DentalAPI.escapeHtml(code)} · ${DentalAPI.escapeHtml(treatment.title)}</strong><span class="tooth-status">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span><p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin observaciones registradas para esta pieza.")}</p><div class="tooth-note-actions"><button class="text-button primary-action" type="button" data-action="appointment" data-tooth-code="${DentalAPI.escapeHtml(code)}">Agendar tratamiento para esta pieza</button>${treatment.status !== "completed" && treatment.status !== "cancelled" ? `<button class="text-button success-action" type="button" data-complete-tooth-treatment="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>`
+        : `<strong>Pieza ${DentalAPI.escapeHtml(code)}</strong><span>Sin tratamiento asociado</span><p>${DentalAPI.escapeHtml("Puedes agendar un tratamiento para esta pieza desde esta ficha.")}</p><button class="text-button primary-action" type="button" data-action="appointment" data-tooth-code="${DentalAPI.escapeHtml(code)}">Agendar tratamiento para esta pieza</button>`;
+      toothNote.querySelector('[data-action="appointment"]').addEventListener("click", () => {
+        renderActionForm("appointment");
+      });
+      const completeButton = toothNote.querySelector("[data-complete-tooth-treatment]");
+      if (completeButton) {
+        completeButton.addEventListener("click", async () => {
+          if (!window.confirm(`Finalizar ${treatment.title} de la pieza ${code}?`)) return;
+          completeButton.disabled = true;
+          completeButton.textContent = "Finalizando...";
+          try {
+            await DentalAPI.put(`/api/patient-treatments/${treatment.id}`, {
+              status: "completed",
+              end_date: new Date().toISOString().slice(0, 10)
+            });
+            await loadPatient();
+          } catch (error) {
+            window.alert(error.message);
+            completeButton.disabled = false;
+            completeButton.textContent = "Finalizar tratamiento";
+          }
+        });
+      }
     });
   });
 }
-
 function bindActions() {
   document.querySelectorAll("[data-action]").forEach((button) => {
     button.addEventListener("click", async () => {
       const action = button.dataset.action;
+      if (action === "appointment") selectedToothForAppointment = button.dataset.toothCode || null;
+      if (action === "appointment" && button.dataset.toothCode) selectedToothForAppointment = button.dataset.toothCode;
       if (action === "deactivate") {
         const patientName = DentalAPI.fullName(currentSummary.patient);
         const confirmed = window.confirm(`Desactivar a ${patientName}? La ficha quedara oculta del listado activo, pero sus datos seguiran guardados en SQLite.`);
@@ -971,17 +1124,16 @@ function bindPatientAppointmentActions() {
       const appointmentId = Number(button.dataset.updatePatientAppointment);
       const status = button.dataset.status;
       const message = document.querySelector(`[data-patient-appointment-message="${appointmentId}"]`);
-      const label = status === "missed" ? "no asistio" : "cancelada";
+      const label = DentalAPI.statusLabel(status);
 
-      if (status === "cancelled" && !window.confirm("Cancelar este control del paciente?")) return;
+      if (status === "cancelled" && !window.confirm("Cancelar esta cita? El tratamiento vinculado quedara cancelado si no tiene otras citas pendientes. Sus pagos e historial se conservaran.")) return;
 
       button.disabled = true;
       message.textContent = "Guardando...";
 
       try {
         await DentalAPI.put(`/api/appointments/${appointmentId}`, {
-          status,
-          notes: status === "missed" ? "Paciente no asistio" : "Cancelada desde la ficha"
+          status
         });
         message.textContent = `Cita marcada como ${label}.`;
         await loadPatient();
@@ -998,16 +1150,64 @@ function cleanFormData(form) {
   return Object.fromEntries(Object.entries(raw).map(([key, value]) => [key, value === "" ? null : value]));
 }
 
+function bindAppointmentPriceForm(form) {
+  const catalog = form.querySelector("[data-appointment-catalog]");
+  const cost = form.querySelector("[data-appointment-cost]");
+  const discount = form.querySelector("[data-appointment-discount]");
+  const total = form.querySelector("[data-appointment-total]");
+  const existing = form.querySelector("[data-existing-treatment]");
+  const tooth = form.querySelector("[data-booking-tooth]");
+  const sync = () => {
+    const continuing = Boolean(existing.value);
+    [catalog, cost, discount].forEach((input) => { input.disabled = continuing; input.closest("label").hidden = continuing; });
+    catalog.required = !continuing && Boolean(selectedToothForAppointment);
+    total.closest(".appointment-total").hidden = continuing;
+    form.querySelector("[data-continuation-message]").hidden = !continuing;
+    const treatment = currentSummary.treatments.find((item) => item.id === Number(existing.value));
+    form.elements.tooth_code.value = treatment?.tooth_code || selectedToothForAppointment || "";
+    form.querySelector(".appointment-tooth-description").textContent = tooth.value ? toothDescription(tooth.value) : "Control general sin pieza dental.";
+    const pending = pendingToothAppointment(form.elements.tooth_code.value);
+    const warning = form.querySelector("[data-duplicate-message]");
+    warning.hidden = !pending;
+    warning.textContent = pending ? `Esta pieza ya tiene una cita pendiente para ${DentalAPI.date(pending.starts_at)} ${DentalAPI.time(pending.starts_at)}. Atiende, cancela o modifica esa cita antes de agendar otra.` : "";
+    form.querySelector("button[type='submit']").disabled = Boolean(pending);
+  };
+  tooth.addEventListener("change", () => {
+    selectedToothForAppointment = tooth.value || null;
+    const available = currentSummary.treatments.filter(item => item.status !== "completed" && (!tooth.value || String(item.tooth_code) === tooth.value));
+    existing.innerHTML = `<option value="">Nuevo tratamiento / control general</option>` + available.map(item => `<option value="${item.id}">${DentalAPI.escapeHtml(item.title)}${item.tooth_code ? ` - Pieza ${DentalAPI.escapeHtml(item.tooth_code)}` : ""} (sin nuevo cobro)</option>`).join("");
+    if (tooth.value && available.length) existing.value = available[0].id;
+    sync();
+  });
+  existing.addEventListener("change", sync);
+  sync();
+  const update = () => {
+    const price = Math.max(Number(cost.value || 0), 0);
+    const reduction = Math.min(Math.max(Number(discount.value || 0), 0), price);
+    if (Number(discount.value || 0) !== reduction) discount.value = reduction || "";
+    total.textContent = DentalAPI.money(price - reduction);
+  };
+  catalog.addEventListener("change", () => {
+    const item = currentCatalog.find((entry) => Number(entry.id) === Number(catalog.value));
+    if (item) cost.value = Number(item.default_price || 0);
+    update();
+  });
+  cost.addEventListener("input", update);
+  discount.addEventListener("input", update);
+  update();
+}
 async function bindActionForm() {
   const drawer = document.querySelector("#actionDrawer");
-  const closeButton = drawer.querySelector("[data-action-close]");
+  const closeButtons = drawer.querySelectorAll("[data-action-close]");
   const form = drawer.querySelector("[data-form]");
   const status = drawer.querySelector(".form-status");
 
-  closeButton.addEventListener("click", () => {
+  closeButtons.forEach((closeButton) => closeButton.addEventListener("click", () => {
     drawer.hidden = true;
     drawer.innerHTML = "";
-  });
+  }));
+
+  if (form.dataset.form === "appointment") bindAppointmentPriceForm(form);
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1019,6 +1219,18 @@ async function bindActionForm() {
     submitButton.disabled = true;
 
     try {
+      if (action === "reschedule") {
+        const original = currentSummary.appointments.find(item => item.id === Number(form.dataset.entityId));
+        if (!original || original.status !== "scheduled") throw new Error("Esta cita ya no esta pendiente. Recarga la ficha.");
+        const startsAt = form.elements.starts_at.value;
+        const payload = { starts_at: startsAt.replace("T", " ") };
+        if (original.ends_at) {
+          const duration = new Date(original.ends_at.replace(" ", "T")) - new Date(original.starts_at.replace(" ", "T"));
+          const end = new Date(new Date(startsAt).getTime() + duration);
+          payload.ends_at = `${localDateString(end)} ${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`;
+        }
+        await DentalAPI.put(`/api/appointments/${original.id}`, payload);
+      }
       if (action === "edit") {
         await DentalAPI.put(`/api/patients/${patientId}`, cleanFormData(form));
       }
@@ -1059,12 +1271,46 @@ async function bindActionForm() {
 
       if (action === "appointment") {
         const data = cleanFormData(form);
-        await DentalAPI.post("/api/appointments", {
-          ...data,
+        const catalogTreatment = currentCatalog.find((item) => Number(item.id) === Number(data.catalog_treatment_id));
+        const cost = Math.max(Number(data.cost || 0), 0);
+        const discount = Math.min(Math.max(Number(data.discount || 0), 0), cost);
+        let patientTreatment = currentSummary.treatments.find((item) => item.id === Number(data.patient_treatment_id));
+        const newTreatment = !patientTreatment && catalogTreatment ? {
+          catalog_treatment_id: Number(catalogTreatment.id),
+          title: catalogTreatment.name,
+          tooth_code: data.tooth_code || null,
+          plan_notes: data.notes || null,
+          status: "planned",
+          estimated_price: cost,
+          final_price: cost - discount,
+          start_date: data.appointment_date
+        } : null;
+        const scheduled = await DentalAPI.post("/api/appointments", {
           patient_id: patientId,
-          starts_at: String(data.starts_at).replace("T", " "),
-          status: data.status || "scheduled"
+          patient_treatment_id: patientTreatment?.id || null,
+          ...(newTreatment ? { new_treatment: newTreatment } : {}),
+          starts_at: `${data.appointment_date} ${data.appointment_time}`,
+          reason: patientTreatment ? `${patientTreatment.title}${patientTreatment.tooth_code ? ` · Pieza ${patientTreatment.tooth_code}` : ""}` : catalogTreatment ? `${catalogTreatment.name}${data.tooth_code ? ` · Pieza ${data.tooth_code}` : ""}` : "Control clinico",
+          notes: data.notes || null,
+          status: "scheduled"
         });
+        patientTreatment = { id: scheduled.patient_treatment_id };
+        // The appointment is already saved; an attachment error must not invite a duplicate booking.
+        submitButton.dataset.appointmentSaved = "true";
+        const file = form.querySelector('input[name="file"]').files[0];
+        if (file) {
+          const attachment = new FormData();
+          attachment.set("patient_id", patientId);
+          attachment.set("patient_treatment_id", patientTreatment?.id || "");
+          attachment.set("file_type", "radiography");
+          attachment.set("category", "Radiografia de planificacion");
+          attachment.set("taken_at", data.appointment_date);
+          attachment.set("notes", data.notes || "Adjunto desde agendamiento de cita");
+          attachment.set("file", file);
+          const response = await fetch("/api/attachments", { method: "POST", body: attachment });
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.error || "No se pudo guardar la radiografia.");
+        }
       }
 
       if (action === "treatment") {
@@ -1103,7 +1349,8 @@ async function bindActionForm() {
       await loadPatient();
     } catch (error) {
       status.textContent = error.message;
-      submitButton.disabled = false;
+      submitButton.disabled = submitButton.dataset.appointmentSaved === "true";
+      if (submitButton.disabled) status.textContent = `La cita fue guardada. No se pudo adjuntar el archivo: ${error.message}. Puedes adjuntarlo desde Radiografias.`;
     }
   });
 }

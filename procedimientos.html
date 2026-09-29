@@ -3,11 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Documentos - Consulta Dental Renato</title>
+    <title>Procedimientos base - Consulta Dental Renato</title>
     <link rel="icon" href="./assets/icons/app-icon.ico" sizes="any" />
     <link rel="icon" href="./assets/icons/app-icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./assets/styles.css" />
-    <link rel="stylesheet" href="./assets/ficha-print.css" />
     <link rel="stylesheet" href="./assets/ui-polish.css" />
   </head>
   <body>
@@ -18,68 +17,38 @@
           <a class="nav-item" href="./index.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 7.2 8 3l5 4.2v5.3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7.2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 13.5v-3h3v3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></span> Inicio</a>
           <a class="nav-item" href="./pacientes.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="5.5" r="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M2.5 13.5a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Pacientes</a>
           <a class="nav-item" href="./tratamientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 2h4l1 3h2l-1 8H4L3 5h2l1-3Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M6 8h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Tratamientos</a>
-          <a class="nav-item" href="./procedimientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M6 5h4M6 8h4M6 11h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Procedimientos</a>
+          <a class="nav-item active" aria-current="page" href="./procedimientos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="2" width="10" height="12" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M6 5h4M6 8h4M6 11h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Procedimientos</a>
           <a class="nav-item" href="./agenda.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2.5" y="3" width="11" height="10.5" rx="1.8" stroke="currentColor" stroke-width="1.5"/><path d="M5 1.5v3M11 1.5v3M2.5 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Agenda</a>
           <a class="nav-item" href="./pagos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="4" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M2 7h12M5 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span> Pagos</a>
           <a class="nav-item" href="./respaldos.html"><span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2.5v7M5.5 7 8 9.5 10.5 7M3 11.5v1.2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Respaldos</a>
         </nav>
-        <div class="backup-status"><span class="status-dot"></span><div><strong>Documentos</strong><span>Listos para imprimir</span></div></div>
+        <div class="backup-status"><span class="status-dot"></span><div><strong>Respaldo local</strong><span>Base local protegida</span></div></div>
       </aside>
 
       <main class="main-content module-page">
-        <header class="topbar">
-          <div>
-            <span class="eyebrow">Documentos</span>
-            <h1>Impresion clinica</h1>
-          </div>
-          <button class="text-button primary-action" id="printDocumentBtn" type="button">Imprimir</button>
-        </header>
-
-        <section class="module-layout documents-layout">
+        <header class="topbar"><div><span class="eyebrow">Catalogo</span><h1>Procedimientos base</h1></div><button class="text-button primary-action" id="newProcedure" type="button">Nuevo procedimiento</button></header>
+        <p class="form-helper">Define los procedimientos disponibles al asignar tratamientos y agendar citas. Los cambios de precio se aplican a nuevos tratamientos; los presupuestos existentes se conservan.</p>
+        <section class="module-layout procedure-layout">
+          <section class="detail-card wide-card" aria-label="Catalogo de procedimientos">
+            <div class="section-heading"><h2>Catalogo de procedimientos</h2><span class="pill" id="procedureCount"></span></div>
+            <label class="procedure-search">Buscar procedimiento<input id="procedureSearch" type="search" placeholder="Nombre o descripcion" /></label>
+            <div class="procedure-list" id="procedureList"><p class="empty-state">Cargando procedimientos...</p></div>
+            <button class="text-button" id="retryProcedures" type="button" hidden>Reintentar carga</button>
+          </section>
           <aside class="detail-card">
-            <div class="section-heading"><div><span class="eyebrow">Preparar</span><h2>Documento</h2></div></div>
-            <p class="form-helper">Genera fichas, presupuestos y comprobantes usando la informacion guardada del paciente.</p>
-            <form class="compact-form" id="documentForm">
-              <label>
-                Paciente
-                <select id="documentPatientSelect" required>
-                  <option value="">Seleccionar paciente</option>
-                </select>
-              </label>
-              <label>
-                Tipo
-                <select id="documentTypeSelect">
-                  <option value="clinical">Ficha clinica</option>
-                  <option value="budget">Presupuesto</option>
-                  <option value="receipt">Comprobante de pago</option>
-                  <option value="consent">Consentimiento simple</option>
-                </select>
-              </label>
-              <label>
-                Observacion visible
-                <textarea id="documentNote" rows="4" placeholder="Texto opcional para este documento"></textarea>
-              </label>
-              <button class="text-button primary-action" type="submit">Generar vista previa</button>
-              <p class="form-status" id="documentStatus" aria-live="polite"></p>
+            <h2 id="procedureFormTitle">Nuevo procedimiento</h2>
+            <form class="compact-form" id="procedureForm">
+              <label>Nombre del procedimiento<input name="name" maxlength="160" required placeholder="Ej. Restauracion de resina" /></label>
+              <label>Descripcion<textarea name="description" rows="4" placeholder="Describe el procedimiento"></textarea></label>
+              <label>Precio base (CLP)<input name="default_price" type="number" min="0" step="1" required placeholder="0" /></label>
+              <div class="inline-actions"><button class="text-button primary-action" type="submit">Crear procedimiento</button><button class="text-button" id="cancelProcedureEdit" type="button" hidden>Cancelar edicion</button></div>
+              <p class="form-status" id="procedureStatus" role="status" aria-live="polite"></p>
             </form>
           </aside>
-
-          <section class="detail-card wide-card document-preview-shell">
-            <div class="section-heading">
-              <div><span class="eyebrow">Vista previa</span><h2 id="documentPreviewTitle">Ficha clinica</h2></div>
-            </div>
-            <article class="print-sheet" id="documentPreview">
-              <div class="empty-document">
-                <strong>Selecciona un paciente</strong>
-                <p>La vista previa se generara con los datos guardados en la ficha.</p>
-              </div>
-            </article>
-          </section>
         </section>
       </main>
     </div>
     <script src="./assets/api.js"></script>
-    <script src="./assets/ficha-export.js"></script>
-    <script src="./assets/documentos.js"></script>
+    <script src="./assets/procedimientos.js"></script>
   </body>
 </html>

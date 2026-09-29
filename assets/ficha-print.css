@@ -1,0 +1,8 @@
+/* Ficha clínica: datos de identificación en líneas compactas. */
+.print-sheet .clinical-patient-inline { margin-top: 14px; padding: 12px 0; border-bottom: 1px solid #d9e5df; }
+.print-sheet .clinical-patient-inline h3 { margin-bottom: 8px; }
+.print-sheet .clinical-patient-inline p { margin: 2px 0; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.print-sheet .clinical-patient-inline strong { display: inline; font-weight: 600; color: #2b4940; }
+.clinical-divider { padding: 0 6px; color: #95a8a0; }
+.print-sheet .document-entry { break-inside: avoid; }
+@media print { .print-sheet { min-height: 0; max-width: none; padding: 0; border: 0; box-shadow: none; } }

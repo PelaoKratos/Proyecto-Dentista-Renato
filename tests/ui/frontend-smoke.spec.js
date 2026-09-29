@@ -57,9 +57,7 @@ test('navegacion principal recorre todas las secciones', async ({ page }) => {
     ['Pacientes', /Gestion de pacientes/],
     ['Tratamientos', /Planes clinicos/],
     ['Agenda', /Calendario de atenciones/],
-    ['Radiografias', /Biblioteca de adjuntos/],
     ['Pagos', /Control financiero/],
-    ['Documentos', /Impresion clinica/],
     ['Respaldos', /Copias locales/]
   ];
 

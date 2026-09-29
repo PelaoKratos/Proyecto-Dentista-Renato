@@ -3,48 +3,62 @@ const patientsSearch = document.querySelector("#patientsSearch");
 const patientForm = document.querySelector("#patientForm");
 const patientFormStatus = document.querySelector("#patientFormStatus");
 const exportPatientsBtn = document.querySelector("#exportPatientsBtn");
+const patientStatusFilter = document.querySelector("#patientStatusFilter");
 
 let patients = [];
 let appointments = [];
 let treatments = [];
+let statusFilter = "active";
 
 function normalize(value) {
   return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-function renderPatients() {
-  const query = normalize(patientsSearch.value);
-  const treatmentByPatient = new Map(treatments.map((treatment) => [treatment.patient_id, treatment]));
-  const appointmentByPatient = new Map(appointments.map((appointment) => [appointment.patient_id, appointment]));
-  const visible = patients.filter((patient) =>
-    normalize(`${DentalAPI.fullName(patient)} ${patient.rut || ""} ${patient.phone || ""}`).includes(query)
-  );
-
-  patientsTable.innerHTML = `
-    <div class="records-row records-head" role="row"><span>Paciente</span><span>Contacto</span><span>Estado</span><span>Proxima cita</span></div>
-    ${
-      visible
-        .map((patient) => {
-          const treatment = treatmentByPatient.get(patient.id);
-          const appointment = appointmentByPatient.get(patient.id);
-          return `
-            <a class="records-row" href="./paciente.html?id=${patient.id}" role="row">
-              <span><strong>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</strong><small>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")}</small></span>
-              <span>${DentalAPI.escapeHtml(patient.phone || patient.email || "Sin contacto")}</span>
-              <span><mark>${DentalAPI.escapeHtml(treatment ? DentalAPI.statusLabel(treatment.status) : "Ficha")}</mark></span>
-              <span>${
-                appointment
-                  ? `${DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "2-digit" })} ${DentalAPI.time(appointment.starts_at)}`
-                  : "Sin cita"
-              }</span>
-            </a>
-          `;
-        })
-        .join("") || `<p class="empty-state">No hay pacientes que coincidan con la busqueda.</p>`
-    }
-  `;
+function nextAppointmentFor(patientId) {
+  const now = new Date();
+  return appointments
+    .filter((appointment) => Number(appointment.patient_id) === Number(patientId))
+    .filter((appointment) => !["cancelled", "missed", "attended"].includes(appointment.status))
+    .filter((appointment) => new Date(String(appointment.starts_at).replace(" ", "T")) >= now)
+    .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)))[0] || null;
 }
 
+function statusClass(status) {
+  if (status === "in_progress") return "in-progress";
+  if (status === "completed") return "completed";
+  if (status === "cancelled") return "cancelled";
+  if (status === "planned") return "planned";
+  return "registered";
+}
+
+function renderPatients() {
+  const query = normalize(patientsSearch.value);
+  const treatmentByPatient = new Map(treatments.map((treatment) => [Number(treatment.patient_id), treatment]));
+  const visible = patients.filter((patient) => {
+    const treatment = treatmentByPatient.get(Number(patient.id));
+    const status = treatment?.status || "registered";
+    const haystack = normalize(`${DentalAPI.fullName(patient)} ${patient.rut || ""} ${patient.phone || ""} ${patient.email || ""}`);
+    const matchesSearch = haystack.includes(query);
+    const matchesStatus = statusFilter === "all" || (statusFilter === "active" ? !["completed", "cancelled"].includes(status) : status === statusFilter);
+    return matchesSearch && matchesStatus;
+  });
+
+  patientsTable.innerHTML = `
+    <div class="records-row records-head" role="row"><span>Paciente</span><span>Proxima cita</span><span>Contacto</span><span>Estado</span></div>
+    ${visible.map((patient) => {
+      const treatment = treatmentByPatient.get(Number(patient.id));
+      const appointment = nextAppointmentFor(patient.id);
+      const status = treatment?.status || "registered";
+      return `
+        <a class="records-row" href="./paciente.html?id=${patient.id}" role="row">
+          <span><strong>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</strong><small>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")}</small></span>
+          <span>${appointment ? `${DentalAPI.date(appointment.starts_at, { day: "2-digit", month: "2-digit" })} ${DentalAPI.time(appointment.starts_at)}` : "Sin cita"}</span>
+          <span><strong>${DentalAPI.escapeHtml(patient.phone || "Sin telefono")}</strong><small>${DentalAPI.escapeHtml(patient.email || "Sin correo")}</small></span>
+          <span><mark class="status-mark ${statusClass(status)}">${DentalAPI.escapeHtml(treatment ? DentalAPI.statusLabel(status) : "Ficha registrada")}</mark></span>
+        </a>`;
+    }).join("") || `<p class="empty-state">No hay pacientes que coincidan con el filtro.</p>`}
+  `;
+}
 function csvCell(value) {
   return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
@@ -82,6 +96,7 @@ async function loadPatientsPage() {
 }
 
 patientsSearch.addEventListener("input", renderPatients);
+patientStatusFilter.addEventListener("change", () => { statusFilter = patientStatusFilter.value; renderPatients(); });
 exportPatientsBtn.addEventListener("click", exportPatients);
 
 if (window.location.hash === "#nuevo") {

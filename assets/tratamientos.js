@@ -69,6 +69,15 @@ function renderFormOptions() {
       .join("");
 }
 
+function treatmentIcon(item) {
+  const value = String(item.category || item.name || "").toLowerCase();
+  if (value.includes("endodon")) return "🩺";
+  if (value.includes("cirug") || value.includes("implan")) return "⚕️";
+  if (value.includes("restaur") || value.includes("empast")) return "🔧";
+  if (value.includes("estet")) return "✨";
+  if (value.includes("diagn")) return "📋";
+  return "🦷";
+}
 function renderTreatmentCard(treatment, patientById) {
   const patient = patientById.get(treatment.patient_id);
   const canComplete = treatment.status !== "completed" && treatment.status !== "cancelled";
@@ -146,7 +155,7 @@ async function loadTreatments() {
       .map(
         (item) => `
           <button type="button" data-catalog-pick="${item.id}">
-            <strong>${DentalAPI.escapeHtml(item.name)}</strong>
+            <span class="treatment-catalog-main"><span class="treatment-icon" aria-hidden="true">${treatmentIcon(item)}</span><strong>${DentalAPI.escapeHtml(item.name)}</strong></span>
             <span>${DentalAPI.money(item.default_price)}</span>
           </button>
         `

@@ -105,72 +105,7 @@ function emptyLine(text) {
 }
 
 function renderClinical(summary, note) {
-  const { patient } = summary;
-  const treatments = summary.treatments || [];
-  const sessions = summary.sessions || [];
-  const attachments = summary.attachments || [];
-  const title = "Ficha clinica";
-
-  return `
-    ${renderHeader(title, patient)}
-    ${renderPatientBlock(patient)}
-    <section class="document-section">
-      <h3>Antecedentes y alertas</h3>
-      <p><strong>Notas medicas:</strong> ${clean(patient.medical_notes)}</p>
-      <p><strong>Alerta activa:</strong> ${clean(patient.active_alert, "Sin alerta activa")}</p>
-    </section>
-    <section class="document-section">
-      <h3>Tratamientos</h3>
-      ${
-        treatments.length
-          ? `<table><thead><tr><th>Tratamiento</th><th>Pieza</th><th>Estado</th><th>Valor</th></tr></thead><tbody>${treatments
-              .map(
-                (treatment) => `
-                  <tr>
-                    <td>${clean(treatment.title)}</td>
-                    <td>${clean(treatment.tooth_code, "General")}</td>
-                    <td>${clean(treatment.status)}</td>
-                    <td>${money(treatmentAmount(treatment))}</td>
-                  </tr>
-                `
-              )
-              .join("")}</tbody></table>`
-          : emptyLine("No hay tratamientos registrados.")
-      }
-    </section>
-    <section class="document-section">
-      <h3>Evolucion clinica</h3>
-      ${
-        sessions.length
-          ? sessions
-              .map(
-                (session) => `
-                  <article class="document-entry">
-                    <strong>${shortDate(session.session_date)} - ${clean(session.reason, "Atencion clinica")}</strong>
-                    <p><strong>Diagnostico:</strong> ${clean(session.diagnosis)}</p>
-                    <p><strong>Procedimiento:</strong> ${clean(session.procedure_done)}</p>
-                    <p><strong>Notas:</strong> ${clean(session.notes)}</p>
-                    <p><strong>Proximos pasos:</strong> ${clean(session.next_steps)}</p>
-                  </article>
-                `
-              )
-              .join("")
-          : emptyLine("No hay evoluciones registradas.")
-      }
-    </section>
-    <section class="document-section">
-      <h3>Adjuntos</h3>
-      ${
-        attachments.length
-          ? `<ul>${attachments
-              .map((attachment) => `<li>${clean(attachment.category || attachment.file_type)} - ${clean(attachment.original_filename)} - ${shortDate(attachment.taken_at || attachment.created_at)}</li>`)
-              .join("")}</ul>`
-          : emptyLine("No hay adjuntos registrados.")
-      }
-    </section>
-    ${noteSection(note)}
-    ${renderSignatureBlock()}
-  `;
+  return DentalClinicalExport.render(summary, note);
 }
 
 function renderBudget(summary, note) {
@@ -330,6 +265,7 @@ function printCurrentDocument() {
     return;
   }
   const stylesheet = new URL("./assets/styles.css", window.location.href).href;
+  const clinicalStyles = new URL("./assets/ficha-print.css", window.location.href).href;
   printWindow.document.write(`
     <!doctype html>
     <html lang="es">
@@ -337,6 +273,7 @@ function printCurrentDocument() {
         <meta charset="utf-8" />
         <title>${DentalAPI.escapeHtml(state.currentTitle)}</title>
         <link rel="stylesheet" href="${stylesheet}" />
+        <link rel="stylesheet" href="${clinicalStyles}" />
       </head>
       <body class="print-window">
         <article class="print-sheet">${state.currentHtml}</article>
