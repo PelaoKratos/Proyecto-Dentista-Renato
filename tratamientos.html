@@ -12,44 +12,62 @@
     <link rel="stylesheet" href="./assets/ui-polish-workflows.css" />
     <link rel="stylesheet" href="./assets/ui-polish-patient.css" />
     <link rel="stylesheet" href="./assets/ui-polish-layout.css" />
+    <link rel="stylesheet" href="./assets/ui-polish-treatments.css" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar" aria-label="Navegacion principal" data-navigation></aside>
+      <aside class="sidebar" aria-label="Navegación principal" data-navigation></aside>
 
-      <main class="main-content module-page">
-        <header class="topbar"><div><span class="eyebrow">Tratamientos</span><h1>Planes clinicos</h1></div><button class="text-button primary-action" id="focusTreatmentForm" type="button">Crear tratamiento</button></header>
-        <section class="module-layout">
-          <section class="detail-card wide-card">
-            <div class="section-heading"><div><span class="eyebrow">Activos</span><h2>Tratamientos en curso</h2></div></div>
-            <div class="kanban-grid" id="treatmentsGrid">
-              <article><span class="eyebrow">Evaluacion</span><strong>Implante molar</strong><p>Mario Araya · Pieza 36</p><div class="progress-track"><span style="width: 38%"></span></div></article>
-              <article><span class="eyebrow">En curso</span><strong>Ortodoncia</strong><p>Camila Torres · Control mensual</p><div class="progress-track"><span style="width: 64%"></span></div></article>
-              <article><span class="eyebrow">Planificado</span><strong>Limpieza periodontal</strong><p>Mario Araya · Prequirurgico</p><div class="progress-track"><span style="width: 12%"></span></div></article>
-              <article><span class="eyebrow">En curso</span><strong>Endodoncia</strong><p>Pedro Riquelme · Pieza 36</p><div class="progress-track"><span style="width: 52%"></span></div></article>
+      <main class="main-content module-page treatment-page">
+        <header class="topbar">
+          <div><span class="eyebrow">Gestión clínica</span><h1>Tratamientos</h1></div>
+          <button class="text-button primary-action" id="focusTreatmentForm" type="button">Crear tratamiento</button>
+        </header>
+
+        <section class="module-layout treatment-layout">
+          <section class="detail-card treatment-overview" aria-labelledby="treatmentListTitle">
+            <div class="section-heading">
+              <div><span class="eyebrow">Seguimiento</span><h2 id="treatmentListTitle">Tratamientos de pacientes</h2></div>
             </div>
+            <div class="treatment-toolbar">
+              <label class="treatment-search"><span>Buscar</span><input id="treatmentSearch" type="search" placeholder="Paciente, tratamiento o pieza" autocomplete="off" /></label>
+              <label class="treatment-filter"><span>Mostrar</span><select id="treatmentFilter"><option value="active">Activos</option><option value="all">Todos</option><option value="completed">Finalizados</option><option value="cancelled">Cancelados</option></select></label>
+            </div>
+            <p class="treatment-result-count" id="treatmentResultCount" aria-live="polite"></p>
+            <div class="treatment-list" id="treatmentsGrid" aria-live="polite"><p class="empty-state">Cargando tratamientos…</p></div>
           </section>
-          <aside class="detail-card">
-            <div class="section-heading"><div><span class="eyebrow">Catalogo</span><h2>Procedimientos base</h2></div><a class="text-button link-button" href="./procedimientos.html">Administrar</a></div>
-            <div class="catalog-list" id="catalogList">
-              <button type="button"><strong>Evaluacion dental</strong><span>$25.000</span></button>
-              <button type="button"><strong>Limpieza periodontal</strong><span>$65.000</span></button>
-              <button type="button"><strong>Endodoncia</strong><span>$280.000</span></button>
-              <button type="button"><strong>Implante</strong><span>$920.000</span></button>
-            </div>
-            <p class="form-helper">Puedes partir desde el catalogo o crear un tratamiento personalizado con pieza, valor y plan clinico.</p>
-            <form class="compact-form module-form" id="newTreatmentForm">
-              <div class="section-heading compact-heading"><div><span class="eyebrow">Nuevo</span><h2>Asignar tratamiento</h2></div></div>
-              <label>Paciente<select name="patient_id" id="newTreatmentPatient" required></select></label>
-              <label>Catalogo<select name="catalog_treatment_id" id="newTreatmentCatalog"><option value="">Personalizado</option></select></label>
-              <label>Nombre<input name="title" id="newTreatmentTitle" placeholder="Ej. Implante molar" required /></label>
-              <label>Pieza dental<input name="tooth_code" placeholder="Ej. 36" /></label>
-              <label>Presupuesto<input name="estimated_price" id="newTreatmentPrice" type="number" min="0" placeholder="0" /></label>
-              <label>Estado<select name="status"><option value="planned">Planificado</option><option value="in_progress">En curso</option><option value="completed">Completado</option><option value="cancelled">Cancelado</option></select></label>
-              <label>Plan clinico<textarea name="plan_notes" placeholder="Notas del plan"></textarea></label>
-              <button class="text-button primary-action" type="submit">Guardar tratamiento</button>
-              <p class="form-status" id="newTreatmentStatus" aria-live="polite"></p>
-            </form>
+
+          <aside class="detail-card treatment-sidebar" aria-label="Acciones de tratamientos">
+            <details class="treatment-create-details" id="treatmentCreateDetails">
+              <summary><span><strong>Asignar tratamiento</strong><small>Registrar un plan para un paciente</small></span></summary>
+              <form class="compact-form treatment-form" id="newTreatmentForm">
+                <label>Paciente<select name="patient_id" id="newTreatmentPatient" required></select></label>
+                <label>Procedimiento base<select name="catalog_treatment_id" id="newTreatmentCatalog"><option value="">Personalizado</option></select></label>
+                <label class="treatment-form-wide">Nombre del tratamiento<input name="title" id="newTreatmentTitle" placeholder="Ej. Restauración molar" required /></label>
+                <details class="treatment-extra-fields">
+                  <summary>Datos opcionales</summary>
+                  <div class="treatment-extra-grid">
+                    <label>Pieza dental<input name="tooth_code" placeholder="Ej. 36" /></label>
+                    <label>Presupuesto<input name="estimated_price" id="newTreatmentPrice" type="number" min="0" placeholder="0" /></label>
+                    <label class="treatment-form-wide">Estado inicial<select name="status"><option value="planned">Planificado</option><option value="in_progress">En curso</option><option value="completed">Completado</option><option value="cancelled">Cancelado</option></select></label>
+                    <label class="treatment-form-wide">Plan clínico<textarea name="plan_notes" placeholder="Agrega una nota solo si es necesaria"></textarea></label>
+                  </div>
+                </details>
+                <button class="text-button primary-action" type="submit">Guardar tratamiento</button>
+                <p class="form-status" id="newTreatmentStatus" aria-live="polite"></p>
+              </form>
+            </details>
+
+            <section class="treatment-catalog-panel" aria-labelledby="treatmentCatalogTitle">
+              <div class="section-heading">
+                <div><span class="eyebrow">Catálogo</span><h2 id="treatmentCatalogTitle">Procedimientos base</h2></div>
+                <a class="text-button link-button" href="./procedimientos.html">Administrar</a>
+              </div>
+              <details class="treatment-catalog-details">
+                <summary>Ver procedimientos disponibles</summary>
+                <div class="catalog-list" id="catalogList"><p class="empty-state">Cargando procedimientos…</p></div>
+              </details>
+            </section>
           </aside>
         </section>
       </main>

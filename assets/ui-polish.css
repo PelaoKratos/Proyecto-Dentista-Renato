@@ -1,7 +1,7 @@
 body { font-family: var(--font-ui); }
 h1, h2, h3, .brand strong { font-family: var(--font-display); }
 .app-shell { grid-template-columns: 256px minmax(0, 1fr); }
-.sidebar { gap: 24px; padding: 20px 16px; background: #fff; }
+.sidebar { gap: 24px; padding: 20px 16px; background: var(--surface); }
 .brand-mark { width: 40px; height: 40px; border-radius: 12px; background: var(--figma-teal); box-shadow: 0 8px 18px rgba(13,148,136,.2); }
 .brand strong { font-size: .98rem; }
 .nav-list { gap: 4px; }
@@ -39,7 +39,7 @@ body {
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #ffffff 0%, #f6fbfa 100%);
+  background: linear-gradient(180deg, var(--surface) 0%, #f1f5f2 100%);
   box-shadow: 8px 0 24px rgba(23, 38, 35, 0.04);
 }
 
@@ -233,7 +233,7 @@ h1 {
 .quick-evolution-form select,
 .quick-evolution-form textarea {
   border-color: #bfd7d1;
-  background: #ffffff;
+  background: var(--surface);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
@@ -284,11 +284,11 @@ h1 {
 }
 
 .records-row {
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .records-row:nth-child(even) {
-  background: #f9fcfb;
+  background: var(--surface-alt);
 }
 
 .records-row:hover,
@@ -331,7 +331,7 @@ h1 {
 .empty-state,
 .empty-document {
   border-color: rgba(0, 150, 136, 0.22);
-  background: linear-gradient(135deg, #ffffff, #f0faf7);
+  background: linear-gradient(135deg, var(--surface), #edf3ef);
   color: #58716b;
 }
 
@@ -348,7 +348,7 @@ h1 {
 }
 
 .odontogram button {
-  background: #ffffff;
+  background: var(--surface);
   border-color: #bfd7d1;
 }
 
@@ -365,13 +365,13 @@ h1 {
 
 .patient-tabs button.active,
 .segment-control button.active {
-  background: white;
+  background: var(--surface);
   color: var(--teal-dark);
 }
 
 .backup-status {
   border-color: rgba(0, 150, 136, 0.16);
-  background: linear-gradient(135deg, #ffffff, #eef9f6);
+  background: linear-gradient(135deg, var(--surface), #e8efeb);
 }
 
 .form-status {
@@ -399,7 +399,7 @@ h1 {
   padding: 11px 12px;
   border: 1px solid rgba(37, 99, 235, 0.16);
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff, var(--blue-soft));
+  background: linear-gradient(135deg, var(--surface), var(--blue-soft));
   color: #42556f;
   font-size: 0.88rem;
   font-weight: 700;
@@ -528,7 +528,7 @@ h1 {
 .month-day { display:inline-grid; width:28px; height:28px; place-items:center; border-radius:50%; color:var(--muted); font-weight:900; }
 .month-cell.today .month-day { background:var(--teal); color:#fff; }
 .calendar-appointment { display:grid; gap:2px; margin-top:5px; padding:6px 7px; border:1px solid rgba(0,150,136,.16); border-left:3px solid var(--teal); border-radius:6px; background:#f3fbf8; color:var(--ink); font-size:.74rem; overflow:hidden; }
-.calendar-appointment:hover { border-color:var(--teal); background:#fff; }
+.calendar-appointment:hover { border-color:var(--teal); background:var(--surface); }
 .calendar-appointment strong,.calendar-appointment span,.calendar-appointment small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .calendar-appointment span,.calendar-appointment small { color:var(--muted); }
 .calendar-appointment.status-attended { border-left-color:var(--blue); background:var(--blue-soft); }
@@ -547,7 +547,7 @@ h1 {
 .day-row:last-child { border-bottom:0; }
 .day-row > div { padding:4px 8px; border-left:1px solid var(--line); }
 .day-row .calendar-appointment { max-width:520px; margin-top:0; }
-.search-results { position:absolute; z-index:20; top:52px; right:54px; width:min(560px,calc(100vw - 80px)); display:grid; gap:2px; padding:7px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 18px 40px rgba(23,38,35,.16); }
+.search-results { position:absolute; z-index:20; top:52px; right:54px; width:min(560px,calc(100vw - 80px)); display:grid; gap:2px; padding:7px; border:1px solid var(--line); border-radius:8px; background:var(--surface); box-shadow:0 18px 40px rgba(23,38,35,.16); }
 .search-result { display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; gap:9px; padding:8px; border-radius:6px; }
 .search-result:hover { background:var(--surface-strong); }
 .search-result strong,.search-result small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -565,7 +565,7 @@ h1 {
 .module-layout, .schedule-board { gap: 16px; }
 .module-layout > .detail-card, .schedule-board > .detail-card { min-width: 0; }
 .kanban-grid { gap: 12px; }
-.kanban-grid article, .catalog-list button, .day-timeline article { border-radius: 10px; background: #fff; box-shadow: 0 5px 14px rgba(15,31,30,.04); }
+.kanban-grid article, .catalog-list button, .day-timeline article { border-radius: 10px; background: var(--surface); box-shadow: 0 5px 14px rgba(15,31,30,.04); }
 .kanban-grid article { padding: 14px; }
 .kanban-grid article strong { font-family: var(--font-ui); font-size: .96rem; }
 .treatment-group { gap: 8px; }
@@ -606,10 +606,10 @@ h1 {
 .records-row span strong, .records-row span small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 @media (max-width:820px) { .status-filter { min-width:0; flex:1 1 150px; } .records-head { display:none; } .records-row { grid-template-columns:1fr; gap:8px; } .records-row > span:not(:first-child)::before { content:attr(data-label); display:block; color:var(--muted); font-size:.7rem; font-weight:800; text-transform:uppercase; margin-bottom:2px; } }
 
-.odontogram-shell { padding: 14px; border:1px solid #e2e8f0; border-radius:12px; background:linear-gradient(180deg,#f8fafc,#fff); }
+.odontogram-shell { padding: 14px; border:1px solid #e2e8f0; border-radius:12px; background:linear-gradient(180deg,var(--surface-strong),var(--surface)); }
 .odontogram-legend { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 14px; margin-bottom:14px; color:#64748b; font-size:.72rem; }
 .odontogram-legend span { display:inline-flex; align-items:center; gap:5px; }
-.legend-tooth { width:12px; height:12px; display:inline-block; border:1px solid #94a3b8; border-radius:3px; background:#fff; }
+.legend-tooth { width:12px; height:12px; display:inline-block; border:1px solid #94a3b8; border-radius:3px; background:var(--surface); }
 .legend-tooth.planned { border-color:#3b82f6; background:#dbeafe; }
 .legend-tooth.in-progress { border-color:#f59e0b; background:#fef3c7; }
 .legend-tooth.completed { border-color:#0d9488; background:#ccfbf1; }

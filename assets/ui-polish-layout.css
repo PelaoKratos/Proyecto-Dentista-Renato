@@ -50,7 +50,7 @@ td, th, p, strong, span, label, a, time, small, h1, h2, h3, h4 { overflow-wrap: 
   min-height: 50px;
   border: 1px solid #cfe0dc;
   border-radius: 12px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   font-weight: 800;
 }
@@ -313,3 +313,50 @@ td, th, p, strong, span, label, a, time, small, h1, h2, h3, h4 { overflow-wrap: 
 }
 
 .patient-page .patient-alert-strip.patient-alert-normal div span { color: var(--muted); }
+
+/* Agrupa el cierre de sesión y el estado de respaldo al pie de la navegación. */
+.sidebar-footer {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: auto;
+}
+.sidebar-footer .sidebar-logout {
+  width: 100%;
+  margin: 0;
+  justify-content: flex-start;
+  padding: 8px 12px;
+}
+.sidebar-footer .backup-status { margin-top: 0; }
+
+/* Filas alternadas con tonos suaves para facilitar la lectura. */
+
+.records-row {
+  background-color: var(--surface);
+}
+
+.records-row:nth-child(even) {
+  background-color: var(--surface-alt);
+}
+
+.attachment-table [role="row"]:not(.table-head):not(.records-head):nth-child(odd),
+.compact-table [role="row"]:not(.table-head):not(.records-head):nth-child(odd),
+.attachment-admin-table [role="row"]:not(.table-head):not(.records-head):nth-child(odd),
+.document-section table tbody tr:nth-child(odd) {
+  background-color: var(--surface-alt);
+}
+
+.attachment-table [role="row"]:not(.table-head):not(.records-head):nth-child(even),
+.compact-table [role="row"]:not(.table-head):not(.records-head):nth-child(even),
+.attachment-admin-table [role="row"]:not(.table-head):not(.records-head):nth-child(even),
+.document-section table tbody tr:nth-child(even) {
+  background-color: var(--surface);
+}
+
+.records-row:hover,
+.attachment-table [role="row"]:not(.table-head):not(.records-head):hover,
+.compact-table [role="row"]:not(.table-head):not(.records-head):hover,
+.attachment-admin-table [role="row"]:not(.table-head):not(.records-head):hover,
+.document-section table tbody tr:hover {
+  background-color: var(--surface-hover);
+}

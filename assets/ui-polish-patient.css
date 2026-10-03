@@ -2,7 +2,7 @@
 .patient-detail-grid#clinical, .patient-detail-grid#history { grid-template-columns: minmax(0, 1fr); }
 .patient-agenda, .history-card { min-width: 0; }
 .patient-visit-list, .history-list { display: grid; gap: 12px; }
-.patient-visit { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 20px; padding: 20px; border: 1px solid #dfe8e5; border-radius: 14px; background: #fff; }
+.patient-visit { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 20px; padding: 20px; border: 1px solid #dfe8e5; border-radius: 14px; background: var(--surface); }
 .visit-date { display: grid; align-content: start; gap: 6px; padding-right: 18px; border-right: 1px solid #e5ece9; }
 .visit-date strong { font-size: 17px; }
 .visit-date > span { font-size: 24px; font-weight: 650; color: #256d59; }
@@ -12,7 +12,7 @@
 .visit-description p { color: #61726d; overflow-wrap: anywhere; }
 .history-filters { display: grid; grid-template-columns: minmax(0, 2fr) minmax(150px, 1fr); gap: 12px; margin: 8px 0 20px; }
 .history-filters label { display: grid; gap: 8px; }
-.history-card { border: 1px solid #dfe8e5; border-radius: 14px; padding: 20px; background: white; }
+.history-card { border: 1px solid #dfe8e5; border-radius: 14px; padding: 20px; background: var(--surface); }
 .history-card header { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
 .history-card .history-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: #61726d; font-size: 13px; }
 .history-next { color: #256d59; font-size: 13px; }
@@ -35,7 +35,7 @@
   .patient-tabs { flex-wrap: wrap; }
 }
 
-.history-filters input, .history-filters select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #d3dfda; border-radius: 9px; background: #fff; font: inherit; color: #25473c; }
+.history-filters input, .history-filters select { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #d3dfda; border-radius: 9px; background: var(--surface); font: inherit; color: #25473c; }
 .history-filters input:focus, .history-filters select:focus { outline: 2px solid #0d9488; outline-offset: 2px; }
 .patient-alert-strip.patient-alert-normal { background: #edf7f3; border-color: #d9eae2; }
 

@@ -1,0 +1,321 @@
+.treatment-page,
+.treatment-page .module-layout,
+.treatment-overview,
+.treatment-sidebar,
+.treatment-toolbar,
+.treatment-list,
+.treatment-card,
+.treatment-card-main,
+.treatment-card-actions,
+.treatment-form,
+.treatment-extra-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.treatment-page .topbar h1 {
+  margin-bottom: 0;
+}
+
+.treatment-layout {
+  grid-template-columns: minmax(0, 1.65fr) minmax(290px, 0.75fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.treatment-overview,
+.treatment-sidebar {
+  align-content: start;
+  gap: 14px;
+  background: var(--surface);
+}
+
+.treatment-overview .section-heading,
+.treatment-sidebar .section-heading {
+  margin: 0;
+}
+
+.treatment-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 190px);
+  gap: 12px;
+  align-items: end;
+}
+
+.treatment-toolbar label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.treatment-toolbar input,
+.treatment-toolbar select {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.treatment-result-count {
+  margin: -3px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.treatment-list {
+  display: grid;
+  gap: 10px;
+}
+
+.treatment-card {
+  display: grid;
+  gap: 11px;
+  width: 100%;
+  padding: 14px 15px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  box-shadow: 0 3px 10px rgba(23, 38, 35, 0.035);
+}
+
+.treatment-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.treatment-card-main {
+  display: grid;
+  gap: 4px;
+}
+
+.treatment-card-main strong {
+  color: var(--ink);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.treatment-card-main p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.treatment-card .status-mark {
+  flex: 0 0 auto;
+  min-width: auto;
+}
+
+.treatment-card-actions,
+.treatment-edit-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.treatment-card-actions > a,
+.treatment-card-actions > button,
+.treatment-edit-details > summary {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--teal-dark);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.treatment-edit-details > summary {
+  display: inline-flex;
+  align-items: center;
+  list-style: none;
+}
+
+.treatment-edit-details > summary::-webkit-details-marker,
+.treatment-create-details > summary::-webkit-details-marker,
+.treatment-extra-fields > summary::-webkit-details-marker,
+.treatment-catalog-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.treatment-edit-details > summary::after {
+  content: "+";
+  margin-left: 7px;
+}
+
+.treatment-edit-details[open] > summary::after {
+  content: "−";
+}
+
+.treatment-edit-details[open] {
+  flex: 1 0 100%;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.treatment-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 10px 0;
+}
+
+.treatment-editor label,
+.treatment-form label {
+  min-width: 0;
+}
+
+.treatment-editor input,
+.treatment-editor select,
+.treatment-editor textarea,
+.treatment-form input,
+.treatment-form select,
+.treatment-form textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.treatment-editor .treatment-form-wide,
+.treatment-form .treatment-form-wide {
+  grid-column: 1 / -1;
+}
+
+.treatment-editor textarea,
+.treatment-form textarea {
+  min-height: 76px;
+}
+
+.treatment-card .form-status:empty {
+  display: none;
+}
+
+.treatment-create-details,
+.treatment-catalog-details {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.treatment-create-details > summary,
+.treatment-extra-fields > summary,
+.treatment-catalog-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  color: var(--teal-dark);
+  font-size: 0.9rem;
+  font-weight: 800;
+  list-style: none;
+  cursor: pointer;
+}
+
+.treatment-create-details > summary span {
+  display: grid;
+  gap: 3px;
+}
+
+.treatment-create-details > summary small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.treatment-create-details > summary::after,
+.treatment-extra-fields > summary::after,
+.treatment-catalog-details > summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  font-size: 1.1rem;
+}
+
+.treatment-create-details[open] > summary,
+.treatment-extra-fields[open] > summary,
+.treatment-catalog-details[open] > summary {
+  margin-bottom: 12px;
+}
+
+.treatment-create-details[open] > summary::after,
+.treatment-extra-fields[open] > summary::after,
+.treatment-catalog-details[open] > summary::after {
+  content: "−";
+}
+
+.treatment-form {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+}
+
+.treatment-extra-fields {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.treatment-extra-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.treatment-form .primary-action {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.treatment-catalog-panel {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.treatment-catalog-panel .catalog-list {
+  max-height: 330px;
+  overflow: auto;
+}
+
+.treatment-catalog-panel .catalog-list button {
+  min-width: 0;
+  background: var(--surface);
+}
+
+.treatment-catalog-panel .catalog-list button > span:last-child {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+}
+
+.treatment-sidebar .form-status:empty {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  .treatment-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

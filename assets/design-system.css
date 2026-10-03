@@ -4,12 +4,14 @@
 :root {
   --font-ui: "DM Sans", system-ui, sans-serif;
   --font-display: "Fraunces", Georgia, serif;
-  --bg: #eef7f6;
-  --surface: #ffffff;
-  --surface-strong: #e8f6f2;
+  --bg: #e9edeb;
+  --surface: #f2f3ef;
+  --surface-strong: #e2e8e4;
+  --surface-alt: #e8ece8;
+  --surface-hover: #dce8e1;
   --ink: #172623;
   --muted: #5a6b67;
-  --line: #cfe0dc;
+  --line: #d0d8d3;
   --teal: #009688;
   --teal-dark: #006b63;
   --mint: #d9f3ec;

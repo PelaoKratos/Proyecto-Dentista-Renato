@@ -40,7 +40,7 @@
 .action-drawer:has(.appointment-form) {
   max-width: 760px;
   margin: 0 auto 22px;
-  background: #ffffff;
+  background: var(--surface);
 }
 .appointment-form {
   gap: 14px;

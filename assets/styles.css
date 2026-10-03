@@ -44,7 +44,7 @@ button:disabled {
   flex-direction: column;
   gap: 28px;
   padding: 24px 18px;
-  background: #fbfcfb;
+  background: var(--surface);
   border-right: 1px solid var(--line);
 }
 
@@ -127,7 +127,6 @@ button:disabled {
 }
 
 .backup-status {
-  margin-top: auto;
   display: flex;
   gap: 10px;
   padding: 14px;
@@ -359,7 +358,7 @@ h2 {
 .summary-block {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .appointment {
@@ -774,7 +773,7 @@ h2 {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .data-list dt {
@@ -800,7 +799,7 @@ h2 {
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
   color: var(--ink);
   font-size: 0.82rem;
   font-weight: 900;
@@ -898,7 +897,7 @@ h2 {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .payment-entry header,
@@ -1043,7 +1042,7 @@ h2 {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .money-list span {
@@ -1062,7 +1061,7 @@ h2 {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .compact-money {
@@ -1119,7 +1118,7 @@ h2 {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .attachment-gallery img {
@@ -1179,7 +1178,7 @@ h2 {
   min-height: 58px;
   padding: 10px 12px;
   border-top: 1px solid var(--line);
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .records-row:first-child {
@@ -1277,7 +1276,7 @@ h2 {
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
   color: var(--ink);
   outline: none;
 }
@@ -1433,7 +1432,7 @@ h2 {
 .day-timeline article {
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .kanban-grid article {
@@ -1475,7 +1474,7 @@ h2 {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
   color: var(--ink);
   font-weight: 800;
 }
@@ -1553,7 +1552,7 @@ h2 {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
 }
 
 .backup-stat small,
@@ -1606,7 +1605,7 @@ h2 {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fcfdfd;
+  background: var(--surface);
   color: var(--muted);
   line-height: 1.35;
 }
@@ -1875,7 +1874,7 @@ h2 {
   padding: 34px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: white;
+  background: var(--surface);
   color: #18221f;
   box-shadow: 0 18px 38px rgba(34, 48, 45, 0.09);
 }
@@ -1957,7 +1956,7 @@ h2 {
   padding: 11px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdfc;
+  background: var(--surface);
 }
 
 .document-section small {
@@ -2003,7 +2002,7 @@ h2 {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfdfc;
+  background: var(--surface);
 }
 
 .document-entry + .document-entry {
@@ -2071,7 +2070,7 @@ h2 {
 }
 
 .print-window {
-  background: white;
+  background: var(--surface);
 }
 
 .print-window .print-sheet {
@@ -2109,7 +2108,7 @@ h2 {
 
 @media print {
   body {
-    background: white;
+    background: var(--surface);
   }
 
   .app-shell {

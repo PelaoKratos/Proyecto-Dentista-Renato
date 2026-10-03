@@ -4,7 +4,7 @@ const pages = [
   { name: 'inicio', path: '/index.html', heading: 'Panel principal' },
   { name: 'pacientes', path: '/pacientes.html', heading: 'Gestion de pacientes' },
   { name: 'ficha-paciente', path: '/paciente.html?id=2', heading: /Mario Araya|Ficha/ },
-  { name: 'tratamientos', path: '/tratamientos.html', heading: 'Planes clinicos' },
+  { name: 'tratamientos', path: '/tratamientos.html', heading: 'Tratamientos' },
   { name: 'agenda', path: '/agenda.html', heading: 'Jornada de atenciones' },
   { name: 'radiografias', path: '/radiografias.html', heading: 'Biblioteca de adjuntos' },
   { name: 'pagos', path: '/pagos.html', heading: 'Control financiero' },
@@ -89,7 +89,7 @@ test('navegacion principal recorre todas las secciones', async ({ page }) => {
   await page.goto('/index.html', { waitUntil: 'networkidle' });
   const links = [
     ['Pacientes', /Gestion de pacientes/],
-    ['Tratamientos', /Planes clinicos/],
+    ['Tratamientos', /Tratamientos/],
     ['Agenda', /Jornada de atenciones/],
     ['Pagos', /Control financiero/],
     ['Respaldos', /Copias locales/]

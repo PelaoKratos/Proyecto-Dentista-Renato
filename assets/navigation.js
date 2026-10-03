@@ -72,12 +72,14 @@ if (navigationRoot) {
       <div><strong>Consulta Dental</strong><span>Dr. Renato</span></div>
     </div>
     <nav class="nav-list" aria-label="Navegacion principal">${links}</nav>
-    <button class="nav-item sidebar-logout" type="button" id="logoutButton">
-      <span class="nav-icon" aria-hidden="true">↪</span>Cerrar sesion
-    </button>
-    <div class="backup-status">
-      <span class="status-dot"></span>
-      <div><strong>Respaldo local</strong><span>Base local protegida</span></div>
+    <div class="sidebar-footer">
+      <button class="nav-item sidebar-logout" type="button" id="logoutButton">
+        <span class="nav-icon" aria-hidden="true">↪</span>Cerrar sesión
+      </button>
+      <div class="backup-status">
+        <span class="status-dot"></span>
+        <div><strong>Respaldo local</strong><span>Base local protegida</span></div>
+      </div>
     </div>
   `;
 }
