@@ -12,12 +12,13 @@
     <link rel="stylesheet" href="./assets/ui-polish-workflows.css" />
     <link rel="stylesheet" href="./assets/ui-polish-patient.css" />
     <link rel="stylesheet" href="./assets/ui-polish-layout.css" />
+    <link rel="stylesheet" href="./assets/ui-polish-payments.css" />
   </head>
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Navegacion principal" data-navigation></aside>
 
-      <main class="main-content module-page">
+      <main class="main-content module-page payments-page">
         <header class="topbar"><div><span class="eyebrow">Pagos</span><h1>Control financiero</h1></div><button class="text-button primary-action" id="focusPaymentForm" type="button">Registrar pago</button></header>
         <section class="metrics-grid">
           <article class="metric-card" data-payment-metric="month"><span>Cobrado este mes</span><strong>$0</strong><small>0 pagos registrados</small></article>
@@ -47,12 +48,28 @@
           </section>
           <aside class="detail-card">
             <div class="section-heading"><div><span class="eyebrow">Abono</span><h2>Registrar pago</h2></div></div>
-            <p class="form-helper">Elige el tratamiento y registra el abono; la pantalla calculara el saldo pendiente.</p>
+            <p class="form-helper">Revisa el saldo del tratamiento y el total pendiente del paciente antes de registrar el abono.</p>
             <form class="compact-form" id="paymentForm">
               <label>Paciente<select name="patient_id" id="paymentPatient"></select></label>
               <label>Tratamiento<select name="patient_treatment_id" id="paymentTreatment"></select></label>
+              <section class="payment-balances" aria-label="Saldos pendientes" aria-live="polite">
+                <article class="payment-balance-card">
+                  <span>Por pagar del tratamiento</span>
+                  <strong id="paymentTreatmentBalance">$0</strong>
+                  <small id="paymentTreatmentBalanceNote">Selecciona un tratamiento</small>
+                </article>
+                <article class="payment-balance-card patient-balance-card">
+                  <span>Total pendiente del paciente</span>
+                  <strong id="paymentPatientBalance">$0</strong>
+                  <small>Saldo combinado de sus tratamientos</small>
+                </article>
+              </section>
               <label>Monto<input name="amount" type="number" placeholder="0" required /></label>
               <label>Metodo<select name="method"><option>Transferencia</option><option>Tarjeta</option><option>Efectivo</option></select></label>
+              <details class="payment-notes-details">
+                <summary>Agregar nota (opcional)</summary>
+                <label>Notas<textarea name="notes" placeholder="Detalle del pago o abono"></textarea></label>
+              </details>
               <button class="text-button primary-action" type="submit">Guardar pago</button>
               <p class="form-status" id="paymentStatus" aria-live="polite"></p>
             </form>

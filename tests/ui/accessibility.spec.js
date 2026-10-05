@@ -65,10 +65,13 @@ for (const path of mainPages) {
   });
 }
 
-test('registrar un abono desde la ficha conserva su tratamiento asociado', async ({ page }) => {
+test('registrar un abono desde la ficha conserva su tratamiento asociado', async ({ page }, testInfo) => {
   const summary = {
     patient: { id: 1, first_name: 'Ana', last_name: 'Prueba' },
-    treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', status: 'in_progress', final_price: 100 }],
+    treatments: [
+      { id: 7, patient_id: 1, title: 'Endodoncia', status: 'in_progress', final_price: 100 },
+      { id: 8, patient_id: 1, title: 'Restauración', status: 'planned', final_price: 200 }
+    ],
     appointments: [], sessions: [], payments: [], attachments: []
   };
   let payment;
@@ -85,9 +88,21 @@ test('registrar un abono desde la ficha conserva su tratamiento asociado', async
   await page.goto('/paciente.html?id=1', { waitUntil: 'networkidle' });
   await page.getByRole('tab', { name: 'Pagos' }).click();
   await page.getByRole('button', { name: 'Registrar pago' }).click();
-  await page.getByLabel('Monto').fill('50');
-  await page.getByRole('button', { name: 'Guardar pago' }).click();
+  const form = page.locator('.patient-payment-form');
+  await expect(form.locator('[data-payment-treatment-balance]')).toContainText('100');
+  await expect(form.locator('[data-payment-patient-balance]')).toContainText('300');
+  await form.locator('select[name="patient_treatment_id"]').selectOption('8');
+  await expect(form.locator('[data-payment-treatment-balance]')).toContainText('200');
+  await expect(form.locator('input[name="amount"]')).toHaveValue('200');
+  await form.locator('select[name="patient_treatment_id"]').selectOption('7');
+  await expect(form.locator('input[name="amount"]')).toHaveValue('100');
+  await expect(form.locator('.patient-payment-notes')).not.toHaveAttribute('open', '');
+  await form.screenshot({ path: testInfo.outputPath('paciente-pago.png') });
+  await form.locator('.patient-payment-notes summary').click();
+  await form.getByLabel('Notas').fill('Abono de control');
+  await form.getByLabel('Monto').fill('50');
+  await form.getByRole('button', { name: 'Guardar pago' }).click();
   await expect.poll(() => summary.payments.length).toBe(1);
-  expect(payment).toMatchObject({ patient_id: 1, patient_treatment_id: 7, amount: 50 });
+  expect(payment).toMatchObject({ patient_id: 1, patient_treatment_id: 7, amount: 50, notes: 'Abono de control' });
   await expect(page.getByRole('tabpanel', { name: 'Pagos' })).toContainText('Endodoncia');
 });

@@ -1,0 +1,120 @@
+/* Vista de pagos: formularios y saldos contenidos dentro de sus tarjetas. */
+.payments-page,
+.payments-page * {
+  box-sizing: border-box;
+}
+
+.payments-page > *,
+.payments-page .module-layout > *,
+.payments-page .section-heading,
+.payments-page .compact-form,
+.payments-page .records-row > * {
+  min-width: 0;
+}
+
+.payments-page .module-layout {
+  align-items: stretch;
+}
+
+.payments-page .module-layout > .detail-card {
+  min-width: 0;
+  max-width: 100%;
+  align-self: stretch;
+}
+
+.payments-page .module-layout > aside.detail-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.payments-page .records-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.payments-page .payment-records-row {
+  min-width: 0;
+  grid-template-columns:
+    minmax(90px, 1fr)
+    minmax(100px, 1.2fr)
+    minmax(74px, 0.8fr)
+    minmax(82px, 0.9fr)
+    minmax(72px, 0.8fr)
+    minmax(82px, 0.8fr);
+  gap: 7px;
+  padding-right: 8px;
+  padding-left: 8px;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.payments-page .payment-balances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.payments-page .payment-balance-card {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.payments-page .payment-balance-card span,
+.payments-page .payment-balance-card small {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.payments-page .payment-balance-card strong {
+  color: var(--ink);
+  font-size: clamp(1rem, 2vw, 1.28rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.payments-page .patient-balance-card {
+  background: var(--surface-alt);
+}
+
+.payments-page .payment-notes-details {
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.payments-page .payment-notes-details summary {
+  width: fit-content;
+  color: var(--teal-dark);
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.payments-page .payment-notes-details[open] label {
+  margin-top: 10px;
+}
+
+.payments-page .payment-notes-details textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.payments-page .compact-form > button,
+.payments-page .compact-form > .form-status {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .payments-page .module-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

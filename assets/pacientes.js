@@ -60,7 +60,9 @@ function renderPatients() {
   `;
 }
 function csvCell(value) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const raw = String(value ?? "");
+  const safe = /^[=+\-@＝＋－＠\s\u0000-\u001f]/u.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 function exportPatients() {

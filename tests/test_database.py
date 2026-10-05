@@ -20,6 +20,12 @@ class DatabaseTests(unittest.TestCase):
         database.DB_PATH = self.original_db_path
         self.tempdir.cleanup()
 
+    def test_new_database_starts_without_demo_records(self):
+        self.assertEqual(database.fetch_all("SELECT * FROM patients"), [])
+        self.assertEqual(database.fetch_all("SELECT * FROM patient_treatments"), [])
+        self.assertEqual(database.fetch_all("SELECT * FROM appointments"), [])
+        self.assertEqual(database.fetch_all("SELECT * FROM payments"), [])
+
     def test_insert_and_update_patient(self):
         created = database.insert_record(
             "patients",

@@ -30,4 +30,5 @@ storage = {
     "origins": [],
 }
 (results / "auth-storage.json").write_text(json.dumps(storage), encoding="utf-8")
+database.seed_demo_data()
 server.run(port=8765)

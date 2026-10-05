@@ -14,6 +14,9 @@ from pathlib import Path
 SESSION_SECONDS = 30 * 60
 LOCK_SECONDS = 60
 MAX_FAILED_LOGINS = 5
+SCRYPT_N = 1 << 14
+SCRYPT_R = 8
+SCRYPT_P = 5
 
 
 class AuthManager:
@@ -32,8 +35,8 @@ class AuthManager:
         with self._lock:
             self.credentials_path.parent.mkdir(parents=True, exist_ok=True)
             salt = secrets.token_bytes(16)
-            verifier = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=16384, r=8, p=1)
-            payload = {"version": 1, "salt": salt.hex(), "verifier": verifier.hex()}
+            verifier = self._derive_password(password, salt, SCRYPT_P)
+            payload = {"version": 2, "salt": salt.hex(), "verifier": verifier.hex()}
             try:
                 with self.credentials_path.open("x", encoding="utf-8") as handle:
                     json.dump(payload, handle)
@@ -56,7 +59,10 @@ class AuthManager:
                 saved = json.loads(self.credentials_path.read_text(encoding="utf-8"))
                 salt = bytes.fromhex(saved["salt"])
                 expected = bytes.fromhex(saved["verifier"])
-                actual = hashlib.scrypt(password.encode("utf-8"), salt=salt, n=16384, r=8, p=1)
+                version = saved.get("version", 1)
+                if version not in {1, 2}:
+                    raise ValueError("Formato de clave no compatible.")
+                actual = self._derive_password(password, salt, 1 if version == 1 else SCRYPT_P)
                 valid = hmac.compare_digest(actual, expected)
             except (OSError, ValueError, KeyError, TypeError) as exc:
                 raise RuntimeError("No se pudo verificar la clave de administrador.") from exc
@@ -68,6 +74,12 @@ class AuthManager:
                 return None
             self._failed_logins = 0
             self._locked_until = 0.0
+            if version == 1:
+                try:
+                    self._upgrade_credentials(password)
+                except OSError:
+                    # A read-only data directory must not lock out the correct password.
+                    pass
             return self._new_session()
 
     def authenticated(self, token: str | None) -> bool:
@@ -86,6 +98,26 @@ class AuthManager:
         if token:
             with self._lock:
                 self._sessions.pop(token, None)
+
+    @staticmethod
+    def _derive_password(password: str, salt: bytes, parallelism: int) -> bytes:
+        return hashlib.scrypt(password.encode("utf-8"), salt=salt, n=SCRYPT_N, r=SCRYPT_R, p=parallelism)
+
+    def _upgrade_credentials(self, password: str) -> None:
+        salt = secrets.token_bytes(16)
+        verifier = self._derive_password(password, salt, SCRYPT_P)
+        payload = {"version": 2, "salt": salt.hex(), "verifier": verifier.hex()}
+        temporary = self.credentials_path.with_name(f".{self.credentials_path.name}.{secrets.token_hex(8)}.tmp")
+        try:
+            with temporary.open("x", encoding="utf-8") as handle:
+                json.dump(payload, handle)
+            try:
+                os.chmod(temporary, 0o600)
+            except OSError:
+                pass
+            os.replace(temporary, self.credentials_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     def _new_session(self) -> str:
         token = secrets.token_urlsafe(32)

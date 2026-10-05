@@ -76,6 +76,7 @@ if (navigationRoot) {
       <button class="nav-item sidebar-logout" type="button" id="logoutButton">
         <span class="nav-icon" aria-hidden="true">↪</span>Cerrar sesión
       </button>
+      <p class="sidebar-logout-status" id="logoutStatus" role="alert"></p>
       <div class="backup-status">
         <span class="status-dot"></span>
         <div><strong>Respaldo local</strong><span>Base local protegida</span></div>
@@ -86,10 +87,15 @@ if (navigationRoot) {
 
 document.querySelector("#logoutButton")?.addEventListener("click", async () => {
   const button = document.querySelector("#logoutButton");
+  const status = document.querySelector("#logoutStatus");
   button.disabled = true;
+  status.textContent = "";
   try {
-    await fetch("/api/auth/logout", { method: "POST" });
-  } finally {
+    const response = await fetch("/api/auth/logout", { method: "POST" });
+    if (!response.ok) throw new Error("No se pudo cerrar la sesión. Inténtalo de nuevo.");
     location.assign("/login.html");
+  } catch (error) {
+    status.textContent = "No se pudo cerrar la sesión. Inténtalo de nuevo.";
+    button.disabled = false;
   }
 });

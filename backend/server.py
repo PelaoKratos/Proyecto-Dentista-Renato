@@ -34,7 +34,6 @@ from backend.database import (  # noqa: E402
     fetch_one,
     init_db,
     insert_record,
-    seed_demo_data,
     update_record,
 )
 from backend.validation import (  # noqa: E402
@@ -774,7 +773,7 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
 
 
 def run(host: str = "127.0.0.1", port: int = 8000) -> None:
-    seed_demo_data()
+    init_db()
     def daily_backups() -> None:
         while True:
             try:

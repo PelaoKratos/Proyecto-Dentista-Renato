@@ -817,6 +817,26 @@ async function bindActionForm(returnFocus) {
   };
 
   if (form.dataset.form === "appointment") bindAppointmentPriceForm(form);
+  if (form.dataset.form === "payment") {
+    const treatmentSelect = form.elements.patient_treatment_id;
+    const amountInput = form.elements.amount;
+    const treatmentDue = form.querySelector("[data-payment-treatment-balance]");
+    const treatmentNote = form.querySelector("[data-payment-treatment-note]");
+    const patientDue = form.querySelector("[data-payment-patient-balance]");
+    const updateBalances = () => {
+      const selected = currentSummary.treatments.find((item) => Number(item.id) === Number(treatmentSelect.value));
+      const selectedDue = selected ? treatmentBalance(currentSummary, selected) : 0;
+      const totalDue = balance(currentSummary);
+      treatmentDue.textContent = DentalAPI.money(selectedDue);
+      treatmentNote.textContent = selected
+        ? `Total ${DentalAPI.money(treatmentTotal(selected))} · abonado ${DentalAPI.money(treatmentPaid(currentSummary, selected.id))}`
+        : "Pago general sin tratamiento";
+      patientDue.textContent = DentalAPI.money(totalDue);
+      amountInput.value = (selected ? selectedDue : totalDue) || "";
+    };
+    treatmentSelect.addEventListener("change", updateBalances);
+    updateBalances();
+  }
   form.addEventListener("input", () => {
     if (status.dataset.state === "error") {
       status.textContent = "";

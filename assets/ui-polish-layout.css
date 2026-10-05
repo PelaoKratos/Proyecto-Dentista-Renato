@@ -328,6 +328,8 @@ td, th, p, strong, span, label, a, time, small, h1, h2, h3, h4 { overflow-wrap: 
   padding: 8px 12px;
 }
 .sidebar-footer .backup-status { margin-top: 0; }
+.sidebar-logout-status { margin: 0 12px; color: #a83229; font-size: 0.8rem; line-height: 1.35; }
+.sidebar-logout-status:empty { display: none; }
 
 /* Filas alternadas con tonos suaves para facilitar la lectura. */
 

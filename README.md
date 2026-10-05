@@ -67,6 +67,8 @@ Estas carpetas estan excluidas en `.gitignore` para evitar publicar informacion 
 
 ## Datos demo
 
+Una instalación nueva abre con la base de datos vacía. Los registros de ejemplo solo se agregan si ejecutas el comando siguiente:
+
 Para llenar la aplicacion con pacientes, tratamientos, evoluciones, agenda, pagos y radiografias de ejemplo:
 
 ```powershell

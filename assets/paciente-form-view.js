@@ -160,12 +160,27 @@
           </form>
         `,
         payment: `
-          <form class="compact-form action-form" data-form="payment">
+          <form class="compact-form action-form patient-payment-form" data-form="payment">
             <label>Tratamiento<select name="patient_treatment_id"><option value="">Sin tratamiento asociado</option>${renderTreatmentOptions(paymentTreatment?.id)}</select></label>
             <label>Fecha pago<input name="payment_date" type="date" value="${DentalAPI.localDateString()}" required /></label>
+            <div class="patient-payment-balances" aria-label="Saldos pendientes" aria-live="polite">
+              <div class="patient-payment-balance">
+                <span>Por pagar del tratamiento</span>
+                <strong data-payment-treatment-balance>${DentalAPI.money(paymentTreatment ? treatmentBalance(currentSummary, paymentTreatment) : 0)}</strong>
+                <small data-payment-treatment-note>${paymentTreatment ? `Total ${DentalAPI.money(Number(paymentTreatment.final_price ?? paymentTreatment.estimated_price ?? 0))}` : "Pago general sin tratamiento"}</small>
+              </div>
+              <div class="patient-payment-balance patient-payment-total">
+                <span>Total pendiente del paciente</span>
+                <strong data-payment-patient-balance>${DentalAPI.money(balance(currentSummary))}</strong>
+                <small>Saldo combinado de sus tratamientos</small>
+              </div>
+            </div>
             <label>Monto<input name="amount" type="number" min="1" value="${suggestedPayment || ""}" placeholder="0" required /></label>
             <label>Metodo<select name="method"><option>Transferencia</option><option>Tarjeta</option><option>Efectivo</option><option>Otro</option></select></label>
-            <label>Notas<textarea name="notes" placeholder="Detalle del pago o abono"></textarea></label>
+            <details class="patient-payment-notes">
+              <summary>Agregar nota (opcional)</summary>
+              <label>Notas<textarea name="notes" placeholder="Detalle del pago o abono"></textarea></label>
+            </details>
             <button class="text-button primary-action" type="submit">Guardar pago</button>
             <p class="form-status" aria-live="polite"></p>
           </form>

@@ -1,5 +1,7 @@
+import hashlib
 import http.client
 import json
+import secrets
 import tempfile
 import threading
 import unittest
@@ -66,3 +68,26 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.request("GET", "/index.html", cookie=new_cookie)[0], 302)
         self.manager._sessions[cookie.split("=", 1)[1]] = 0
         self.assertEqual(self.request("GET", "/index.html", cookie=cookie)[0], 302)
+
+
+class PasswordMigrationTests(unittest.TestCase):
+    def test_existing_password_upgrades_without_changing_it(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            credentials = Path(temporary) / "admin-auth.json"
+            password = "clave-segura-12345"
+            salt = secrets.token_bytes(16)
+            legacy = {
+                "version": 1,
+                "salt": salt.hex(),
+                "verifier": hashlib.scrypt(password.encode("utf-8"), salt=salt, n=16384, r=8, p=1).hex(),
+            }
+            credentials.write_text(json.dumps(legacy), encoding="utf-8")
+            manager = AuthManager(credentials)
+            self.assertIsNone(manager.login("clave-equivocada"))
+            self.assertEqual(json.loads(credentials.read_text(encoding="utf-8")), legacy)
+            token = manager.login(password)
+            self.assertTrue(manager.authenticated(token))
+            upgraded = json.loads(credentials.read_text(encoding="utf-8"))
+            self.assertEqual(upgraded["version"], 2)
+            self.assertNotEqual(upgraded["salt"], legacy["salt"])
+            self.assertTrue(manager.authenticated(manager.login(password)))

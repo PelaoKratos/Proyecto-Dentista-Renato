@@ -6,6 +6,9 @@ const paymentStatus = document.querySelector("#paymentStatus");
 const focusPaymentForm = document.querySelector("#focusPaymentForm");
 const paymentMetrics = document.querySelectorAll("[data-payment-metric]");
 const paymentStateFilter = document.querySelector("#paymentStateFilter");
+const paymentTreatmentBalance = document.querySelector("#paymentTreatmentBalance");
+const paymentTreatmentBalanceNote = document.querySelector("#paymentTreatmentBalanceNote");
+const paymentPatientBalance = document.querySelector("#paymentPatientBalance");
 
 let patients = [];
 let treatments = [];
@@ -22,10 +25,10 @@ function monthKey(dateValue) {
 
 function patientBalance(patientId) {
   const treatmentTotal = treatments
-    .filter((treatment) => treatment.patient_id === patientId)
+    .filter((treatment) => Number(treatment.patient_id) === Number(patientId))
     .reduce((total, treatment) => total + Number(treatment.final_price || treatment.estimated_price || 0), 0);
   const paid = payments
-    .filter((payment) => payment.patient_id === patientId)
+    .filter((payment) => Number(payment.patient_id) === Number(patientId))
     .reduce((total, payment) => total + Number(payment.amount || 0), 0);
   return Math.max(treatmentTotal - paid, 0);
 }
@@ -99,18 +102,30 @@ function normalize(value) {
 
 function renderTreatmentsForPatient() {
   const patientId = Number(paymentPatient.value);
-  const options = treatments.filter((treatment) => treatment.patient_id === patientId);
+  const options = treatments.filter((treatment) => Number(treatment.patient_id) === Number(patientId));
   paymentTreatment.innerHTML =
     options.map((treatment) => `<option value="${treatment.id}">${DentalAPI.escapeHtml(treatment.title)} - saldo ${DentalAPI.money(treatmentPending(treatment))}</option>`).join("") ||
     `<option value="">Sin tratamiento asociado</option>`;
   updatePaymentAmountSuggestion();
 }
 
+function renderPaymentBalances() {
+  const patientId = Number(paymentPatient.value);
+  const treatment = treatments.find((item) => Number(item.id) === Number(paymentTreatment.value));
+  const patientDue = patientId ? patientBalance(patientId) : 0;
+
+  paymentTreatmentBalance.textContent = DentalAPI.money(treatment ? treatmentPending(treatment) : 0);
+  paymentTreatmentBalanceNote.textContent = treatment
+    ? `Total ${DentalAPI.money(treatmentTotal(treatment))} · abonado ${DentalAPI.money(treatmentPaid(treatment.id))}`
+    : "Selecciona un tratamiento";
+  paymentPatientBalance.textContent = DentalAPI.money(patientDue);
+}
+
 function updatePaymentAmountSuggestion() {
-  const treatment = treatments.find((item) => item.id === Number(paymentTreatment.value));
+  const treatment = treatments.find((item) => Number(item.id) === Number(paymentTreatment.value));
   const amountInput = paymentForm.querySelector("input[name='amount']");
-  if (!treatment) return;
-  amountInput.value = treatmentPending(treatment) || "";
+  amountInput.value = treatment ? treatmentPending(treatment) || "" : "";
+  renderPaymentBalances();
 }
 
 function renderPayments() {
@@ -197,10 +212,11 @@ paymentForm.addEventListener("submit", async (event) => {
       payment_date: DentalAPI.localDateString(),
       amount: Number(formData.get("amount")),
       method: formData.get("method"),
-      notes: "Pago registrado desde la aplicacion"
+      notes: String(formData.get("notes") || "").trim()
     });
     paymentStatus.textContent = "Pago guardado.";
     paymentForm.reset();
+    paymentForm.querySelector(".payment-notes-details").open = false;
     await loadPagos();
     submitButton.disabled = false;
   } catch (error) {

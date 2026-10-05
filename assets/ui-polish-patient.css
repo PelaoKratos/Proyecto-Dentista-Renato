@@ -56,3 +56,67 @@
 .patient-page .hero-actions { gap: 6px; }
 .patient-page .hero-actions .text-button { padding: 8px 10px; font-size: 12px; }
 @media (max-width: 600px) { .patient-page .patient-contact-line span { border-right: 0; } }
+
+/* Pago desde la ficha del paciente. */
+.patient-page .action-drawer:has(.patient-payment-form) {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto 24px;
+}
+
+.patient-page .patient-payment-form > *,
+.patient-page .patient-payment-form label,
+.patient-page .patient-payment-balances > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.patient-page .patient-payment-balances {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.patient-page .patient-payment-balance {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-strong);
+}
+
+.patient-page .patient-payment-total { background: var(--surface-alt); }
+
+.patient-page .patient-payment-balance span,
+.patient-page .patient-payment-balance small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.patient-page .patient-payment-balance strong {
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.patient-page .patient-payment-notes {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.patient-page .patient-payment-notes summary {
+  width: fit-content;
+  color: var(--teal-dark);
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.patient-page .patient-payment-notes[open] label { margin-top: 10px; }
+.patient-page .patient-payment-notes textarea { min-width: 0; max-width: 100%; }
