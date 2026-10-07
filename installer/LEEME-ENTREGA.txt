@@ -1,0 +1,25 @@
+CONSULTA DENTAL RENATO - ENTREGA PARA INSTALACION
+
+Requisito: Windows con Python 3.12 o superior instalado.
+No se necesita Node.js ni conexion a internet.
+
+1. Copia toda esta carpeta al computador de la consulta.
+2. Haz doble clic en INSTALAR.cmd.
+3. El instalador copiara la aplicacion a:
+   %LOCALAPPDATA%\ConsultaDentalRenato
+   y creara el acceso directo Consulta Dental Renato en el Escritorio.
+4. La aplicacion se abrira en el navegador. En el primer ingreso,
+   crea una clave de administrador de al menos 12 caracteres.
+5. Para cerrar la aplicacion y detener el servidor, usa el icono
+   Consulta Dental Renato en el area de notificacion de Windows.
+
+La entrega no contiene pacientes, pagos, radiografias, claves ni
+respaldos anteriores. La instalacion crea los datos nuevos en la
+carpeta data del destino. Si se ejecuta de nuevo sobre una instalacion
+existente, conserva data, media y backups de ese computador.
+
+Los respaldos se generan en la carpeta backups del destino. Copia
+periodicamente esos ZIP a una unidad externa segura.
+
+Si falta Python, instalalo desde https://www.python.org/downloads/
+y marca Add python.exe to PATH durante la instalacion.

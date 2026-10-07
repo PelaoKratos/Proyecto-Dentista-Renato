@@ -102,7 +102,7 @@ function renderAppointments() {
         <article class="appointment ${index === 0 ? "current" : ""}">
           <time>${DentalAPI.time(appointment.starts_at)}</time>
           <div>
-            <strong>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")}</strong>
+            <strong>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</strong>
             <span>${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")}</span>
           </div>
           <span class="pill ${statusClass}">${DentalAPI.escapeHtml(statusText)}</span>
@@ -123,20 +123,24 @@ function renderPatientList() {
   patientList.innerHTML = visiblePatients
     .map((patient) => {
       const treatment = patientTreatment(patient.id);
+      const name = DentalAPI.fullName(patient);
       return `
-        <button class="patient-row ${patient.id === selectedPatientId ? "active" : ""}" type="button" data-patient-id="${patient.id}">
-          <span class="avatar">${DentalAPI.initials(patient)}</span>
-          <div>
-            <strong>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</strong>
-            <span>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")} · ${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento activo")}</span>
-          </div>
-          <span class="row-status">${DentalAPI.escapeHtml(treatment ? DentalAPI.statusLabel(treatment.status) : "Ficha")}</span>
-        </button>
+        <article class="patient-row ${patient.id === selectedPatientId ? "active" : ""}">
+
+            <span class="avatar">${DentalAPI.initials(patient)}</span>
+            <div>
+              <strong>${DentalAPI.patientLink(patient.id, name)}</strong>
+              <span>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")} · ${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento activo")}</span>
+            </div>
+          <button class="row-status patient-row-summary" type="button" data-patient-id="${patient.id}" aria-label="Mostrar resumen de ${DentalAPI.escapeHtml(name)}">
+            ${DentalAPI.escapeHtml(treatment ? DentalAPI.statusLabel(treatment.status) : "Ficha")}
+          </button>
+        </article>
       `;
     })
     .join("");
 
-  document.querySelectorAll("[data-patient-id]").forEach((button) => {
+  patientList.querySelectorAll("[data-patient-id]").forEach((button) => {
     button.addEventListener("click", () => {
       selectedPatientId = Number(button.dataset.patientId);
       renderPatientList();
@@ -180,7 +184,7 @@ async function renderPatientSummary() {
   patientSummary.innerHTML = `
     <article class="summary-block">
       <header>
-        <strong>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</strong>
+        <strong>${DentalAPI.patientLink(patient.id, DentalAPI.fullName(patient))}</strong>
         <span class="pill">${DentalAPI.escapeHtml(treatment ? DentalAPI.statusLabel(treatment.status) : "Ficha")}</span>
       </header>
       <p>${DentalAPI.escapeHtml(patient.phone || "Sin telefono")} · Saldo: ${DentalAPI.money(patientBalance(patient.id))}</p>
@@ -227,7 +231,7 @@ function renderAttachments() {
     const patient = patientById.get(latest.patient_id);
     rxImage.src = `./${latest.stored_path}`;
     rxTitle.textContent = latest.category || latest.original_filename;
-    rxText.textContent = patient ? `Asociada a ${DentalAPI.fullName(patient)}` : "Adjunto clinico";
+    rxText.innerHTML = patient ? DentalAPI.patientLink(patient.id, `Asociada a ${DentalAPI.fullName(patient)}`) : "Adjunto clinico";
     rxFile.textContent = `Archivo: ${latest.original_filename}`;
   }
 
@@ -245,7 +249,7 @@ function renderAttachments() {
           return `
             <div role="row">
               <span role="cell">${DentalAPI.escapeHtml(attachment.category || attachment.file_type)}</span>
-              <span role="cell">${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
+              <span role="cell">${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
               <span role="cell">${DentalAPI.date(attachment.taken_at || attachment.created_at, { day: "2-digit", month: "2-digit" })}</span>
             </div>
           `;

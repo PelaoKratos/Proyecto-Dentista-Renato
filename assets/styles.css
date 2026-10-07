@@ -2143,3 +2143,24 @@ h2 {
     padding: 0;
   }
 }
+
+.patient-name-link {
+  color: var(--teal-dark);
+  text-decoration: none;
+  text-underline-offset: 0.15em;
+}
+.patient-name-link:hover,
+.patient-name-link:focus-visible {
+  text-decoration: underline;
+}
+.patient-row-summary {
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+.patient-row-summary:hover {
+  border-color: var(--line);
+  background: var(--surface-strong);
+}

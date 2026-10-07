@@ -58,7 +58,7 @@ function renderAppointments() {
       <article class="appointment-editor status-${DentalAPI.escapeHtml(status)}" data-appointment-card="${appointment.id}">
         <time>${String(appointment.starts_at || "").slice(11, 16)}</time>
         <div class="appointment-main">
-          <strong>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")}</strong>
+          <strong>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</strong>
           <span>${DentalAPI.escapeHtml(appointment.reason || "Atencion dental")}</span>
           ${appointment.notes ? `<small>${DentalAPI.escapeHtml(appointment.notes)}</small>` : ""}
         </div>

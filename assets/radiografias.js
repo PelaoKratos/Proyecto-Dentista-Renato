@@ -105,7 +105,7 @@ function renderPreview(rows = visibleAttachments()) {
     ${mediaMarkup}
     <div class="attachment-details">
       <strong>${DentalAPI.escapeHtml(attachment.category || attachment.original_filename)}</strong>
-      <span>${DentalAPI.escapeHtml(patientName(attachment.patient_id))} · ${DentalAPI.date(attachment.taken_at || attachment.created_at)}</span>
+      <span>${DentalAPI.patientLink(attachment.patient_id, patientName(attachment.patient_id))} · ${DentalAPI.date(attachment.taken_at || attachment.created_at)}</span>
       <span>${DentalAPI.escapeHtml(typeLabel(attachment.file_type))} · ${DentalAPI.escapeHtml(treatmentTitle(attachment.patient_treatment_id))}</span>
       <span>${DentalAPI.escapeHtml(sessionTitle(attachment.clinical_session_id))}</span>
       <p>${DentalAPI.escapeHtml(attachment.notes || "Adjunto registrado en la ficha del paciente.")}</p>
@@ -136,7 +136,7 @@ function renderList() {
             (attachment) => `
               <div role="row" data-attachment-row="${attachment.id}" class="${attachment.id === activeAttachmentId ? "selected-row" : ""}">
                 <span role="cell">${DentalAPI.escapeHtml(attachment.category || typeLabel(attachment.file_type))}</span>
-                <span role="cell">${DentalAPI.escapeHtml(patientName(attachment.patient_id))}</span>
+                <span role="cell">${DentalAPI.patientLink(attachment.patient_id, patientName(attachment.patient_id))}</span>
                 <span role="cell">${DentalAPI.escapeHtml(treatmentTitle(attachment.patient_treatment_id))} · ${DentalAPI.escapeHtml(sessionTitle(attachment.clinical_session_id))}</span>
                 <span role="cell" class="inline-actions">
                   <button class="text-button" type="button" data-preview-attachment="${attachment.id}">Ver</button>

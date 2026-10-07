@@ -83,6 +83,12 @@ const DentalAPI = (() => {
     return `${patient.first_name || ""} ${patient.last_name || ""}`.trim();
   }
 
+  function patientLink(patientId, label) {
+    const safeLabel = escapeHtml(label || "Paciente");
+    if (!patientId) return safeLabel;
+    return `<a class="patient-name-link" href="./paciente.html?id=${encodeURIComponent(patientId)}">${safeLabel}</a>`;
+  }
+
   function initials(patient) {
     const first = patient.first_name ? patient.first_name[0] : "";
     const last = patient.last_name ? patient.last_name[0] : "";
@@ -119,6 +125,7 @@ const DentalAPI = (() => {
     fullName,
     get,
     initials,
+    patientLink,
     localDateString,
     money,
     post,

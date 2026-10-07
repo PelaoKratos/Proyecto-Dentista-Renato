@@ -118,3 +118,71 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Filtros y paginación del historial de movimientos. */
+.payments-page .payment-history-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+  margin: 4px 0 12px;
+  min-width: 0;
+}
+.payments-page .payment-history-filters label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.payments-page .payment-history-filters select,
+.payments-page .payment-history-filters input {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.payments-page .payment-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 10px 0;
+}
+.payments-page .payment-pagination[hidden] {
+  display: none;
+}
+.payments-page .payment-page-button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--teal-dark);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.payments-page .payment-page-button[aria-current="page"] {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #fff;
+}
+.payments-page .payment-page-button:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+.payments-page .payment-results-count {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}

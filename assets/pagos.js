@@ -6,6 +6,12 @@ const paymentStatus = document.querySelector("#paymentStatus");
 const focusPaymentForm = document.querySelector("#focusPaymentForm");
 const paymentMetrics = document.querySelectorAll("[data-payment-metric]");
 const paymentStateFilter = document.querySelector("#paymentStateFilter");
+const paymentDateFrom = document.querySelector("#paymentDateFrom");
+const paymentDateTo = document.querySelector("#paymentDateTo");
+const paymentPatientFilter = document.querySelector("#paymentPatientFilter");
+const paymentTreatmentFilter = document.querySelector("#paymentTreatmentFilter");
+const paymentResultsCount = document.querySelector("#paymentResultsCount");
+const paginationContainers = [document.querySelector("#paymentsPaginationTop"), document.querySelector("#paymentsPaginationBottom")];
 const paymentTreatmentBalance = document.querySelector("#paymentTreatmentBalance");
 const paymentTreatmentBalanceNote = document.querySelector("#paymentTreatmentBalanceNote");
 const paymentPatientBalance = document.querySelector("#paymentPatientBalance");
@@ -14,6 +20,9 @@ let patients = [];
 let treatments = [];
 let payments = [];
 let selectedPaymentState = "";
+let currentPaymentPage = 1;
+const PAYMENT_PAGE_SIZE = 20;
+const PAYMENT_PAGE_WINDOW = 5;
 
 function localDateString(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -128,26 +137,100 @@ function updatePaymentAmountSuggestion() {
   renderPaymentBalances();
 }
 
-function renderPayments() {
-  const patientById = new Map(patients.map((patient) => [patient.id, patient]));
-  const treatmentById = new Map(treatments.map((treatment) => [treatment.id, treatment]));
-  const visiblePayments = payments.filter((payment) => {
-    if (!selectedPaymentState) return true;
-    const treatment = treatmentById.get(payment.patient_treatment_id);
-    return paymentState(treatment) === selectedPaymentState;
+function renderPaymentFilters() {
+  const previousPatient = paymentPatientFilter.value;
+  const previousTreatment = paymentTreatmentFilter.value;
+  const patientById = new Map(patients.map((patient) => [Number(patient.id), patient]));
+  const patientOptions = [...patients]
+    .sort((a, b) => DentalAPI.fullName(a).localeCompare(DentalAPI.fullName(b), "es"))
+    .map((patient) => `<option value="${patient.id}">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</option>`)
+    .join("");
+  paymentPatientFilter.innerHTML = `<option value="">Todos</option>${patientOptions}`;
+  if ([...paymentPatientFilter.options].some((option) => option.value === previousPatient)) {
+    paymentPatientFilter.value = previousPatient;
+  }
+
+  const treatmentOptions = [...treatments]
+    .sort((a, b) => {
+      const patientA = DentalAPI.fullName(patientById.get(Number(a.patient_id)) || {});
+      const patientB = DentalAPI.fullName(patientById.get(Number(b.patient_id)) || {});
+      return patientA.localeCompare(patientB, "es") || String(a.title).localeCompare(String(b.title), "es");
+    })
+    .map((treatment) => {
+      const patientName = DentalAPI.fullName(patientById.get(Number(treatment.patient_id)) || {});
+      const tooth = treatment.tooth_code ? ` · Pieza ${treatment.tooth_code}` : "";
+      const label = [patientName, treatment.title + tooth].filter(Boolean).join(" · ");
+      return `<option value="${treatment.id}">${DentalAPI.escapeHtml(label)}</option>`;
+    })
+    .join("");
+  paymentTreatmentFilter.innerHTML = `<option value="all">Todos</option><option value="none">Sin tratamiento</option>${treatmentOptions}`;
+  if ([...paymentTreatmentFilter.options].some((option) => option.value === previousTreatment)) {
+    paymentTreatmentFilter.value = previousTreatment;
+  }
+}
+
+function filteredPayments() {
+  const treatmentById = new Map(treatments.map((treatment) => [Number(treatment.id), treatment]));
+  const from = paymentDateFrom.value;
+  const through = paymentDateTo.value;
+
+  return [...payments]
+    .filter((payment) => {
+      const date = String(payment.payment_date || "").slice(0, 10);
+      if (selectedPaymentState && paymentState(treatmentById.get(Number(payment.patient_treatment_id))) !== selectedPaymentState) return false;
+      if (from && date < from) return false;
+      if (through && date > through) return false;
+      if (paymentPatientFilter.value && Number(payment.patient_id) !== Number(paymentPatientFilter.value)) return false;
+      if (paymentTreatmentFilter.value === "none" && payment.patient_treatment_id) return false;
+      if (paymentTreatmentFilter.value !== "all" && paymentTreatmentFilter.value !== "none" && Number(payment.patient_treatment_id) !== Number(paymentTreatmentFilter.value)) return false;
+      return true;
+    })
+    .sort((a, b) => String(b.payment_date || "").localeCompare(String(a.payment_date || "")) || Number(b.id || 0) - Number(a.id || 0));
+}
+
+function paginationMarkup(totalPages, page) {
+  const firstPage = Math.max(1, Math.min(page - Math.floor(PAYMENT_PAGE_WINDOW / 2), totalPages - PAYMENT_PAGE_WINDOW + 1));
+  const lastPage = Math.min(totalPages, firstPage + PAYMENT_PAGE_WINDOW - 1);
+  const pages = [];
+  for (let number = firstPage; number <= lastPage; number += 1) {
+    pages.push(`<button class="payment-page-button" type="button" data-payment-page="${number}" aria-label="Pagina ${number}" ${number === page ? 'aria-current="page"' : ""}>${number}</button>`);
+  }
+  return `<button class="payment-page-button" type="button" data-payment-page="${Math.max(1, page - 1)}" aria-label="Pagina anterior" ${page === 1 ? "disabled" : ""}>‹ Anterior</button>${pages.join("")}<button class="payment-page-button" type="button" data-payment-page="${Math.min(totalPages, page + 1)}" aria-label="Pagina siguiente" ${page === totalPages ? "disabled" : ""}>Siguiente ›</button>`;
+}
+
+function renderPagination(totalPages) {
+  const markup = totalPages > 1 ? paginationMarkup(totalPages, currentPaymentPage) : "";
+  paginationContainers.forEach((container) => {
+    container.innerHTML = markup;
+    container.hidden = totalPages <= 1;
   });
+}
+
+function renderPayments() {
+  const patientById = new Map(patients.map((patient) => [Number(patient.id), patient]));
+  const treatmentById = new Map(treatments.map((treatment) => [Number(treatment.id), treatment]));
+  const filtered = filteredPayments();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAYMENT_PAGE_SIZE));
+  currentPaymentPage = Math.min(currentPaymentPage, totalPages);
+  const start = (currentPaymentPage - 1) * PAYMENT_PAGE_SIZE;
+  const visiblePayments = filtered.slice(start, start + PAYMENT_PAGE_SIZE);
+
+  paymentResultsCount.textContent = filtered.length
+    ? `Mostrando ${start + 1}–${Math.min(start + PAYMENT_PAGE_SIZE, filtered.length)} de ${filtered.length} movimientos · Pagina ${currentPaymentPage} de ${totalPages}`
+    : "0 movimientos para los filtros seleccionados.";
+  renderPagination(totalPages);
 
   paymentsTable.innerHTML = `
     <div class="records-row payment-records-row records-head"><span>Paciente</span><span>Tratamiento</span><span>Monto</span><span>Metodo</span><span>Saldo</span><span>Acciones</span></div>
     ${
       visiblePayments
         .map((payment) => {
-          const patient = patientById.get(payment.patient_id);
-          const treatment = treatmentById.get(payment.patient_treatment_id);
+          const patient = patientById.get(Number(payment.patient_id));
+          const treatment = treatmentById.get(Number(payment.patient_treatment_id));
           const state = paymentState(treatment);
           return `
             <div class="records-row payment-records-row" data-payment-row="${payment.id}">
-              <span>${DentalAPI.escapeHtml(patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
+              <span>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
               <span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento")}</strong><small><mark class="${paymentStateClass(state)}">${DentalAPI.escapeHtml(paymentStateLabel(state))}</mark></small></span>
               <span><input class="inline-input" data-payment-amount type="number" min="1" value="${DentalAPI.escapeHtml(payment.amount || "")}" aria-label="Monto pago" /></span>
               <span>
@@ -163,7 +246,7 @@ function renderPayments() {
             </div>
           `;
         })
-        .join("") || `<p class="empty-state">No hay pagos para el filtro seleccionado.</p>`
+        .join("") || `<p class="empty-state">No hay pagos para los filtros seleccionados.</p>`
     }
   `;
 }
@@ -182,6 +265,7 @@ async function loadPagos() {
     .join("");
   renderTreatmentsForPatient();
   renderMetrics();
+  renderPaymentFilters();
   renderPayments();
 }
 
@@ -190,7 +274,24 @@ paymentTreatment.addEventListener("change", updatePaymentAmountSuggestion);
 
 paymentStateFilter.addEventListener("change", () => {
   selectedPaymentState = paymentStateFilter.value;
+  currentPaymentPage = 1;
   renderPayments();
+});
+
+[paymentDateFrom, paymentDateTo, paymentPatientFilter, paymentTreatmentFilter].forEach((filter) => {
+  filter.addEventListener("change", () => {
+    currentPaymentPage = 1;
+    renderPayments();
+  });
+});
+
+paginationContainers.forEach((container) => {
+  container.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-payment-page]");
+    if (!button || button.disabled) return;
+    currentPaymentPage = Number(button.dataset.paymentPage);
+    renderPayments();
+  });
 });
 
 focusPaymentForm.addEventListener("click", () => {

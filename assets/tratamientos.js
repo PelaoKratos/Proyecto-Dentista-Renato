@@ -71,7 +71,7 @@ function renderTreatmentCard(treatment, patientById) {
       <header class="treatment-card-header">
         <div class="treatment-card-main">
           <strong>${treatmentName}</strong>
-          <p>${DentalAPI.escapeHtml(patientName)}${toothLabel}</p>
+          <p>${patient ? DentalAPI.patientLink(patient.id, patientName) : DentalAPI.escapeHtml(patientName)}${toothLabel}</p>
         </div>
         <span class="status-mark ${statusClass(treatment.status)}">${statusLabel}</span>
       </header>

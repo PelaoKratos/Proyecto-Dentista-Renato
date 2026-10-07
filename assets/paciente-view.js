@@ -19,8 +19,8 @@ function renderOdontogram(selectedTooth = "36", treatments = []) {
     const status = treatment?.status || "none";
     const shape = shapeFor(tooth);
     const width = shape === "molar" ? 30 : shape === "premolar" ? 24 : shape === "canine" ? 21 : 17;
-    const fill = status === "completed" ? "#ccfbf1" : status === "in_progress" ? "#fef3c7" : status === "planned" ? "#dbeafe" : "#ffffff";
-    const stroke = status === "completed" ? "#0d9488" : status === "in_progress" ? "#f59e0b" : status === "planned" ? "#3b82f6" : "#94a3b8";
+    const fill = status === "completed" ? "#a5e8cf" : status === "in_progress" ? "#fbd2a4" : status === "planned" ? "#bdd7fa" : "#f7f5ee";
+    const stroke = status === "completed" ? "#08775c" : status === "in_progress" ? "#a64b11" : status === "planned" ? "#1d4ed8" : "#627985";
     const rootCount = shape === "molar" ? 3 : shape === "premolar" ? 2 : 1;
     const roots = Array.from({ length: rootCount }, (_, index) => {
       const rootWidth = width / rootCount - 2;

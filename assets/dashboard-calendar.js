@@ -181,7 +181,7 @@ function renderSearchResults(query) {
         <article class="search-result">
           <span class="avatar">${DentalAPI.initials(patient)}</span>
           <div>
-            <strong>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</strong>
+            <strong>${DentalAPI.patientLink(patient.id, DentalAPI.fullName(patient))}</strong>
             <small>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")} · ${DentalAPI.escapeHtml(patient.phone || "Sin telefono")}</small>
           </div>
           <div class="search-result-actions">

@@ -30,21 +30,31 @@
           <section class="detail-card wide-card">
             <div class="section-heading">
               <div><span class="eyebrow">Historial</span><h2>Ultimos movimientos</h2></div>
-              <div class="inline-actions">
-                <select id="paymentStateFilter" aria-label="Filtrar por estado financiero">
-                  <option value="">Todos</option>
-                  <option value="pending">Pendientes</option>
-                  <option value="partial">Parciales</option>
-                  <option value="paid">Pagados</option>
-                </select>
-              </div>
             </div>
+            <div class="payment-history-filters" aria-label="Filtros del historial de pagos">
+              <label>Estado<select id="paymentStateFilter" aria-label="Filtrar por estado financiero">
+                <option value="">Todos</option>
+                <option value="pending">Pendientes</option>
+                <option value="partial">Parciales</option>
+                <option value="paid">Pagados</option>
+              </select></label>
+              <label>Desde<input id="paymentDateFrom" type="date" aria-label="Fecha desde" /></label>
+              <label>Hasta<input id="paymentDateTo" type="date" aria-label="Fecha hasta" /></label>
+              <label>Paciente<select id="paymentPatientFilter" aria-label="Filtrar por paciente"><option value="">Todos</option></select></label>
+              <label>Tratamiento<select id="paymentTreatmentFilter" aria-label="Filtrar por tratamiento">
+                <option value="all">Todos</option>
+                <option value="none">Sin tratamiento</option>
+              </select></label>
+            </div>
+            <div class="payment-pagination" id="paymentsPaginationTop" aria-label="Paginacion superior"></div>
+            <p class="payment-results-count" id="paymentResultsCount" aria-live="polite"></p>
             <div class="records-table" id="paymentsTable" role="table" aria-label="Historial de pagos">
               <div class="records-row records-head"><span>Paciente</span><span>Tratamiento</span><span>Monto</span><span>Metodo</span></div>
               <div class="records-row"><span>Mario Araya</span><span>Implante molar</span><span>$300.000</span><span>Transferencia</span></div>
               <div class="records-row"><span>Camila Torres</span><span>Ortodoncia</span><span>$85.000</span><span>Tarjeta</span></div>
               <div class="records-row"><span>Pedro Riquelme</span><span>Endodoncia</span><span>$140.000</span><span>Efectivo</span></div>
             </div>
+            <div class="payment-pagination" id="paymentsPaginationBottom" aria-label="Paginacion inferior"></div>
           </section>
           <aside class="detail-card">
             <div class="section-heading"><div><span class="eyebrow">Abono</span><h2>Registrar pago</h2></div></div>

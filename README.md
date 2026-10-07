@@ -151,3 +151,20 @@ Los reportes y capturas se generan en `test-results/` y `playwright-report/`, ca
 - `docs/backend-local.md`
 - `docs/flujo-funcional.md`
 - `docs/datos-demo.md`
+
+## Entrega limpia para el cliente
+
+Para crear la carpeta de instalacion en Windows, ejecuta:
+
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-delivery.ps1
+
+Se genera Entrega-cliente/ con el instalador, la interfaz y el backend,
+pero sin la base de datos, credenciales, adjuntos, respaldos ni archivos de
+pruebas. La carpeta se excluye de Git. Para generar otra entrega, mueve o
+renombra primero la carpeta anterior.
+
+En el computador del cliente se necesita Python 3.12 o superior. Copia toda
+la carpeta y ejecuta INSTALAR.cmd. El instalador crea el acceso directo en
+el Escritorio y abre la aplicacion. Los datos nuevos se guardan en
+%LOCALAPPDATA%\ConsultaDentalRenato. Una reinstalacion desde esta entrega
+conserva los datos, adjuntos y respaldos existentes en esa ruta.
