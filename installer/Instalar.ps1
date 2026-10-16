@@ -99,7 +99,7 @@ if (-not $SinAccesoDirecto) {
   & (Join-Path $Destino 'scripts\install-desktop-shortcut.ps1')
 }
 Write-Output "Aplicacion instalada en: $Destino"
-Write-Output 'En el primer inicio, crea la clave de administrador. El catalogo base ya esta disponible para editar precios; no se copiaron pacientes ni respaldos.'
+Write-Output 'En el primer inicio, crea la clave de administrador. No se copiaron pacientes, procedimientos base ni respaldos. Crea los procedimientos desde la aplicacion.'
 
 if (-not $NoIniciar) {
   $PowerShell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'

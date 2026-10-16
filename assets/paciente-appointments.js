@@ -7,6 +7,17 @@
     return Math.min(entered, price);
   }
 
+  function weeklyStarts(date, hour, count) {
+    const first = new Date(`${date}T12:00:00`);
+    if (Number.isNaN(first.getTime())) return [];
+    return Array.from({ length: count }, (_, index) => {
+      const day = new Date(first);
+      day.setDate(first.getDate() + index * 7);
+      const dateValue = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      return `${dateValue} ${hour}`;
+    });
+  }
+
   function create(dependencies) {
     const { getSummary, getCatalog, getSelectedTooth, setSelectedTooth, pendingToothAppointment, loadPatient, onAttended, toothDescription } = dependencies;
     function bindPatientAppointmentActions() {
@@ -64,10 +75,10 @@
         const treatment = summary.treatments.find((item) => item.id === Number(existing.value));
         if (treatment) form.elements.tooth_code.value = treatment.tooth_code || "";
         form.querySelector(".appointment-tooth-description").textContent = tooth.value ? "Piezas: " + tooth.value + ". Separa cada número con una coma." : "Control general sin pieza dental.";
-        const pending = pendingToothAppointment(form.elements.tooth_code.value, treatment?.dentition_type || summary.patient.dentition_type || "adult");
+        const pending = pendingToothAppointment(form.elements.tooth_code.value, treatment?.dentition_type || summary.patient.dentition_type || "adult", treatment?.id);
         const warning = form.querySelector("[data-duplicate-message]");
         warning.hidden = !pending;
-        warning.textContent = pending ? `Esta pieza ya tiene una cita pendiente para ${DentalAPI.date(pending.starts_at)} ${DentalAPI.time(pending.starts_at)}. Atiende, cancela o modifica esa cita antes de agendar otra.` : "";
+        warning.textContent = pending ? `Esta pieza ya tiene una cita pendiente de otro tratamiento para ${DentalAPI.date(pending.starts_at)} ${DentalAPI.time(pending.starts_at)}.` : "";
         form.dataset.toothConflict = String(Boolean(pending));
         form.querySelector("button[type='submit']").disabled = Boolean(pending) || form.dataset.timeConflict === "true";
       };
@@ -129,9 +140,10 @@
 
       function update() {
         const date = dateInput.value;
-        const occupied = (hour) => {
-          if (!date) return [];
-          const start = new Date(`${date}T${hour}:00`).getTime();
+        const count = Number(form.elements.weekly_count?.value || 1);
+        const occupied = (hour, candidateDate = date) => {
+          if (!candidateDate) return [];
+          const start = new Date(`${candidateDate}T${hour}:00`).getTime();
           const end = start + duration * 60000;
           return appointments.filter((item) => {
             if (item.status !== "scheduled" || Number(item.id) === Number(appointmentId)) return false;
@@ -141,18 +153,25 @@
             return start < otherEnd && otherStart < end;
           });
         };
+        const conflictOn = (hour, candidateDate) => {
+          const overlapping = occupied(hour, candidateDate);
+          const shareable = hour === "16:00" && overlapping.length > 0 && overlapping.every((item) => String(item.starts_at).replace("T", " ").slice(11, 16) === "16:00" && Number(item.patient_id) !== Number(getSummary().patient.id));
+          return { busy: overlapping.length > 0, blocked: overlapping.length > 0 && !shareable };
+        };
         [...timeSelect.options].forEach((option) => {
-          const overlapping = occupied(option.value);
-          const shareable = option.value === "16:00" && overlapping.length > 0 && overlapping.every((item) => String(item.starts_at).replace("T", " ").slice(11, 16) === "16:00" && Number(item.patient_id) !== Number(getSummary().patient.id));
-          option.textContent = `${option.value} · ${overlapping.length ? shareable ? "Ocupada (permite otra cita)" : "Ocupada" : "Disponible"}`;
-          option.dataset.occupied = String(overlapping.length > 0);
+          const first = conflictOn(option.value, date);
+          option.textContent = `${option.value} · ${first.busy ? first.blocked ? "Ocupada" : "Ocupada (permite otra cita)" : "Disponible"}`;
+          option.dataset.occupied = String(first.busy);
         });
-        const overlapping = occupied(timeSelect.value);
-        const busy = overlapping.length > 0;
-        const blocked = busy && !(timeSelect.value === "16:00" && overlapping.every((item) => String(item.starts_at).replace("T", " ").slice(11, 16) === "16:00" && Number(item.patient_id) !== Number(getSummary().patient.id)));
+        const dates = weeklyStarts(date, timeSelect.value, count);
+        const unavailable = dates.filter((value) => conflictOn(timeSelect.value, value.slice(0, 10)).blocked);
+        const busy = dates.some((value) => conflictOn(timeSelect.value, value.slice(0, 10)).busy);
+        const blocked = unavailable.length > 0;
         form.dataset.timeConflict = String(blocked);
-        message.textContent = busy
-          ? (blocked ? `La hora ${timeSelect.value} ya está ocupada. Selecciona otra hora.` : "Las 16:00 están ocupadas, pero puedes agendar otro paciente a esa hora.")
+        message.textContent = blocked
+          ? `La hora ${timeSelect.value} ya está ocupada el ${unavailable.map((value) => DentalAPI.date(value)).join(", ")}. Selecciona otra fecha u hora.`
+          : busy ? `Las 16:00 están ocupadas en alguna fecha, pero puedes agendar otro paciente a esa hora.`
+          : count > 1 ? `${count} citas disponibles: ${dates.map((value) => DentalAPI.date(value)).join(", ")}.`
           : `${timeSelect.value} disponible para agendar.`;
         message.classList.toggle("time-occupied", blocked);
         submit.disabled = blocked || form.dataset.toothConflict === "true";
@@ -177,10 +196,11 @@
       }
       dateInput.addEventListener("change", refresh);
       timeSelect.addEventListener("change", update);
+      form.elements.weekly_count?.addEventListener("change", update);
       refresh();
     }
 
     return Object.freeze({ bindPatientAppointmentActions, cleanFormData, bindAppointmentPriceForm, bindAppointmentAvailability });
   }
-  window.PatientAppointments = Object.freeze({ create, appointmentDiscount });
+  window.PatientAppointments = Object.freeze({ create, appointmentDiscount, weeklyStarts });
 })();

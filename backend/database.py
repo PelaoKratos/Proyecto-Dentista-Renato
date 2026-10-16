@@ -574,8 +574,8 @@ def validate_appointment_link(connection, data, appointment_id=None):
                 rows = connection.execute("""
                     SELECT a.id, t.tooth_code FROM appointments a
                     JOIN patient_treatments t ON t.id = a.patient_treatment_id
-                    WHERE a.patient_id = ? AND t.dentition_type = ? AND a.status = 'scheduled' AND a.id != ?
-                """, (data["patient_id"], treatment["dentition_type"], appointment_id or -1)).fetchall()
+                    WHERE a.patient_id = ? AND t.dentition_type = ? AND a.status = 'scheduled' AND a.id != ? AND t.id != ?
+                """, (data["patient_id"], treatment["dentition_type"], appointment_id or -1, treatment_id)).fetchall()
                 for row in rows:
                     overlap = teeth.intersection(parse_tooth_codes(row["tooth_code"], treatment["dentition_type"]))
                     if overlap:
@@ -750,5 +750,55 @@ def create_treatment_appointment(data, appointment_fields, treatment_fields):
             )
             sync_appointment_treatment(connection, data)
             return dict(connection.execute("SELECT * FROM appointments WHERE id = ?", (cursor.lastrowid,)).fetchone())
+    finally:
+        connection.close()
+
+
+def create_treatment_appointments(data, appointment_fields, treatment_fields):
+    """Book several dates for one treatment atomically, creating that treatment once if needed."""
+    from backend.validation import validate_patient_treatment
+
+    starts_at = data.get("starts_at")
+    if not isinstance(starts_at, list) or not 2 <= len(starts_at) <= 12:
+        raise ValueError("Selecciona entre 2 y 12 citas para agendar juntas.")
+    if len(set(starts_at)) != len(starts_at):
+        raise ValueError("No repitas la misma fecha y hora en el grupo de citas.")
+    base = {key: value for key, value in data.items() if key != "starts_at"}
+    appointment_data = [validate_appointment({**base, "starts_at": value}) for value in starts_at]
+    new_treatment = base.get("new_treatment")
+    if new_treatment and base.get("patient_treatment_id"):
+        raise ValueError("Selecciona un tratamiento existente o uno nuevo.")
+    connection = get_connection()
+    try:
+        with connection:
+            connection.execute("BEGIN IMMEDIATE")
+            if new_treatment:
+                treatment = validate_patient_treatment({**new_treatment, "patient_id": base["patient_id"]})
+                set_treatment_dentition(connection, treatment)
+                fields = [key for key in treatment if key in treatment_fields]
+                if "dentition_type" not in fields:
+                    fields.append("dentition_type")
+                cursor = connection.execute(
+                    f"INSERT INTO patient_treatments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                    tuple(treatment[key] for key in fields),
+                )
+                treatment_id = cursor.lastrowid
+            else:
+                treatment_id = base.get("patient_treatment_id")
+            created = []
+            for appointment in appointment_data:
+                appointment["patient_treatment_id"] = treatment_id
+                validate_appointment_link(connection, appointment)
+                validate_patient_relationships(connection, "appointments", appointment)
+                fields = [key for key in appointment if key in appointment_fields]
+                cursor = connection.execute(
+                    f"INSERT INTO appointments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                    tuple(appointment[key] for key in fields),
+                )
+                sync_appointment_treatment(connection, appointment)
+                created.append(row_to_dict(connection.execute(
+                    "SELECT * FROM appointments WHERE id = ?", (cursor.lastrowid,)
+                ).fetchone()))
+            return created
     finally:
         connection.close()

@@ -31,7 +31,6 @@ if (-not $Python -or $Python.Source -like '*WindowsApps*') {
 }
 if (-not $Python) { throw 'Se necesita Python para generar la base limpia de la entrega.' }
 $DatabaseTool = Join-Path $Root 'scripts\create-delivery-db.py'
-$SourceDb = Join-Path $Root 'data\consulta_dental.sqlite3'
 $Schema = Join-Path $Root 'backend\schema.sql'
 
 New-Item -ItemType Directory -Path $Stage | Out-Null
@@ -66,7 +65,7 @@ try {
   }
 
   $PackagedDb = Join-Path $Stage 'data\consulta_dental.sqlite3'
-  & $Python.Source @PythonArgs $DatabaseTool build --source $SourceDb --catalog-json (Join-Path $Root 'installer\catalogo-base.json') --schema $Schema --database $PackagedDb
+  & $Python.Source @PythonArgs $DatabaseTool build --schema $Schema --database $PackagedDb
   if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear la base limpia de la entrega.' }
 
   $Unexpected = Get-ChildItem -LiteralPath $Stage -Recurse -File | Where-Object {
@@ -93,7 +92,7 @@ try {
       $UnexpectedData = @($DataFiles | Where-Object { $_.FullName -ne (Join-Path $ExistingData 'consulta_dental.sqlite3') })
       if ($UnexpectedData) { throw "La entrega anterior contiene datos inesperados: $($UnexpectedData.FullName -join ', ')" }
       if ($DataFiles.Count -eq 1) {
-        & $Python.Source @PythonArgs $DatabaseTool verify --database $DataFiles[0].FullName
+        & $Python.Source @PythonArgs $DatabaseTool verify --database $DataFiles[0].FullName --allow-catalog
         if ($LASTEXITCODE -ne 0) { throw 'La entrega anterior contiene registros clínicos; no se reemplazó.' }
       }
     }
@@ -105,7 +104,7 @@ try {
   $FileCount = (Get-ChildItem -LiteralPath $Target -Recurse -File | Measure-Object).Count
   Write-Output "Entrega actualizada: $Target"
   Write-Output "Archivos incluidos: $FileCount"
-  Write-Output 'Base nueva: cero pacientes, citas, tratamientos de pacientes, pagos y archivos; catalogo base listo para editar.'
+  Write-Output 'Base nueva: cero pacientes, citas, pagos y procedimientos base; lista para registrar datos desde cero.'
 } catch {
   if (Test-Path -LiteralPath $Stage) {
     Assert-ExpectedDirectory $Stage '.Entrega-cliente-build'

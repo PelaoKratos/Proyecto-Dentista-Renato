@@ -46,8 +46,9 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
   await page.getByRole('tab', { name: 'Agenda y piezas', exact: true }).click();
   await page.locator('[data-tooth="19"]').click();
   await page.locator('#toothNote').getByRole('button', { name: 'Agendar tratamiento para esta pieza' }).click();
-  await expect(page.locator('[data-duplicate-message]')).toBeVisible();
-  await expect(page.locator('#actionDrawer').getByRole('button', { name: 'Agendar cita', exact: true })).toBeDisabled();
+  await expect(page.locator('[data-duplicate-message]')).toBeHidden();
+  await page.locator('#actionDrawer input[name="appointment_date"]').fill('2026-11-10');
+  await expect(page.locator('#actionDrawer').getByRole('button', { name: 'Agendar cita', exact: true })).toBeEnabled();
   await page.locator('#actionDrawer [data-action-close]').first().click();
   page.on('dialog', dialog => dialog.accept());
   await page.locator('[data-patient-appointment="2"]').getByRole('button', { name: 'Cancelar cita', exact: true }).click();

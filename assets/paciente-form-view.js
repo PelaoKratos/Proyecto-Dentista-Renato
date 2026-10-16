@@ -135,6 +135,7 @@
             <h3 class="appointment-wide">3. Fecha de la cita</h3>
             <label>Fecha<input name="appointment_date" type="date" value="${nextControlInput().slice(0, 10)}" required /></label>
             <label>Hora<select name="appointment_time" required>${Array.from({length: 15}, (_, index) => { const hour = 9 + Math.floor(index / 2); const minute = index % 2 ? "30" : "00"; const value = `${String(hour).padStart(2, "0")}:${minute}`; return `<option value="${value}" ${value === nextControlInput().slice(11, 16) ? "selected" : ""}>${value}</option>`; }).join("")}</select></label>
+            <label class="appointment-wide">Citas semanales<select name="weekly_count" data-weekly-count>${Array.from({length: 8}, (_, index) => `<option value="${index + 1}" ${index === 0 ? "selected" : ""}>${index === 0 ? "Solo esta cita" : `${index + 1} citas, una por semana`}</option>`).join("")}</select><small>Se agendarán el mismo día de la semana y a la misma hora, sin generar nuevos cobros.</small></label>
             <p class="appointment-wide appointment-time-availability" data-time-availability role="status" aria-live="polite"></p>
             <details class="appointment-wide booking-extras"><summary>Notas y radiografia (opcional)</summary>
             <label class="appointment-wide">Notas (opcional)<textarea name="notes" placeholder="Indicaciones para la cita o tratamiento"></textarea></label>

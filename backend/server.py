@@ -27,6 +27,7 @@ from backend.database import (  # noqa: E402
     DATA_DIR,
     DB_PATH,
     create_treatment_appointment,
+    create_treatment_appointments,
     create_patient_treatment_plan,
     create_payment_batch,
     delete_patient_treatment,
@@ -225,6 +226,8 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(insert_record("patient_treatments", validate_patient_treatment(data), PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/clinical-sessions":
                 self._send_json(insert_record("clinical_sessions", validate_session(data), SESSION_FIELDS), 201)
+            elif path == "/api/appointments/batch":
+                self._send_json(create_treatment_appointments(data, APPOINTMENT_FIELDS, PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/appointments":
                 self._send_json(create_treatment_appointment(validate_appointment(data), APPOINTMENT_FIELDS, PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/payments/batch":

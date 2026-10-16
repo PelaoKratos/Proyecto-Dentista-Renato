@@ -159,10 +159,9 @@ Para crear la carpeta de instalacion en Windows, ejecuta:
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-delivery.ps1
 
 Se genera Entrega-cliente/ con el instalador, la interfaz, el backend y una
-base SQLite nueva con los procedimientos base activos del catalogo actual.
-Incluye sus nombres, descripciones y precios para editarlos desde
-Procedimientos base. Tiene cero pacientes, citas, pagos, evoluciones,
-tratamientos asignados y adjuntos. No contiene credenciales ni respaldos.
+base SQLite nueva sin procedimientos base. El cliente puede crearlos desde
+Procedimientos base con sus propios valores. Tiene cero pacientes, citas,
+pagos, evoluciones, tratamientos asignados y adjuntos. No contiene credenciales ni respaldos.
 La carpeta se excluye de Git y se puede regenerar con el mismo comando.
 
 En el computador del cliente se necesita Python 3.12 o superior. Copia toda

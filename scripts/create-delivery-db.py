@@ -1,13 +1,13 @@
-"""Create a client database with the current base catalog and no clinical records."""
+"""Create and verify a client database without patients or base procedures."""
 from __future__ import annotations
 
 import argparse
-import json
 import sqlite3
 from pathlib import Path
 
 CLINICAL_TABLES = (
     "patients",
+    "patient_treatment_plans",
     "patient_treatments",
     "clinical_sessions",
     "attachments",
@@ -16,7 +16,7 @@ CLINICAL_TABLES = (
 )
 
 
-def verify(database: Path) -> int:
+def verify(database: Path, allow_catalog: bool = False) -> None:
     if not database.is_file():
         raise ValueError(f"No existe la base de entrega: {database}")
     with sqlite3.connect(f"{database.resolve().as_uri()}?mode=ro", uri=True) as connection:
@@ -31,38 +31,18 @@ def verify(database: Path) -> int:
         counts = {table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] for table in CLINICAL_TABLES}
         if any(counts.values()):
             raise ValueError(f"La base de entrega contiene registros clínicos: {counts}")
-        catalog_count = connection.execute("SELECT COUNT(*) FROM treatment_catalog WHERE is_active = 1").fetchone()[0]
-        if catalog_count == 0:
-            raise ValueError("La base de entrega no contiene tratamientos base activos.")
-        print(f"Base de entrega verificada: 0 pacientes y registros clínicos; {catalog_count} tratamientos base activos.")
-        return catalog_count
+        catalog_count = connection.execute("SELECT COUNT(*) FROM treatment_catalog").fetchone()[0]
+        if catalog_count and not allow_catalog:
+            raise ValueError(f"La base de entrega contiene {catalog_count} procedimientos base.")
+        print(f"Base de entrega verificada: 0 registros clínicos; {catalog_count} procedimientos base.")
 
 
-def build(source: Path, schema: Path, database: Path, catalog_json: Path) -> None:
+def build(schema: Path, database: Path) -> None:
     if database.exists():
         raise ValueError(f"La base de salida ya existe: {database}")
-    catalog = []
-    if source.is_file() and source.stat().st_size:
-        try:
-            with sqlite3.connect(f"{source.resolve().as_uri()}?mode=ro", uri=True) as connection:
-                catalog = connection.execute(
-                    "SELECT name, description, default_price, is_active FROM treatment_catalog "
-                    "WHERE is_active = 1 ORDER BY id"
-                ).fetchall()
-        except sqlite3.DatabaseError:
-            catalog = []
-    if not catalog:
-        seed = json.loads(catalog_json.read_text(encoding="utf-8"))
-        catalog = [(item["name"], item.get("description"), item.get("default_price", 0), 1) for item in seed]
-    if not catalog:
-        raise ValueError("La base de origen no contiene tratamientos base activos.")
     database.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(database) as connection:
         connection.executescript(schema.read_text(encoding="utf-8"))
-        connection.executemany(
-            "INSERT INTO treatment_catalog (name, description, default_price, is_active) VALUES (?, ?, ?, ?)",
-            catalog,
-        )
         connection.commit()
     verify(database)
 
@@ -71,17 +51,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
     build_parser = subparsers.add_parser("build")
-    build_parser.add_argument("--source", type=Path, required=True)
-    build_parser.add_argument("--catalog-json", type=Path, required=True)
     build_parser.add_argument("--schema", type=Path, required=True)
     build_parser.add_argument("--database", type=Path, required=True)
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("--database", type=Path, required=True)
+    verify_parser.add_argument("--allow-catalog", action="store_true", help="Solo para revisar una entrega anterior antes de reemplazarla")
     args = parser.parse_args()
     if args.command == "build":
-        build(args.source, args.schema, args.database, args.catalog_json)
+        build(args.schema, args.database)
     else:
-        verify(args.database)
+        verify(args.database, args.allow_catalog)
 
 
 if __name__ == "__main__":

@@ -241,6 +241,34 @@ class DatabaseTests(unittest.TestCase):
         database.update_record("appointments", first["id"], {"starts_at": "2026-09-02 11:00"}, {"starts_at"})
         self.assertEqual(len(database.fetch_all("SELECT * FROM appointments")), 3)
 
+    def test_weekly_batch_reuses_one_treatment_and_rolls_back_if_any_slot_is_busy(self):
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        other = database.insert_record("patients", {"first_name": "Luis", "last_name": "Vera"}, {"first_name", "last_name"})
+        appointment_fields = {"patient_id", "patient_treatment_id", "starts_at", "status"}
+        treatment_fields = {"patient_id", "title", "tooth_code", "final_price"}
+        dates = ["2026-10-20 10:00", "2026-10-27 10:00", "2026-11-03 10:00", "2026-11-10 10:00"]
+        created = database.create_treatment_appointments({
+            "patient_id": patient["id"], "starts_at": dates,
+            "new_treatment": {"title": "Endodoncia", "tooth_code": "19", "final_price": 100000},
+            "status": "scheduled",
+        }, appointment_fields, treatment_fields)
+        self.assertEqual(len(created), 4)
+        self.assertEqual([item["starts_at"] for item in created], dates)
+        self.assertEqual(len({item["patient_treatment_id"] for item in created}), 1)
+        self.assertEqual(len(database.fetch_all("SELECT * FROM patient_treatments")), 1)
+        with self.assertRaisesRegex(ValueError, "pieza 19"):
+            self.make_booking(patient["id"], tooth="19", starts_at="2026-11-17 11:00")
+        database.insert_record("appointments", {
+            "patient_id": other["id"], "starts_at": "2026-11-24 10:00"
+        }, appointment_fields)
+        with self.assertRaisesRegex(ValueError, "hora seleccionada"):
+            database.create_treatment_appointments({
+                "patient_id": patient["id"],
+                "patient_treatment_id": created[0]["patient_treatment_id"],
+                "starts_at": ["2026-11-17 10:00", "2026-11-24 10:00"],
+            }, appointment_fields, treatment_fields)
+        self.assertEqual(len(database.fetch_all("SELECT * FROM appointments WHERE patient_id = ?", (patient["id"],))), 4)
+
     def test_1600_accepts_multiple_patients_but_still_blocks_earlier_overlap(self):
         fields = {"patient_id", "starts_at", "ends_at"}
         patients = [
@@ -335,9 +363,8 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(treatment["final_price"], 100)
         second = database.insert_record("appointments", {"patient_id": first["patient_id"], "patient_treatment_id": tid, "starts_at": "2026-09-08 10:00"}, {"patient_id", "patient_treatment_id", "starts_at"})
         self.assertEqual(database.fetch_one("SELECT status FROM patient_treatments WHERE id = ?", (tid,))["status"], "planned")
-        with self.assertRaises(ValueError):
-            database.update_record("appointments", first["id"], {"status": "scheduled"}, {"status"})
-        self.assertEqual(database.fetch_one("SELECT status FROM appointments WHERE id = ?", (first["id"],))["status"], "cancelled")
+        database.update_record("appointments", first["id"], {"status": "scheduled"}, {"status"})
+        self.assertEqual(database.fetch_one("SELECT status FROM appointments WHERE id = ?", (first["id"],))["status"], "scheduled")
         self.assertEqual(len(database.fetch_all("SELECT * FROM patient_treatments")), 1)
         self.assertEqual(database.fetch_one("SELECT SUM(amount) AS paid FROM payments")["paid"], 40)
         database.update_record("appointments", second["id"], {"status": "attended"}, {"status"})

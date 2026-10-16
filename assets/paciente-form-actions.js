@@ -60,16 +60,18 @@
           final_price: cost - discount,
           start_date: data.appointment_date
         } : null;
-        const scheduled = await DentalAPI.post("/api/appointments", {
+        const weeklyCount = Number(data.weekly_count || 1);
+        const startsAt = PatientAppointments.weeklyStarts(data.appointment_date, data.appointment_time, weeklyCount);
+        const scheduled = await DentalAPI.post(weeklyCount > 1 ? "/api/appointments/batch" : "/api/appointments", {
           patient_id: patientId,
           patient_treatment_id: patientTreatment?.id || null,
           ...(newTreatment ? { new_treatment: newTreatment } : {}),
-          starts_at: `${data.appointment_date} ${data.appointment_time}`,
+          starts_at: weeklyCount > 1 ? startsAt : startsAt[0],
           reason: patientTreatment ? `${patientTreatment.title}${patientTreatment.tooth_code ? ` · Piezas ${patientTreatment.tooth_code}` : ""}` : catalogTreatment ? `${catalogTreatment.name}${data.tooth_code ? ` · Piezas ${data.tooth_code}` : ""}` : "Control clinico",
           notes: data.notes || null,
           status: "scheduled"
         });
-        patientTreatment = { id: scheduled.patient_treatment_id };
+        patientTreatment = { id: (Array.isArray(scheduled) ? scheduled[0] : scheduled).patient_treatment_id };
         // The appointment is already saved; an attachment error must not invite a duplicate booking.
         submitButton.dataset.appointmentSaved = "true";
         const file = form.querySelector('input[name="file"]').files[0];

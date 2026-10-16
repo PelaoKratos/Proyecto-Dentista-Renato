@@ -124,9 +124,9 @@ function renderQuickEvolution(summary) {
   `;
 }
 
-function pendingToothAppointment(toothCode, dentitionType = currentSummary.patient.dentition_type || "adult") {
+function pendingToothAppointment(toothCode, dentitionType = currentSummary.patient.dentition_type || "adult", excludeTreatmentId = null) {
   if (!toothCode) return null;
-  return currentSummary.appointments.find((appointment) => appointment.status === "scheduled" && currentSummary.treatments.some((treatment) => Number(treatment.id) === Number(appointment.patient_treatment_id) && (treatment.dentition_type || "adult") === dentitionType && String(treatment.tooth_code || "").split(",").some(code => String(toothCode).split(/[,;\s]+/).includes(code.trim()))));
+  return currentSummary.appointments.find((appointment) => appointment.status === "scheduled" && currentSummary.treatments.some((treatment) => Number(treatment.id) === Number(appointment.patient_treatment_id) && Number(treatment.id) !== Number(excludeTreatmentId) && (treatment.dentition_type || "adult") === dentitionType && String(treatment.tooth_code || "").split(",").some(code => String(toothCode).split(/[,;\s]+/).includes(code.trim()))));
 }
 
 function treatmentPaymentLabel(summary, treatment) {
@@ -148,12 +148,15 @@ function renderTreatmentHistory(summary) {
     const visits = summary.appointments.filter(item => Number(item.patient_treatment_id) === treatment.id).sort((a, b) => b.starts_at.localeCompare(a.starts_at));
     const sessions = summary.sessions.filter(item => Number(item.patient_treatment_id) === treatment.id);
     const attended = visits.filter(item => item.status === "attended").length;
-    const pending = visits.find(item => item.status === "scheduled") || pendingToothAppointment(treatment.tooth_code, treatment.dentition_type || "adult");
+    const pending = visits.filter(item => item.status === "scheduled")
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0]
+      || pendingToothAppointment(treatment.tooth_code, treatment.dentition_type || "adult", treatment.id);
     return `<article class="history-card" data-treatment-history="${treatment.id}" data-history-state="${treatment.status}" data-history-search="${DentalAPI.escapeHtml(`${treatment.title} ${treatment.tooth_code || ""}`.toLowerCase())}">
       <header><div><span class="eyebrow">${treatment.tooth_code ? `Piezas ${DentalAPI.escapeHtml(treatment.tooth_code)} · ${(treatment.dentition_type || "adult") === "child" ? "infantil" : "adulto"}` : "Tratamiento general"}</span><h3>${DentalAPI.escapeHtml(treatment.title)}</h3></div><span class="pill">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span></header>
       <div class="history-meta"><span><b>${visits.length}</b> citas registradas · <b>${attended}</b> atendidas</span><span>Pago: <b>${treatmentPaymentLabel(summary, treatment)}</b></span></div>
       ${pending ? `<p class="history-next">Cita pendiente: ${DentalAPI.date(pending.starts_at)} · ${DentalAPI.time(pending.starts_at)}</p>` : ""}
-      <div class="inline-actions">${pending ? `<button class="text-button" data-action="reschedule" data-entity-id="${pending.id}">Cambiar fecha</button>` : treatment.status !== "completed" ? `<button class="text-button primary-action" data-action="appointment" data-entity-id="${treatment.id}" data-tooth-code="${DentalAPI.escapeHtml(treatment.tooth_code || "")}">${treatment.status === "cancelled" ? "Reagendar tratamiento" : "Agendar continuacion"}</button>` : ""}
+      <div class="inline-actions">${pending ? `<button class="text-button" data-action="reschedule" data-entity-id="${pending.id}">Cambiar fecha</button>` : ""}
+      ${treatment.status !== "completed" ? `<button class="text-button primary-action" data-action="appointment" data-entity-id="${treatment.id}" data-tooth-code="${DentalAPI.escapeHtml(treatment.tooth_code || "")}">${pending ? "Agendar otra cita" : treatment.status === "cancelled" ? "Reagendar tratamiento" : "Agendar continuacion"}</button>` : ""}
       ${!pending && !["completed", "cancelled"].includes(treatment.status) ? `<button class="text-button" data-finish-history="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>
       <details class="history-details"><summary>Ver historial y notas</summary>
         <p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin notas del tratamiento.")}</p>
@@ -192,18 +195,19 @@ function renderTreatments(treatments) {
   });
   return Array.from(grouped.values()).map((group) => {
     const items = group.items.map((treatment) => {
-      const pending = currentSummary.appointments.find((appointment) =>
+      const pending = currentSummary.appointments.filter((appointment) =>
         Number(appointment.patient_treatment_id) === Number(treatment.id) && appointment.status === 'scheduled'
-      );
+      ).sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0];
       const active = !['completed', 'cancelled'].includes(treatment.status);
       let appointmentAction = '';
       if (pending) {
         appointmentAction = '<p class="history-next">Cita agendada: ' +
           DentalAPI.date(pending.starts_at) + ' · ' + DentalAPI.time(pending.starts_at) + '</p>';
-      } else if (active) {
-        appointmentAction = '<div class="plan-appointment-actions"><button class="text-button primary-action" type="button" data-action="appointment" data-entity-id="' +
+      }
+      if (active) {
+        appointmentAction += '<div class="plan-appointment-actions"><button class="text-button primary-action" type="button" data-action="appointment" data-entity-id="' +
           treatment.id + '" data-tooth-code="' + DentalAPI.escapeHtml(treatment.tooth_code || '') +
-          '">Agendar próxima cita</button></div>';
+          '">Agendar otra cita</button></div>';
       }
       return renderTreatmentCard(treatment) + appointmentAction;
     }).join('');
