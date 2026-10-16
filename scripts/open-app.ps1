@@ -14,9 +14,21 @@ $CreatedNew = $false
 $Mutex = [System.Threading.Mutex]::new($true, $MutexName, [ref]$CreatedNew)
 
 if (-not $CreatedNew) {
-  Start-Process -FilePath $Url
+  for ($attempt = 0; $attempt -lt 30; $attempt++) {
+    foreach ($candidatePort in $Port..($Port + 20)) {
+      try {
+        $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$candidatePort/api/health" -TimeoutSec 1
+        if ($response.StatusCode -eq 200 -and ($response.Content | ConvertFrom-Json).ok -eq $true) {
+          Start-Process -FilePath "http://127.0.0.1:$candidatePort/"
+          $Mutex.Dispose()
+          exit 0
+        }
+      } catch { }
+    }
+    Start-Sleep -Milliseconds 500
+  }
   $Mutex.Dispose()
-  exit 0
+  throw 'La aplicacion ya se esta iniciando, pero su servidor aun no responde. Intenta abrirla de nuevo.'
 }
 
 $script:ServerProcess = $null
@@ -27,10 +39,37 @@ $Context = $null
 function Test-ConsultaDentalServer {
   try {
     $response = Invoke-WebRequest -UseBasicParsing -Uri $HealthUrl -TimeoutSec 2
-    return $response.StatusCode -eq 200
+    return $response.StatusCode -eq 200 -and ($response.Content | ConvertFrom-Json).ok -eq $true
   } catch {
     return $false
   }
+}
+
+function Test-LocalPortInUse([int]$CandidatePort) {
+  $client = [System.Net.Sockets.TcpClient]::new()
+  try {
+    $client.Connect('127.0.0.1', $CandidatePort)
+    return $true
+  } catch {
+    return $false
+  } finally {
+    $client.Dispose()
+  }
+}
+
+function Select-AvailablePort {
+  if (-not (Test-LocalPortInUse $Port)) { return }
+
+  foreach ($candidatePort in (($Port + 1)..($Port + 20))) {
+    if (-not (Test-LocalPortInUse $candidatePort)) {
+      $script:Port = $candidatePort
+      $script:Url = "http://127.0.0.1:$candidatePort/"
+      $script:HealthUrl = "http://127.0.0.1:$candidatePort/api/health"
+      return
+    }
+  }
+
+  throw "Los puertos $Port a $($Port + 20) estan ocupados. Cierra otra aplicacion local e intenta de nuevo."
 }
 
 function Get-ManagedServerProcess {
@@ -105,6 +144,7 @@ try {
   if (Test-ConsultaDentalServer) {
     $script:ServerProcess = Get-ManagedServerProcess
   } else {
+    Select-AvailablePort
     Start-ConsultaDentalServer
   }
 

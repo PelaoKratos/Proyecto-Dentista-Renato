@@ -106,10 +106,45 @@ if (window.location.hash === "#nuevo") {
   patientForm.querySelector("input[name='first_name']").focus();
 }
 
+function formatRut(value) {
+  const characters = String(value || "").toUpperCase().replace(/[^0-9K]/g, "");
+  if (characters.length < 2) return characters;
+  const verifier = characters.slice(-1);
+  const number = characters.slice(0, -1).replace(/K/g, "");
+  const groups = number.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${groups}-${verifier}`;
+}
+
+function nationalPhoneDigits(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.startsWith("56") && digits.length > 9 ? digits.slice(2) : digits;
+}
+
+const rutInput = patientForm.elements.rut;
+const phoneInput = patientForm.elements.phone;
+rutInput.addEventListener("input", () => {
+  const tokenCount = (rutInput.value.slice(0, rutInput.selectionStart).match(/[0-9kK]/g) || []).length;
+  const formatted = formatRut(rutInput.value);
+  rutInput.value = formatted;
+  let position = 0;
+  let seen = 0;
+  while (position < formatted.length && seen < tokenCount) {
+    if (/[0-9K]/.test(formatted[position])) seen += 1;
+    position += 1;
+  }
+  rutInput.setSelectionRange(position, position);
+});
+phoneInput.addEventListener("input", () => {
+  phoneInput.value = nationalPhoneDigits(phoneInput.value);
+});
+
 patientForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(patientForm);
   const data = Object.fromEntries(formData.entries());
+  data.rut = formatRut(data.rut);
+  const phoneDigits = nationalPhoneDigits(phoneInput.value);
+  data.phone = phoneDigits ? `+56 ${phoneDigits}` : "";
   const submitButton = patientForm.querySelector("button[type='submit']");
 
   patientFormStatus.textContent = "Guardando paciente...";
@@ -120,8 +155,8 @@ patientForm.addEventListener("submit", async (event) => {
       ...data,
       is_active: 1
     });
-    patientFormStatus.textContent = "Paciente guardado.";
-    window.location.href = `./paciente.html?id=${created.id}`;
+    patientFormStatus.textContent = "Paciente guardado. Abriendo su ficha para agendar la primera cita...";
+    window.location.assign(`./paciente.html?id=${encodeURIComponent(created.id)}&agendar=1`);
   } catch (error) {
     patientFormStatus.textContent = error.message;
     submitButton.disabled = false;

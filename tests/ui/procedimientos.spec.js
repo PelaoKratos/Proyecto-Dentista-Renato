@@ -43,7 +43,9 @@ test('crear y editar procedimientos actualiza el catalogo compartido', async ({ 
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: testInfo.outputPath('procedimientos.png'), fullPage: true });
   await page.getByRole('link', { name: 'Tratamientos', exact: true }).click();
+  await expect(page.locator('#treatmentResultCount')).toContainText('tratamientos');
   await page.getByRole('button', { name: 'Crear tratamiento' }).click();
+  await expect(page.locator('#treatmentCreateDetails')).toHaveAttribute('open', '');
   await page.locator('#newTreatmentCatalog').selectOption('2');
   await expect(page.locator('#newTreatmentTitle')).toHaveValue('Restauracion de resina');
   await expect(page.locator('#newTreatmentPrice')).toHaveValue('0');

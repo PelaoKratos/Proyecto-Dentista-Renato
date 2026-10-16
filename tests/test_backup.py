@@ -5,7 +5,7 @@ import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from backend.backup import create_backup, create_daily_backup_if_due, verify_backup
+from backend.backup import create_backup, create_weekly_backup_if_due, verify_backup
 
 
 class BackupTests(unittest.TestCase):
@@ -43,16 +43,27 @@ class BackupTests(unittest.TestCase):
         self.assertEqual(report["metadata"]["mode"], "manual")
         self.assertEqual(report["files"], 2)
 
-    def test_automatic_backup_runs_once_per_local_day(self):
+    def test_automatic_backup_waits_seven_days_even_across_calendar_weeks(self):
         first_day = datetime(2026, 9, 29, 8, 0)
-        first = create_daily_backup_if_due(self.db, self.media, self.backups, now=first_day)
+        first = create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day)
         self.assertIsNotNone(first)
-        self.assertIsNone(create_daily_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(hours=3)))
-        second = create_daily_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(days=1))
+        self.assertIsNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(days=3)))
+        manual = create_backup(self.db, self.media, self.backups, now=first_day + timedelta(days=3))
+        self.assertIsNotNone(manual)
+        self.assertIsNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(days=6)))
+        second = create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(days=7))
         self.assertIsNotNone(second)
         self.assertNotEqual(first, second)
+        self.assertIsNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(days=7, hours=2)))
         with zipfile.ZipFile(second) as archive:
             self.assertEqual(__import__("json").loads(archive.read("respaldo-info.json"))["mode"], "automatic")
+
+    def test_automatic_backup_waits_seven_days_across_new_year(self):
+        first_day = datetime(2026, 12, 31, 10, 0)
+        self.assertIsNotNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day))
+        self.assertIsNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=datetime(2027, 1, 1, 10, 0)))
+        self.assertIsNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=datetime(2027, 1, 4, 10, 0)))
+        self.assertIsNotNone(create_weekly_backup_if_due(self.db, self.media, self.backups, now=first_day + timedelta(days=7)))
 
     def test_legacy_backup_without_manifest_restores_all_files(self):
         legacy = self.backups / "legacy.zip"

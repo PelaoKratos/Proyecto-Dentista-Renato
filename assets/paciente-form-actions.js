@@ -11,7 +11,7 @@
       if (action === "reschedule") {
         const original = currentSummary.appointments.find(item => item.id === Number(form.dataset.entityId));
         if (!original || original.status !== "scheduled") throw new Error("Esta cita ya no esta pendiente. Recarga la ficha.");
-        const startsAt = form.elements.starts_at.value;
+        const startsAt = `${form.elements.reschedule_date.value}T${form.elements.reschedule_time.value}`;
         const payload = { starts_at: startsAt.replace("T", " ") };
         if (original.ends_at) {
           const duration = new Date(original.ends_at.replace(" ", "T")) - new Date(original.starts_at.replace(" ", "T"));
@@ -48,7 +48,7 @@
         const data = cleanFormData(form);
         const catalogTreatment = currentCatalog.find((item) => Number(item.id) === Number(data.catalog_treatment_id));
         const cost = Math.max(Number(data.cost || 0), 0);
-        const discount = Math.min(Math.max(Number(data.discount || 0), 0), cost);
+        const discount = PatientAppointments.appointmentDiscount(cost, data.discount, data.discount_mode);
         let patientTreatment = currentSummary.treatments.find((item) => item.id === Number(data.patient_treatment_id));
         const newTreatment = !patientTreatment && catalogTreatment ? {
           catalog_treatment_id: Number(catalogTreatment.id),
@@ -65,7 +65,7 @@
           patient_treatment_id: patientTreatment?.id || null,
           ...(newTreatment ? { new_treatment: newTreatment } : {}),
           starts_at: `${data.appointment_date} ${data.appointment_time}`,
-          reason: patientTreatment ? `${patientTreatment.title}${patientTreatment.tooth_code ? ` · Pieza ${patientTreatment.tooth_code}` : ""}` : catalogTreatment ? `${catalogTreatment.name}${data.tooth_code ? ` · Pieza ${data.tooth_code}` : ""}` : "Control clinico",
+          reason: patientTreatment ? `${patientTreatment.title}${patientTreatment.tooth_code ? ` · Piezas ${patientTreatment.tooth_code}` : ""}` : catalogTreatment ? `${catalogTreatment.name}${data.tooth_code ? ` · Piezas ${data.tooth_code}` : ""}` : "Control clinico",
           notes: data.notes || null,
           status: "scheduled"
         });
@@ -89,16 +89,28 @@
       }
 
       if (action === "treatment") {
-        const data = cleanFormData(form);
-        await DentalAPI.post("/api/patient-treatments", {
-          ...data,
+        const items = Array.from(form.querySelectorAll("[data-plan-item]")).map((row) => {
+          const catalogId = Number(row.querySelector("[data-plan-catalog]").value);
+          const catalogTreatment = currentCatalog.find((item) => Number(item.id) === catalogId);
+          if (!catalogTreatment) throw new Error("Selecciona un tratamiento en cada fila del plan.");
+          const price = Math.max(Number(row.querySelector("[data-plan-price]").value || catalogTreatment.default_price || 0), 0);
+          const discount = Math.min(Math.max(Number(row.querySelector("[data-plan-discount]").value || 0), 0), price);
+          return {
+            catalog_treatment_id: catalogId,
+            title: catalogTreatment.name,
+            tooth_code: row.querySelector("[data-plan-teeth]").value.trim() || null,
+            estimated_price: price,
+            final_price: price - discount
+          };
+        });
+        await DentalAPI.post("/api/patient-treatment-plans", {
           patient_id: patientId,
-          catalog_treatment_id: data.catalog_treatment_id ? Number(data.catalog_treatment_id) : null,
-          estimated_price: data.estimated_price ? Number(data.estimated_price) : null,
-          start_date: DentalAPI.localDateString()
+          title: form.elements.plan_title.value.trim(),
+          plan_notes: form.elements.plan_notes.value.trim(),
+          start_date: DentalAPI.localDateString(),
+          items
         });
       }
-
       if (action === "attachment") {
         const formData = new FormData(form);
         formData.set("patient_id", patientId);
@@ -112,12 +124,27 @@
 
       if (action === "payment") {
         const data = cleanFormData(form);
-        await DentalAPI.post("/api/payments", {
-          ...data,
-          patient_id: patientId,
-          patient_treatment_id: data.patient_treatment_id ? Number(data.patient_treatment_id) : null,
-          amount: Number(data.amount || 0)
-        });
+        if (form.paymentAllocation?.getMode() !== "single") {
+          const allocations = form.paymentAllocation.allocations();
+          const totalDue = Math.max(
+            currentSummary.treatments.reduce((sum, treatment) => sum + Number(treatment.final_price ?? treatment.estimated_price ?? 0), 0)
+            - currentSummary.payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0), 0);
+          if (form.paymentAllocation.total() > totalDue) throw new Error("El total supera el saldo pendiente del paciente.");
+          await DentalAPI.post("/api/payments/batch", {
+            patient_id: patientId,
+            payment_date: data.payment_date,
+            method: data.method,
+            notes: data.notes || "",
+            allocations
+          });
+        } else {
+          await DentalAPI.post("/api/payments", {
+            ...data,
+            patient_id: patientId,
+            patient_treatment_id: data.patient_treatment_id ? Number(data.patient_treatment_id) : null,
+            amount: Number(data.amount || 0)
+          });
+        }
       }
 
     }

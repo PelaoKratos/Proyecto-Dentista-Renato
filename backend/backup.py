@@ -9,7 +9,7 @@ import sqlite3
 import tempfile
 import threading
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
 
 _BACKUP_LOCK = threading.Lock()
@@ -120,18 +120,20 @@ def create_backup(db_path: Path, media_dir: Path, backups_dir: Path, *,
         temporary.unlink(missing_ok=True)
 
 
-def create_daily_backup_if_due(db_path: Path, media_dir: Path, backups_dir: Path,
-                               now: datetime | None = None) -> Path | None:
-    """Create one complete automatic backup per local calendar day while the app runs."""
+def create_weekly_backup_if_due(db_path: Path, media_dir: Path, backups_dir: Path,
+                                now: datetime | None = None) -> Path | None:
+    """Create an automatic backup only after seven days without one."""
     now = now or datetime.now()
+    cutoff = now - timedelta(days=7)
     with _BACKUP_LOCK:
         if backups_dir.exists():
             for path in backups_dir.glob("consulta-dental-backup-*.zip"):
                 try:
                     with zipfile.ZipFile(path) as archive:
                         metadata = json.loads(archive.read("respaldo-info.json"))
-                    if metadata.get("mode") == "automatic" and metadata.get("created_at", "")[:10] == now.date().isoformat():
+                    if (metadata.get("mode") == "automatic"
+                            and datetime.fromisoformat(metadata["created_at"]) > cutoff):
                         return None
-                except (OSError, zipfile.BadZipFile, KeyError, ValueError, json.JSONDecodeError):
+                except (OSError, zipfile.BadZipFile, KeyError, ValueError, TypeError, json.JSONDecodeError):
                     continue
         return create_backup(db_path, media_dir, backups_dir, include_media=True, mode="automatic", now=now)

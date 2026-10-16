@@ -44,8 +44,8 @@
             <form class="compact-form" id="patientForm">
               <label>Nombres<input name="first_name" type="text" placeholder="Ej. Andrea" required /></label>
               <label>Apellidos<input name="last_name" type="text" placeholder="Ej. Morales" required /></label>
-              <label>RUT<input name="rut" type="text" placeholder="12.345.678-9" /></label>
-              <label>Telefono<input name="phone" type="tel" placeholder="+56 9 ..." /></label>
+              <label>RUT<input name="rut" type="text" placeholder="12.345.678-9" autocomplete="off" autocapitalize="characters" spellcheck="false" /></label>
+              <label>Teléfono<span class="patient-phone-entry"><span class="patient-phone-prefix" aria-hidden="true">+56</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="9 1234 5678" aria-label="Número de teléfono después de +56" /></span></label>
               <label>Correo<input name="email" type="email" placeholder="correo@ejemplo.cl" /></label>
               <label>Alerta clinica<textarea name="active_alert" placeholder="Alergias, medicamentos, condiciones relevantes"></textarea></label>
               <button class="text-button primary-action" type="submit">Guardar ficha</button>

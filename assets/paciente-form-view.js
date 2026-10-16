@@ -13,7 +13,7 @@
       const returnFocus = document.activeElement;
       const patient = currentSummary.patient;
       const treatment = activeTreatment(currentSummary);
-      const toothTreatment = selectedToothForAppointment ? currentSummary.treatments.find((item) => String(item.tooth_code) === String(selectedToothForAppointment) && item.status !== "completed") : null;
+      const toothTreatment = selectedToothForAppointment ? currentSummary.treatments.find((item) => (item.dentition_type || "adult") === (patient.dentition_type || "adult") && String(item.tooth_code || "").split(",").includes(String(selectedToothForAppointment)) && ["planned", "in_progress"].includes(item.status)) : null;
       const appointment = action === "reschedule" ? currentSummary.appointments.find(item => item.id === Number(entityId)) : selectedAppointment();
       const session = currentSummary.sessions.find((item) => item.id === Number(entityId));
       const attachmentSessionTarget = action === "attachment" ? session : null;
@@ -29,7 +29,7 @@
         "appointment-session": "Registrar atencion de la cita",
         appointment: "Agendar cita",
         reschedule: "Cambiar fecha de la cita",
-        treatment: "Nuevo tratamiento",
+        treatment: "Nuevo plan de tratamiento",
         attachment: "Adjuntar radiografia o documento",
         payment: "Registrar pago"
       };
@@ -37,7 +37,7 @@
       const forms = {
         reschedule: `<form class="compact-form action-form" data-form="reschedule" data-entity-id="${appointment?.id || ""}">
           <p>${DentalAPI.escapeHtml(appointment?.reason || "Cita del paciente")}</p><p class="form-helper">Se cambia la fecha de esta misma cita. El tratamiento, su precio y sus pagos se conservan.</p>
-          <label>Nueva fecha y hora<input name="starts_at" type="datetime-local" value="${dateTimeForInput(appointment?.starts_at)}" required /></label>
+          <label>Nueva fecha<input name="reschedule_date" type="date" value="${dateTimeForInput(appointment?.starts_at).slice(0, 10)}" required /></label><label>Hora<select name="reschedule_time" required>${Array.from({length: 15}, (_, index) => { const hour = 9 + Math.floor(index / 2); const minute = index % 2 ? "30" : "00"; const value = `${String(hour).padStart(2, "0")}:${minute}`; return `<option value="${value}" ${value === dateTimeForInput(appointment?.starts_at).slice(11, 16) ? "selected" : ""}>${value}</option>`; }).join("")}</select></label><p class="appointment-wide appointment-time-availability" data-time-availability role="status" aria-live="polite"></p>
           <button class="text-button primary-action" type="submit">Guardar nueva fecha</button><p class="form-status" role="status"></p></form>`,
         edit: `
           <form class="compact-form action-form" data-form="edit">
@@ -112,20 +112,30 @@
           </form>
         `,
         appointment: `
-          <form class="compact-form action-form appointment-form" data-form="appointment" enctype="multipart/form-data">
-            <div class="appointment-form-patient">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</div>
-            <label class="appointment-wide">1. Pieza dental<select name="tooth_code" data-booking-tooth><option value="">Control general / sin pieza</option>${[1,2,3,4].flatMap(q => Array.from({length:8}, (_, i) => `${q}${i+1}`)).map(code => `<option value="${code}" ${String(selectedToothForAppointment) === code ? "selected" : ""}>Pieza ${code} - ${toothDescription(code)}</option>`).join("")}</select></label>
-            <p class="appointment-tooth-description">${DentalAPI.escapeHtml(selectedToothForAppointment ? toothDescription(selectedToothForAppointment) : "Selecciona la pieza aqui o desde el odontograma.")}</p>
-            <label class="appointment-wide">2. Tratamiento del paciente<select name="patient_treatment_id" data-existing-treatment><option value="">Nuevo tratamiento / control general</option>${currentSummary.treatments.filter((item) => item.status !== "completed" && (!selectedToothForAppointment || String(item.tooth_code) === String(selectedToothForAppointment))).map((item) => `<option value="${item.id}" ${Number(entityId) === item.id || (!entityId && item.id === toothTreatment?.id) ? "selected" : ""}>${DentalAPI.escapeHtml(item.title)}${item.tooth_code ? ` - Pieza ${DentalAPI.escapeHtml(item.tooth_code)}` : ""} (sin nuevo cobro)</option>`).join("")}</select></label>
+          <form class="compact-form action-form appointment-form" data-form="appointment" data-entity-id="${entityId || ""}" enctype="multipart/form-data">
+            <label class="appointment-wide">1. Piezas dentales<input name="tooth_code" data-booking-tooth value="${DentalAPI.escapeHtml(selectedToothForAppointment || "")}" placeholder="${(patient.dentition_type || "adult") === "child" ? "Ej. 1, 2, 3 (hasta 20)" : "Ej. 1, 2, 3 (hasta 32)"}" inputmode="numeric" /></label>
+            <p class="appointment-tooth-description">Numeración ${(patient.dentition_type || "adult") === "child" ? "infantil, 1 a 20" : "adulta, 1 a 32"}. Separa con comas; deja vacío para un control general.</p>
+            <input type="hidden" name="patient_treatment_id" data-existing-treatment value="${Number(entityId || toothTreatment?.id || 0) || ""}" />
             <p class="appointment-wide form-status" data-duplicate-message role="status" hidden></p>
             <p class="appointment-wide" data-continuation-message hidden>Esta cita conserva el presupuesto y los pagos del tratamiento. No genera un nuevo cobro.</p>
             <label class="appointment-wide">Tratamiento<select name="catalog_treatment_id" data-appointment-catalog ${selectedToothForAppointment ? "required" : ""}><option value="">Seleccionar tratamiento...</option>${appointmentCatalogOptions()}</select></label>
             <label>Costo<input name="cost" type="number" min="0" step="1" placeholder="$" data-appointment-cost /></label>
-            <label>Descuento<input name="discount" type="number" min="0" step="1" value="0" placeholder="$" data-appointment-discount /></label>
+            <div class="appointment-discount-field" data-appointment-discount-field>
+              <div class="appointment-discount-heading">
+                <label for="appointmentDiscount">Descuento</label>
+                <div class="appointment-discount-modes" role="group" aria-label="Tipo de descuento">
+                  <button type="button" data-appointment-discount-mode="amount" aria-pressed="true">Monto $</button>
+                  <button type="button" data-appointment-discount-mode="percent" aria-pressed="false">Porcentaje %</button>
+                </div>
+              </div>
+              <input id="appointmentDiscount" name="discount" type="number" min="0" step="1" placeholder="Monto $" data-appointment-discount aria-label="Descuento en pesos" />
+              <input name="discount_mode" type="hidden" value="amount" data-appointment-discount-mode-value />
+            </div>
             <div class="appointment-total"><span>Total con descuento</span><strong data-appointment-total>$0</strong></div>
             <h3 class="appointment-wide">3. Fecha de la cita</h3>
             <label>Fecha<input name="appointment_date" type="date" value="${nextControlInput().slice(0, 10)}" required /></label>
-            <label>Hora<input name="appointment_time" type="time" value="${nextControlInput().slice(11, 16)}" required /></label>
+            <label>Hora<select name="appointment_time" required>${Array.from({length: 15}, (_, index) => { const hour = 9 + Math.floor(index / 2); const minute = index % 2 ? "30" : "00"; const value = `${String(hour).padStart(2, "0")}:${minute}`; return `<option value="${value}" ${value === nextControlInput().slice(11, 16) ? "selected" : ""}>${value}</option>`; }).join("")}</select></label>
+            <p class="appointment-wide appointment-time-availability" data-time-availability role="status" aria-live="polite"></p>
             <details class="appointment-wide booking-extras"><summary>Notas y radiografia (opcional)</summary>
             <label class="appointment-wide">Notas (opcional)<textarea name="notes" placeholder="Indicaciones para la cita o tratamiento"></textarea></label>
             <label class="appointment-wide upload-field">Adjuntar radiografia<input name="file" type="file" accept="image/*,.pdf" /><span>Subir imagen o PDF</span></label></details>
@@ -137,7 +147,7 @@
           <form class="compact-form action-form" data-form="treatment">
             <label>Catalogo<select name="catalog_treatment_id"><option value="">Personalizado</option>${currentCatalog.map((item) => `<option value="${item.id}">${DentalAPI.escapeHtml(item.name)} - ${DentalAPI.money(item.default_price)}</option>`).join("")}</select></label>
             <label>Nombre tratamiento<input name="title" placeholder="Ej. Implante molar inferior" required /></label>
-            <label>Pieza dental<input name="tooth_code" placeholder="Ej. 36, 11, arcada superior" /></label>
+            <label>Piezas dentales<input name="tooth_code" placeholder="${(patient.dentition_type || "adult") === "child" ? "1 a 20" : "1 a 32"}; ej. 1, 2, 3" /></label>
             <label>Diagnostico<textarea name="diagnosis" placeholder="Diagnostico asociado"></textarea></label>
             <label>Plan clinico<textarea name="plan_notes" placeholder="Pasos del tratamiento"></textarea></label>
             <label>Presupuesto<input name="estimated_price" type="number" min="0" placeholder="0" /></label>
@@ -161,7 +171,14 @@
         `,
         payment: `
           <form class="compact-form action-form patient-payment-form" data-form="payment">
-            <label>Tratamiento<select name="patient_treatment_id"><option value="">Sin tratamiento asociado</option>${renderTreatmentOptions(paymentTreatment?.id)}</select></label>
+            <div class="payment-modes" role="group" aria-label="Aplicar pago a tratamientos">
+              <button type="button" data-payment-mode="single" aria-pressed="true">Un tratamiento</button>
+              <button type="button" data-payment-mode="multiple" aria-pressed="false">Varios tratamientos</button>
+              <button type="button" data-payment-mode="all" aria-pressed="false">Pagar todos</button>
+            </div>
+            <label data-payment-single>Tratamiento<select name="patient_treatment_id"><option value="">Sin tratamiento asociado</option>${renderTreatmentOptions(paymentTreatment?.id)}</select></label>
+            <div class="payment-allocation-list" data-payment-allocation-list hidden></div>
+            <p class="payment-allocation-summary" data-payment-allocation-summary aria-live="polite" hidden></p>
             <label>Fecha pago<input name="payment_date" type="date" value="${DentalAPI.localDateString()}" required /></label>
             <div class="patient-payment-balances" aria-label="Saldos pendientes" aria-live="polite">
               <div class="patient-payment-balance">
@@ -175,7 +192,7 @@
                 <small>Saldo combinado de sus tratamientos</small>
               </div>
             </div>
-            <label>Monto<input name="amount" type="number" min="1" value="${suggestedPayment || ""}" placeholder="0" required /></label>
+            <label data-payment-single>Monto<input name="amount" type="number" min="1" step="1" value="${suggestedPayment || ""}" placeholder="0" required /></label>
             <label>Metodo<select name="method"><option>Transferencia</option><option>Tarjeta</option><option>Efectivo</option><option>Otro</option></select></label>
             <details class="patient-payment-notes">
               <summary>Agregar nota (opcional)</summary>

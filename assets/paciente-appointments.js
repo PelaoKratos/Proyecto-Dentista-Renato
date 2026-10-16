@@ -1,7 +1,14 @@
 /* Controladores de agenda y formularios de cita de la ficha. */
 (() => {
+  function appointmentDiscount(cost, value, mode) {
+    const price = Math.max(Number(cost || 0), 0);
+    const entered = Math.max(Number(value || 0), 0);
+    if (mode === "percent") return Math.min(Math.round(price * Math.min(entered, 100) / 100), price);
+    return Math.min(entered, price);
+  }
+
   function create(dependencies) {
-    const { getSummary, getCatalog, getSelectedTooth, setSelectedTooth, pendingToothAppointment, loadPatient, toothDescription } = dependencies;
+    const { getSummary, getCatalog, getSelectedTooth, setSelectedTooth, pendingToothAppointment, loadPatient, onAttended, toothDescription } = dependencies;
     function bindPatientAppointmentActions() {
       document.querySelectorAll("[data-update-patient-appointment]").forEach((button) => {
         button.addEventListener("click", async () => {
@@ -20,6 +27,7 @@
               status
             });
             message.textContent = `Cita marcada como ${label}.`;
+            if (status === "attended") onAttended(appointmentId);
             await loadPatient();
           } catch (error) {
             message.textContent = error.message;
@@ -38,40 +46,66 @@
       const catalog = form.querySelector("[data-appointment-catalog]");
       const cost = form.querySelector("[data-appointment-cost]");
       const discount = form.querySelector("[data-appointment-discount]");
+      const discountField = form.querySelector("[data-appointment-discount-field]");
+      const discountMode = form.querySelector("[data-appointment-discount-mode-value]");
+      const modeButtons = [...form.querySelectorAll("[data-appointment-discount-mode]")];
       const total = form.querySelector("[data-appointment-total]");
       const existing = form.querySelector("[data-existing-treatment]");
       const tooth = form.querySelector("[data-booking-tooth]");
       const sync = () => {
         const continuing = Boolean(existing.value);
-        [catalog, cost, discount].forEach((input) => { input.disabled = continuing; input.closest("label").hidden = continuing; });
-        catalog.required = !continuing && Boolean(getSelectedTooth());
+        [catalog, cost].forEach((input) => { input.disabled = continuing; input.closest("label").hidden = continuing; });
+        discount.disabled = continuing;
+        discountField.hidden = continuing;
+        catalog.required = !continuing && Boolean(tooth.value.trim());
         total.closest(".appointment-total").hidden = continuing;
         form.querySelector("[data-continuation-message]").hidden = !continuing;
         const summary = getSummary();
         const treatment = summary.treatments.find((item) => item.id === Number(existing.value));
-        form.elements.tooth_code.value = treatment?.tooth_code || getSelectedTooth() || "";
-        form.querySelector(".appointment-tooth-description").textContent = tooth.value ? toothDescription(tooth.value) : "Control general sin pieza dental.";
-        const pending = pendingToothAppointment(form.elements.tooth_code.value);
+        if (treatment) form.elements.tooth_code.value = treatment.tooth_code || "";
+        form.querySelector(".appointment-tooth-description").textContent = tooth.value ? "Piezas: " + tooth.value + ". Separa cada número con una coma." : "Control general sin pieza dental.";
+        const pending = pendingToothAppointment(form.elements.tooth_code.value, treatment?.dentition_type || summary.patient.dentition_type || "adult");
         const warning = form.querySelector("[data-duplicate-message]");
         warning.hidden = !pending;
         warning.textContent = pending ? `Esta pieza ya tiene una cita pendiente para ${DentalAPI.date(pending.starts_at)} ${DentalAPI.time(pending.starts_at)}. Atiende, cancela o modifica esa cita antes de agendar otra.` : "";
-        form.querySelector("button[type='submit']").disabled = Boolean(pending);
+        form.dataset.toothConflict = String(Boolean(pending));
+        form.querySelector("button[type='submit']").disabled = Boolean(pending) || form.dataset.timeConflict === "true";
       };
-      tooth.addEventListener("change", () => {
-        setSelectedTooth(tooth.value || null);
-        const available = getSummary().treatments.filter(item => item.status !== "completed" && (!tooth.value || String(item.tooth_code) === tooth.value));
-        existing.innerHTML = `<option value="">Nuevo tratamiento / control general</option>` + available.map(item => `<option value="${item.id}">${DentalAPI.escapeHtml(item.title)}${item.tooth_code ? ` - Pieza ${DentalAPI.escapeHtml(item.tooth_code)}` : ""} (sin nuevo cobro)</option>`).join("");
-        if (tooth.value && available.length) existing.value = available[0].id;
+      tooth.addEventListener("input", () => {
+        const codes = tooth.value.split(/[,;\s]+/).filter(Boolean);
+        setSelectedTooth(codes[0] || null);
+        const summary = getSummary();
+        const available = summary.treatments.filter(item =>
+          ["planned", "in_progress"].includes(item.status) &&
+          (item.dentition_type || "adult") === (summary.patient.dentition_type || "adult") &&
+          (codes.length > 0 && codes.some(code => String(item.tooth_code || "").split(",").includes(code)))
+        );
+        const selected = Number(form.dataset.entityId)
+          ? summary.treatments.find(item => Number(item.id) === Number(form.dataset.entityId))
+          : available[0];
+        existing.value = selected?.id || "";
         sync();
       });
-      existing.addEventListener("change", sync);
       sync();
       const update = () => {
         const price = Math.max(Number(cost.value || 0), 0);
-        const reduction = Math.min(Math.max(Number(discount.value || 0), 0), price);
-        if (Number(discount.value || 0) !== reduction) discount.value = reduction || "";
+        const maximum = discountMode.value === "percent" ? 100 : price;
+        discount.max = String(maximum);
+        if (discount.value !== "" && Number(discount.value) > maximum) discount.value = String(maximum);
+        const reduction = appointmentDiscount(price, discount.value, discountMode.value);
         total.textContent = DentalAPI.money(price - reduction);
       };
+      modeButtons.forEach((button) => button.addEventListener("click", () => {
+        if (discountMode.value === button.dataset.appointmentDiscountMode) return;
+        discountMode.value = button.dataset.appointmentDiscountMode;
+        discount.value = "";
+        discount.step = discountMode.value === "percent" ? "0.1" : "1";
+        discount.placeholder = discountMode.value === "percent" ? "Porcentaje %" : "Monto $";
+        discount.setAttribute("aria-label", discountMode.value === "percent" ? "Descuento en porcentaje" : "Descuento en pesos");
+        modeButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+        update();
+        discount.focus();
+      }));
       catalog.addEventListener("change", () => {
         const item = getCatalog().find((entry) => Number(entry.id) === Number(catalog.value));
         if (item) cost.value = Number(item.default_price || 0);
@@ -81,7 +115,72 @@
       discount.addEventListener("input", update);
       update();
     }
-    return Object.freeze({ bindPatientAppointmentActions, cleanFormData, bindAppointmentPriceForm });
+    function bindAppointmentAvailability(form, appointmentId = null) {
+      const dateInput = form.elements.appointment_date || form.elements.reschedule_date;
+      const timeSelect = form.elements.appointment_time || form.elements.reschedule_time;
+      const message = form.querySelector("[data-time-availability]");
+      const submit = form.querySelector("button[type='submit']");
+      const original = appointmentId ? getSummary().appointments.find((item) => Number(item.id) === Number(appointmentId)) : null;
+      const duration = original?.ends_at
+        ? Math.max((new Date(original.ends_at.replace(" ", "T")) - new Date(original.starts_at.replace(" ", "T"))) / 60000, 30)
+        : 30;
+      let appointments = [];
+      let requestNumber = 0;
+
+      function update() {
+        const date = dateInput.value;
+        const occupied = (hour) => {
+          if (!date) return [];
+          const start = new Date(`${date}T${hour}:00`).getTime();
+          const end = start + duration * 60000;
+          return appointments.filter((item) => {
+            if (item.status !== "scheduled" || Number(item.id) === Number(appointmentId)) return false;
+            const otherStart = new Date(String(item.starts_at).replace(" ", "T")).getTime();
+            const otherEnd = item.ends_at
+              ? new Date(String(item.ends_at).replace(" ", "T")).getTime() : otherStart + 30 * 60000;
+            return start < otherEnd && otherStart < end;
+          });
+        };
+        [...timeSelect.options].forEach((option) => {
+          const overlapping = occupied(option.value);
+          const shareable = option.value === "16:00" && overlapping.length > 0 && overlapping.every((item) => String(item.starts_at).replace("T", " ").slice(11, 16) === "16:00" && Number(item.patient_id) !== Number(getSummary().patient.id));
+          option.textContent = `${option.value} · ${overlapping.length ? shareable ? "Ocupada (permite otra cita)" : "Ocupada" : "Disponible"}`;
+          option.dataset.occupied = String(overlapping.length > 0);
+        });
+        const overlapping = occupied(timeSelect.value);
+        const busy = overlapping.length > 0;
+        const blocked = busy && !(timeSelect.value === "16:00" && overlapping.every((item) => String(item.starts_at).replace("T", " ").slice(11, 16) === "16:00" && Number(item.patient_id) !== Number(getSummary().patient.id)));
+        form.dataset.timeConflict = String(blocked);
+        message.textContent = busy
+          ? (blocked ? `La hora ${timeSelect.value} ya está ocupada. Selecciona otra hora.` : "Las 16:00 están ocupadas, pero puedes agendar otro paciente a esa hora.")
+          : `${timeSelect.value} disponible para agendar.`;
+        message.classList.toggle("time-occupied", blocked);
+        submit.disabled = blocked || form.dataset.toothConflict === "true";
+      }
+
+      async function refresh() {
+        const request = ++requestNumber;
+        form.dataset.timeConflict = "true";
+        submit.disabled = true;
+        message.textContent = "Comprobando horarios disponibles...";
+        try {
+          const loaded = await DentalAPI.get("/api/appointments");
+          if (request !== requestNumber || !form.isConnected) return;
+          appointments = Array.isArray(loaded) ? loaded : [];
+          update();
+        } catch (error) {
+          if (request !== requestNumber || !form.isConnected) return;
+          form.dataset.timeConflict = "false";
+          submit.disabled = form.dataset.toothConflict === "true";
+          message.textContent = "No se pudo consultar la disponibilidad. Se comprobará al guardar.";
+        }
+      }
+      dateInput.addEventListener("change", refresh);
+      timeSelect.addEventListener("change", update);
+      refresh();
+    }
+
+    return Object.freeze({ bindPatientAppointmentActions, cleanFormData, bindAppointmentPriceForm, bindAppointmentAvailability });
   }
-  window.PatientAppointments = Object.freeze({ create });
+  window.PatientAppointments = Object.freeze({ create, appointmentDiscount });
 })();

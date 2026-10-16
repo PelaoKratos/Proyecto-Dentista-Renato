@@ -1,0 +1,86 @@
+[
+  {
+    "name": "Evaluacion dental",
+    "description": "Primera revision y diagnostico general",
+    "default_price": 25000,
+    "is_active": 1
+  },
+  {
+    "name": "Limpieza periodontal",
+    "description": "Profilaxis y control periodontal",
+    "default_price": 65000,
+    "is_active": 1
+  },
+  {
+    "name": "Endodoncia",
+    "description": "Tratamiento endodontico por pieza",
+    "default_price": 280000,
+    "is_active": 1
+  },
+  {
+    "name": "Implante",
+    "description": "Implante dental con evaluacion quirurgica",
+    "default_price": 920000,
+    "is_active": 1
+  },
+  {
+    "name": "Ortodoncia",
+    "description": "Plan de ortodoncia con controles mensuales",
+    "default_price": 1200000,
+    "is_active": 1
+  },
+  {
+    "name": "Resina compuesta",
+    "description": "Restauracion estetica por pieza",
+    "default_price": 85000,
+    "is_active": 1
+  },
+  {
+    "name": "Corona ceramica",
+    "description": "Rehabilitacion con corona unitaria",
+    "default_price": 420000,
+    "is_active": 1
+  },
+  {
+    "name": "Extraccion simple",
+    "description": "Exodoncia simple con control posterior",
+    "default_price": 95000,
+    "is_active": 1
+  },
+  {
+    "name": "Plano de relajacion",
+    "description": "Tratamiento para bruxismo",
+    "default_price": 180000,
+    "is_active": 1
+  },
+  {
+    "name": "Blanqueamiento",
+    "description": "Blanqueamiento dental supervisado",
+    "default_price": 210000,
+    "is_active": 1
+  },
+  {
+    "name": "Tratamiento periodontal",
+    "description": "Raspado y pulido radicular",
+    "default_price": 160000,
+    "is_active": 1
+  },
+  {
+    "name": "Protesis removible",
+    "description": "Rehabilitacion protesica parcial",
+    "default_price": 650000,
+    "is_active": 1
+  },
+  {
+    "name": "Carilla estetica",
+    "description": "Carilla ceramica o resina indirecta",
+    "default_price": 380000,
+    "is_active": 1
+  },
+  {
+    "name": "Limpieza no completa",
+    "description": null,
+    "default_price": 20000,
+    "is_active": 1
+  }
+]

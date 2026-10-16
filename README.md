@@ -67,7 +67,7 @@ Estas carpetas estan excluidas en `.gitignore` para evitar publicar informacion 
 
 ## Datos demo
 
-Una instalación nueva abre con la base de datos vacía. Los registros de ejemplo solo se agregan si ejecutas el comando siguiente:
+Una instalación nueva abre sin pacientes ni registros clínicos. Los registros de ejemplo solo se agregan si ejecutas el comando siguiente:
 
 Para llenar la aplicacion con pacientes, tratamientos, evoluciones, agenda, pagos y radiografias de ejemplo:
 
@@ -79,13 +79,13 @@ El comando reinicia solo los registros con RUT `DEMO-*`, por lo que no borra pac
 
 ## Acceso y respaldos
 
-En el primer ingreso se crea una clave de administrador de al menos 12 caracteres.
-No hay clave predeterminada. La sesion dura 30 minutos; se puede cerrar desde
+En el primer ingreso se crea una clave de administrador de al menos 6 caracteres.
+No hay clave predeterminada. La sesion dura 2 horas; se puede cerrar desde
 la navegacion lateral. La clave se guarda como verificador scrypt en
 data/admin-auth.json, fuera del repositorio. Los respaldos clinicos no contienen
 esta clave.
 
-El servidor crea un respaldo automatico una vez por dia local mientras esta en uso,
+El servidor crea un respaldo automatico una vez por semana local mientras esta en uso,
 incluidos la base y los adjuntos. Si estuvo apagado, crea la copia al siguiente
 arranque. Las copias manuales pueden omitir adjuntos. Cada ZIP se restaura en
 una carpeta temporal y se comprueba antes de quedar disponible. Los archivos se
@@ -158,10 +158,12 @@ Para crear la carpeta de instalacion en Windows, ejecuta:
 
     powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-delivery.ps1
 
-Se genera Entrega-cliente/ con el instalador, la interfaz y el backend,
-pero sin la base de datos, credenciales, adjuntos, respaldos ni archivos de
-pruebas. La carpeta se excluye de Git. Para generar otra entrega, mueve o
-renombra primero la carpeta anterior.
+Se genera Entrega-cliente/ con el instalador, la interfaz, el backend y una
+base SQLite nueva con los procedimientos base activos del catalogo actual.
+Incluye sus nombres, descripciones y precios para editarlos desde
+Procedimientos base. Tiene cero pacientes, citas, pagos, evoluciones,
+tratamientos asignados y adjuntos. No contiene credenciales ni respaldos.
+La carpeta se excluye de Git y se puede regenerar con el mismo comando.
 
 En el computador del cliente se necesita Python 3.12 o superior. Copia toda
 la carpeta y ejecuta INSTALAR.cmd. El instalador crea el acceso directo en

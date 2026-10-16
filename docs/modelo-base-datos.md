@@ -23,6 +23,7 @@ Representa la ficha principal del paciente.
 | first_name | TEXT | Nombres |
 | last_name | TEXT | Apellidos |
 | birth_date | DATE NULL | Fecha de nacimiento |
+| dentition_type | TEXT | Odontograma vigente: adult (1-32) o child (1-20) |
 | phone | TEXT NULL | Telefono |
 | email | TEXT NULL | Correo |
 | address | TEXT NULL | Direccion |
@@ -47,6 +48,18 @@ Catalogo reutilizable de tratamientos.
 | default_price | DECIMAL NULL | Precio sugerido |
 | is_active | BOOLEAN | Disponible/no disponible |
 
+### patient_treatment_plans
+
+Agrupa varios procedimientos dentales dentro de un solo plan del paciente.
+
+| Campo | Tipo | Descripcion |
+| --- | --- | --- |
+| id | INTEGER PK | Identificador del plan |
+| patient_id | INTEGER FK | Paciente propietario |
+| title | TEXT | Nombre del plan |
+| plan_notes | TEXT NULL | Observaciones generales del plan |
+| created_at | DATETIME | Creacion |
+| updated_at | DATETIME | Actualizacion |
 ### patient_treatments
 
 Plan o tratamiento concreto asignado a un paciente.
@@ -55,9 +68,11 @@ Plan o tratamiento concreto asignado a un paciente.
 | --- | --- | --- |
 | id | INTEGER PK | Identificador |
 | patient_id | INTEGER FK | Paciente |
+| treatment_plan_id | INTEGER FK NULL | Plan que agrupa este procedimiento |
 | catalog_treatment_id | INTEGER FK NULL | Tratamiento del catalogo |
 | title | TEXT | Nombre visible del tratamiento |
-| tooth_code | TEXT NULL | Pieza dental, zona o arcada |
+| tooth_code | TEXT NULL | Numeros de piezas separados por coma, segun el odontograma del tratamiento |
+| dentition_type | TEXT | Tipo de odontograma al crear el tratamiento; conserva el contexto historico |
 | diagnosis | TEXT NULL | Diagnostico |
 | plan_notes | TEXT NULL | Plan clinico |
 | status | TEXT | planned, in_progress, completed, cancelled |
@@ -139,7 +154,8 @@ Pagos y abonos.
 
 ## Relaciones
 
-- Un paciente tiene muchos tratamientos.
+- Un paciente tiene muchos planes de tratamiento y cada plan puede incluir varios procedimientos por pieza.
+- Un tratamiento puede pertenecer opcionalmente a un plan; los tratamientos antiguos sin plan permanecen válidos.
 - Un paciente tiene muchas sesiones clinicas.
 - Un tratamiento puede tener muchas sesiones.
 - Un paciente puede tener muchos adjuntos.

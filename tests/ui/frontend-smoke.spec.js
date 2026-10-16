@@ -43,7 +43,7 @@ test('formulario de pacientes mantiene campos clave faciles de encontrar', async
   await page.goto('/pacientes.html#nuevo', { waitUntil: 'networkidle' });
   await expect(page.getByLabel('Nombres')).toBeVisible();
   await expect(page.getByLabel('Apellidos')).toBeVisible();
-  await expect(page.getByLabel('Telefono')).toBeVisible();
+  await expect(page.getByLabel('Número de teléfono después de +56')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Guardar ficha' })).toBeVisible();
 });
 

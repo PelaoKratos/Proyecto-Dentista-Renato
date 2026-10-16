@@ -47,6 +47,32 @@ class ValidationTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaisesRegex(ValueError, "finito"):
                 validate_payment({"patient_id": 1, "payment_date": "2026-09-03", "amount": value})
 
+    def test_treatment_accepts_multiple_numbered_teeth_and_rejects_duplicates(self):
+        value = validate_patient_treatment({"patient_id": 1, "title": "Puente", "tooth_code": "21, 11 12"})
+        self.assertEqual(value["tooth_code"], "11,12,21")
+        with self.assertRaisesRegex(ValueError, "repitas"):
+            validate_patient_treatment({"patient_id": 1, "title": "Puente", "tooth_code": "11,11"})
+        with self.assertRaisesRegex(ValueError, "entre 1 y 32"):
+            validate_patient_treatment({"patient_id": 1, "title": "Puente", "tooth_code": "99"})
+
+    def test_child_treatment_has_twenty_teeth_and_patient_type_is_validated(self):
+        self.assertEqual(
+            validate_patient_treatment({"patient_id": 1, "title": "Control", "dentition_type": "child", "tooth_code": "20,1"})["tooth_code"],
+            "1,20",
+        )
+        with self.assertRaisesRegex(ValueError, "1 y 20"):
+            validate_patient_treatment({"patient_id": 1, "title": "Control", "dentition_type": "child", "tooth_code": "21"})
+        with self.assertRaisesRegex(ValueError, "adulto o infantil"):
+            validate_patient({"first_name": "Ana", "last_name": "Rios", "dentition_type": "otro"})
+
+    def test_appointment_slots_are_half_hour_from_nine_through_sixteen(self):
+        for value in ("09:00", "09:30", "15:30", "16:00"):
+            with self.subTest(value=value):
+                validate_appointment({"patient_id": 1, "starts_at": f"2026-10-08 {value}"})
+        for value in ("08:30", "09:15", "16:30"):
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, "intervalos"):
+                validate_appointment({"patient_id": 1, "starts_at": f"2026-10-08 {value}"})
+
     def test_appointment_end_must_follow_start(self):
         with self.assertRaisesRegex(ValueError, "posterior"):
             validate_appointment({"patient_id": 1, "starts_at": "2026-09-03 10:00", "ends_at": "2026-09-03 10:00"})

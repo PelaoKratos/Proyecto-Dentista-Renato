@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test('registrar atención guarda la evolución y cierra la cita en una sola solicitud', async ({ page }) => {
   const summary = {
     patient: { id: 1, first_name: 'Ana', last_name: 'Prueba' },
-    treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', tooth_code: '36', status: 'in_progress', final_price: 100 }],
+    treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', tooth_code: '19', status: 'in_progress', final_price: 100 }],
     appointments: [{ id: 1, patient_id: 1, patient_treatment_id: 7, starts_at: '2026-09-01 10:00', status: 'scheduled', reason: 'Control', notes: 'Alergia comunicada por paciente' }],
     payments: [], sessions: [], attachments: []
   };

@@ -35,7 +35,7 @@ function monthKey(dateValue) {
 function patientBalance(patientId) {
   const treatmentTotal = treatments
     .filter((treatment) => Number(treatment.patient_id) === Number(patientId))
-    .reduce((total, treatment) => total + Number(treatment.final_price || treatment.estimated_price || 0), 0);
+    .reduce((total, treatment) => total + Number(treatment.final_price ?? treatment.estimated_price ?? 0), 0);
   const paid = payments
     .filter((payment) => Number(payment.patient_id) === Number(patientId))
     .reduce((total, payment) => total + Number(payment.amount || 0), 0);
@@ -43,7 +43,7 @@ function patientBalance(patientId) {
 }
 
 function treatmentTotal(treatment) {
-  return Number(treatment?.final_price || treatment?.estimated_price || 0);
+  return Number(treatment?.final_price ?? treatment?.estimated_price ?? 0);
 }
 
 function treatmentPaid(treatmentId) {
@@ -82,6 +82,10 @@ function paymentStateClass(state) {
   return "";
 }
 
+function distinctPaymentCount(items) {
+  return new Set(items.map((payment) => payment.payment_batch_id || `single-${payment.id}`)).size;
+}
+
 function renderMetrics() {
   const now = new Date();
   const today = localDateString(now);
@@ -96,13 +100,13 @@ function renderMetrics() {
 
   const metricByName = new Map(Array.from(paymentMetrics).map((metric) => [metric.dataset.paymentMetric, metric]));
   metricByName.get("month").querySelector("strong").textContent = DentalAPI.money(monthTotal);
-  metricByName.get("month").querySelector("small").textContent = `${monthPayments.length} pagos registrados`;
+  metricByName.get("month").querySelector("small").textContent = `${distinctPaymentCount(monthPayments)} pagos registrados`;
   metricByName.get("pending").querySelector("strong").textContent = DentalAPI.money(pendingTotal);
   metricByName.get("pending").querySelector("small").textContent = `${patients.filter((patient) => patientBalance(patient.id) > 0).length} pacientes con saldo`;
   metricByName.get("method").querySelector("strong").textContent = `${transferPercent}%`;
   metricByName.get("method").querySelector("small").textContent = "Pagos por transferencia";
   metricByName.get("today").querySelector("strong").textContent = DentalAPI.money(todayTotal);
-  metricByName.get("today").querySelector("small").textContent = `${todayPayments.length} abonos recibidos`;
+  metricByName.get("today").querySelector("small").textContent = `${distinctPaymentCount(todayPayments)} abonos recibidos`;
 }
 
 function normalize(value) {
@@ -116,6 +120,7 @@ function renderTreatmentsForPatient() {
     options.map((treatment) => `<option value="${treatment.id}">${DentalAPI.escapeHtml(treatment.title)} - saldo ${DentalAPI.money(treatmentPending(treatment))}</option>`).join("") ||
     `<option value="">Sin tratamiento asociado</option>`;
   updatePaymentAmountSuggestion();
+  paymentAllocation.refresh();
 }
 
 function renderPaymentBalances() {
@@ -123,10 +128,11 @@ function renderPaymentBalances() {
   const treatment = treatments.find((item) => Number(item.id) === Number(paymentTreatment.value));
   const patientDue = patientId ? patientBalance(patientId) : 0;
 
-  paymentTreatmentBalance.textContent = DentalAPI.money(treatment ? treatmentPending(treatment) : 0);
-  paymentTreatmentBalanceNote.textContent = treatment
-    ? `Total ${DentalAPI.money(treatmentTotal(treatment))} · abonado ${DentalAPI.money(treatmentPaid(treatment.id))}`
-    : "Selecciona un tratamiento";
+  const single = paymentAllocation.getMode() === "single";
+  paymentTreatmentBalance.textContent = DentalAPI.money(single ? (treatment ? treatmentPending(treatment) : 0) : paymentAllocation.selectedDue());
+  paymentTreatmentBalanceNote.textContent = single
+    ? (treatment ? `Total ${DentalAPI.money(treatmentTotal(treatment))} · abonado ${DentalAPI.money(treatmentPaid(treatment.id))}` : "Selecciona un tratamiento")
+    : `${paymentAllocation.selectedCount()} tratamientos seleccionados`;
   paymentPatientBalance.textContent = DentalAPI.money(patientDue);
 }
 
@@ -136,6 +142,13 @@ function updatePaymentAmountSuggestion() {
   amountInput.value = treatment ? treatmentPending(treatment) || "" : "";
   renderPaymentBalances();
 }
+
+const paymentAllocation = PaymentAllocation.create(paymentForm, {
+  getTreatments: () => treatments,
+  getPayments: () => payments,
+  getPatientId: () => Number(paymentPatient.value),
+  onChange: renderPaymentBalances
+});
 
 function renderPaymentFilters() {
   const previousPatient = paymentPatientFilter.value;
@@ -158,7 +171,7 @@ function renderPaymentFilters() {
     })
     .map((treatment) => {
       const patientName = DentalAPI.fullName(patientById.get(Number(treatment.patient_id)) || {});
-      const tooth = treatment.tooth_code ? ` · Pieza ${treatment.tooth_code}` : "";
+      const tooth = treatment.tooth_code ? ` · Piezas ${treatment.tooth_code} (${treatment.dentition_type === "child" ? "infantil" : "adulto"})` : "";
       const label = [patientName, treatment.title + tooth].filter(Boolean).join(" · ");
       return `<option value="${treatment.id}">${DentalAPI.escapeHtml(label)}</option>`;
     })
@@ -173,16 +186,28 @@ function filteredPayments() {
   const treatmentById = new Map(treatments.map((treatment) => [Number(treatment.id), treatment]));
   const from = paymentDateFrom.value;
   const through = paymentDateTo.value;
+  const unpaidTreatments = treatments
+    .filter((treatment) => treatmentTotal(treatment) > 0 && treatmentPaid(treatment.id) === 0 && treatmentPending(treatment) > 0)
+    .map((treatment) => ({
+      id: `pending-${treatment.id}`,
+      kind: "pending",
+      patient_id: Number(treatment.patient_id),
+      patient_treatment_id: Number(treatment.id),
+      amount: treatmentPending(treatment),
+      payment_date: treatment.start_date || treatment.created_at || ""
+    }));
 
-  return [...payments]
-    .filter((payment) => {
-      const date = String(payment.payment_date || "").slice(0, 10);
-      if (selectedPaymentState && paymentState(treatmentById.get(Number(payment.patient_treatment_id))) !== selectedPaymentState) return false;
-      if (from && date < from) return false;
-      if (through && date > through) return false;
-      if (paymentPatientFilter.value && Number(payment.patient_id) !== Number(paymentPatientFilter.value)) return false;
-      if (paymentTreatmentFilter.value === "none" && payment.patient_treatment_id) return false;
-      if (paymentTreatmentFilter.value !== "all" && paymentTreatmentFilter.value !== "none" && Number(payment.patient_treatment_id) !== Number(paymentTreatmentFilter.value)) return false;
+  return [...payments.map((payment) => ({ ...payment, kind: "payment" })), ...unpaidTreatments]
+    .filter((item) => {
+      const treatment = treatmentById.get(Number(item.patient_treatment_id));
+      const state = item.kind === "pending" ? "pending" : paymentState(treatment);
+      const date = String(item.payment_date || "").slice(0, 10);
+      if (selectedPaymentState && state !== selectedPaymentState) return false;
+      if (from && (!date || date < from)) return false;
+      if (through && (!date || date > through)) return false;
+      if (paymentPatientFilter.value && Number(item.patient_id) !== Number(paymentPatientFilter.value)) return false;
+      if (paymentTreatmentFilter.value === "none" && item.patient_treatment_id) return false;
+      if (paymentTreatmentFilter.value !== "all" && paymentTreatmentFilter.value !== "none" && Number(item.patient_treatment_id) !== Number(paymentTreatmentFilter.value)) return false;
       return true;
     })
     .sort((a, b) => String(b.payment_date || "").localeCompare(String(a.payment_date || "")) || Number(b.id || 0) - Number(a.id || 0));
@@ -227,20 +252,35 @@ function renderPayments() {
         .map((payment) => {
           const patient = patientById.get(Number(payment.patient_id));
           const treatment = treatmentById.get(Number(payment.patient_treatment_id));
-          const state = paymentState(treatment);
+          const state = payment.kind === "pending" ? "pending" : paymentState(treatment);
+          if (payment.kind === "pending") {
+            return `
+              <div class="records-row payment-records-row pending-payment-row" data-pending-treatment="${treatment.id}">
+                <span>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
+                <span><strong>${DentalAPI.escapeHtml(treatment.title)}</strong><small><mark class="warning">Pendiente</mark> · Sin abonos registrados</small></span>
+                <span>${DentalAPI.money(payment.amount)}</span>
+                <span>—</span>
+                <span>${DentalAPI.money(payment.amount)}</span>
+                <span class="inline-actions"><button class="text-button primary-action" type="button" data-register-pending="${treatment.id}">Registrar abono</button></span>
+              </div>
+            `;
+          }
           return `
             <div class="records-row payment-records-row" data-payment-row="${payment.id}">
               <span>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
-              <span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento")}</strong><small><mark class="${paymentStateClass(state)}">${DentalAPI.escapeHtml(paymentStateLabel(state))}</mark></small></span>
-              <span><input class="inline-input" data-payment-amount type="number" min="1" value="${DentalAPI.escapeHtml(payment.amount || "")}" aria-label="Monto pago" /></span>
+              <span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento")}</strong><small><mark class="${paymentStateClass(state)}">${DentalAPI.escapeHtml(paymentStateLabel(state))}</mark>${payment.payment_batch_id ? " · Pago compartido" : ""}</small></span>
+              <span>${state === "paid" ? `<span data-payment-readonly>${DentalAPI.money(payment.amount)}</span>` : ""}
+                <input class="inline-input" data-payment-amount type="number" min="1" value="${DentalAPI.escapeHtml(payment.amount || "")}" aria-label="Monto pago" ${state === "paid" ? "hidden disabled" : ""} /></span>
               <span>
-                <select class="inline-input" data-payment-method aria-label="Metodo pago">
+                ${state === "paid" ? `<span data-payment-readonly>${DentalAPI.escapeHtml(payment.method || "—")}</span>` : ""}
+                <select class="inline-input" data-payment-method aria-label="Metodo pago" ${state === "paid" ? "hidden disabled" : ""}>
                   ${["Transferencia", "Tarjeta", "Efectivo", "Otro"].map((method) => `<option ${method === payment.method ? "selected" : ""}>${method}</option>`).join("")}
                 </select>
               </span>
               <span>${treatment ? DentalAPI.money(treatmentPending(treatment)) : "-"}</span>
               <span class="inline-actions">
-                <button class="text-button" type="button" data-save-payment="${payment.id}">Guardar</button>
+                ${state === "paid" ? `<button class="text-button" type="button" data-edit-payment="${payment.id}">Editar</button><button class="text-button" type="button" data-cancel-payment-edit hidden>Cancelar</button>` : ""}
+                <button class="text-button" type="button" data-save-payment="${payment.id}" ${state === "paid" ? "hidden" : ""}>Guardar</button>
                 <small class="form-status" data-payment-message="${payment.id}" aria-live="polite"></small>
               </span>
             </div>
@@ -307,16 +347,27 @@ paymentForm.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
 
   try {
-    await DentalAPI.post("/api/payments", {
+    const common = {
       patient_id: Number(formData.get("patient_id")),
-      patient_treatment_id: Number(formData.get("patient_treatment_id")) || null,
       payment_date: DentalAPI.localDateString(),
-      amount: Number(formData.get("amount")),
       method: formData.get("method"),
       notes: String(formData.get("notes") || "").trim()
-    });
+    };
+    if (paymentAllocation.getMode() === "single") {
+      await DentalAPI.post("/api/payments", {
+        ...common,
+        patient_treatment_id: Number(formData.get("patient_treatment_id")) || null,
+        amount: Number(formData.get("amount"))
+      });
+    } else {
+      const allocations = paymentAllocation.allocations();
+      const patientDue = patientBalance(common.patient_id);
+      if (paymentAllocation.total() > patientDue) throw new Error("El total supera el saldo pendiente del paciente.");
+      await DentalAPI.post("/api/payments/batch", { ...common, allocations });
+    }
     paymentStatus.textContent = "Pago guardado.";
     paymentForm.reset();
+    paymentAllocation.setMode("single");
     paymentForm.querySelector(".payment-notes-details").open = false;
     await loadPagos();
     submitButton.disabled = false;
@@ -327,6 +378,33 @@ paymentForm.addEventListener("submit", async (event) => {
 });
 
 paymentsTable.addEventListener("click", async (event) => {
+  const registerButton = event.target.closest("[data-register-pending]");
+  if (registerButton) {
+    const treatment = treatments.find((item) => Number(item.id) === Number(registerButton.dataset.registerPending));
+    if (!treatment) return;
+    paymentPatient.value = String(treatment.patient_id);
+    renderTreatmentsForPatient();
+    paymentTreatment.value = String(treatment.id);
+    updatePaymentAmountSuggestion();
+    paymentForm.scrollIntoView({ behavior: "smooth", block: "start" });
+    paymentForm.querySelector("input[name='amount']").focus();
+    return;
+  }
+  const editButton = event.target.closest("[data-edit-payment]");
+  if (editButton) {
+    const row = editButton.closest("[data-payment-row]");
+    row.querySelectorAll("[data-payment-readonly]").forEach((item) => { item.hidden = true; });
+    row.querySelectorAll("[data-payment-amount], [data-payment-method]").forEach((item) => { item.hidden = false; item.disabled = false; });
+    row.querySelector("[data-save-payment]").hidden = false;
+    row.querySelector("[data-cancel-payment-edit]").hidden = false;
+    editButton.hidden = true;
+    row.querySelector("[data-payment-amount]").focus();
+    return;
+  }
+  if (event.target.closest("[data-cancel-payment-edit]")) {
+    renderPayments();
+    return;
+  }
   const button = event.target.closest("[data-save-payment]");
   if (!button) return;
   const paymentId = button.dataset.savePayment;

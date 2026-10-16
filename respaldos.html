@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="./assets/ui-polish-workflows.css" />
     <link rel="stylesheet" href="./assets/ui-polish-patient.css" />
     <link rel="stylesheet" href="./assets/ui-polish-layout.css" />
+    <link rel="stylesheet" href="./assets/ui-polish-backups.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -32,12 +33,20 @@
             <div class="backup-stats" id="backupStats" aria-live="polite"></div>
             <div class="restore-note">
               <strong>Restauracion manual</strong>
-              <p>Se crea una copia automatica cada dia mientras el servidor esta en uso. Cada ZIP se comprueba restaurandolo en una carpeta temporal. Para restaurar datos reales, cierre el servidor y copie la base y los adjuntos desde una copia verificada.</p>
+              <p>Se crea una copia automatica una vez por semana mientras el servidor esta en uso. Cada ZIP se comprueba restaurandolo en una carpeta temporal. Para restaurar datos reales, cierre el servidor y copie la base y los adjuntos desde una copia verificada.</p>
             </div>
+            <div class="backup-history-tools" aria-label="Filtrar respaldos">
+              <label>Desde<input id="backupDateFrom" type="date" aria-label="Fecha desde" /></label>
+              <label>Hasta<input id="backupDateTo" type="date" aria-label="Fecha hasta" /></label>
+              <button class="text-button" id="clearBackupDates" type="button">Limpiar fechas</button>
+            </div>
+            <p class="backup-results-count" id="backupResultsCount" role="status" aria-live="polite">Cargando respaldos...</p>
+            <nav class="backup-pagination" id="backupPaginationTop" aria-label="Páginas de respaldos, arriba" hidden></nav>
             <div class="records-table compact-records backup-records" id="backupTable">
               <div class="records-row records-head"><span>Archivo</span><span>Fecha</span><span>Tamano</span><span>Accion</span></div>
               <p class="empty-state">Cargando respaldos...</p>
             </div>
+            <nav class="backup-pagination" id="backupPaginationBottom" aria-label="Páginas de respaldos, abajo" hidden></nav>
           </section>
           <aside class="detail-card">
             <div class="section-heading"><div><span class="eyebrow">Configuracion</span><h2>Reglas sugeridas</h2></div></div>

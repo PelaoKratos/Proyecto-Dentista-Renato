@@ -40,6 +40,8 @@ if (-not $Python) {
 foreach ($Required in @(
   'backend\server.py',
   'backend\schema.sql',
+  'data\consulta_dental.sqlite3',
+  'scripts\create-delivery-db.py',
   'assets\icons\app-icon.ico',
   'scripts\open-app.ps1',
   'scripts\install-desktop-shortcut.ps1'
@@ -71,6 +73,16 @@ foreach ($Folder in @('data', 'backups', 'media\pacientes')) {
   New-Item -ItemType Directory -Path (Join-Path $Destino $Folder) -Force | Out-Null
 }
 
+$CatalogDb = Join-Path $Paquete 'data\consulta_dental.sqlite3'
+& $Python @PythonArgs (Join-Path $Paquete 'scripts\create-delivery-db.py') verify --database $CatalogDb
+if ($LASTEXITCODE -ne 0) {
+  throw 'La base incluida en la entrega no supero la validacion de datos vacios.'
+}
+$InstalledDb = Join-Path $Destino 'data\consulta_dental.sqlite3'
+if (-not (Test-Path -LiteralPath $InstalledDb)) {
+  Copy-Item -LiteralPath $CatalogDb -Destination $InstalledDb
+}
+
 $VenvPython = Join-Path $Destino '.venv\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $VenvPython)) {
   & $Python @PythonArgs -m venv --without-pip (Join-Path $Destino '.venv')
@@ -87,7 +99,7 @@ if (-not $SinAccesoDirecto) {
   & (Join-Path $Destino 'scripts\install-desktop-shortcut.ps1')
 }
 Write-Output "Aplicacion instalada en: $Destino"
-Write-Output 'En el primer inicio, crea la clave de administrador. No se copiaron pacientes ni respaldos.'
+Write-Output 'En el primer inicio, crea la clave de administrador. El catalogo base ya esta disponible para editar precios; no se copiaron pacientes ni respaldos.'
 
 if (-not $NoIniciar) {
   $PowerShell = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'

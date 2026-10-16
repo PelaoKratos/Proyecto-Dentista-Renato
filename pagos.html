@@ -61,7 +61,14 @@
             <p class="form-helper">Revisa el saldo del tratamiento y el total pendiente del paciente antes de registrar el abono.</p>
             <form class="compact-form" id="paymentForm">
               <label>Paciente<select name="patient_id" id="paymentPatient"></select></label>
-              <label>Tratamiento<select name="patient_treatment_id" id="paymentTreatment"></select></label>
+              <div class="payment-modes" role="group" aria-label="Aplicar pago a tratamientos">
+                <button type="button" data-payment-mode="single" aria-pressed="true">Un tratamiento</button>
+                <button type="button" data-payment-mode="multiple" aria-pressed="false">Varios tratamientos</button>
+                <button type="button" data-payment-mode="all" aria-pressed="false">Pagar todos</button>
+              </div>
+              <label data-payment-single>Tratamiento<select name="patient_treatment_id" id="paymentTreatment"></select></label>
+              <div class="payment-allocation-list" data-payment-allocation-list hidden></div>
+              <p class="payment-allocation-summary" data-payment-allocation-summary aria-live="polite" hidden></p>
               <section class="payment-balances" aria-label="Saldos pendientes" aria-live="polite">
                 <article class="payment-balance-card">
                   <span>Por pagar del tratamiento</span>
@@ -74,7 +81,7 @@
                   <small>Saldo combinado de sus tratamientos</small>
                 </article>
               </section>
-              <label>Monto<input name="amount" type="number" placeholder="0" required /></label>
+              <label data-payment-single>Monto<input name="amount" type="number" min="1" step="1" placeholder="0" required /></label>
               <label>Metodo<select name="method"><option>Transferencia</option><option>Tarjeta</option><option>Efectivo</option></select></label>
               <details class="payment-notes-details">
                 <summary>Agregar nota (opcional)</summary>
@@ -89,6 +96,7 @@
     </div>
     <script src="./assets/navigation.js"></script>
     <script src="./assets/api.js"></script>
+    <script src="./assets/payment-allocation.js"></script>
     <script src="./assets/pagos.js"></script>
   </body>
 </html>

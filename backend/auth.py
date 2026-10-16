@@ -11,7 +11,7 @@ import threading
 import time
 from pathlib import Path
 
-SESSION_SECONDS = 30 * 60
+SESSION_SECONDS = 2 * 60 * 60
 LOCK_SECONDS = 60
 MAX_FAILED_LOGINS = 5
 SCRYPT_N = 1 << 14
@@ -126,5 +126,5 @@ class AuthManager:
 
     @staticmethod
     def _validate_password(password: str) -> None:
-        if not isinstance(password, str) or not 12 <= len(password) <= 256:
-            raise ValueError("La clave debe tener entre 12 y 256 caracteres.")
+        if not isinstance(password, str) or not 6 <= len(password) <= 256:
+            raise ValueError("La clave debe tener entre 6 y 256 caracteres.")

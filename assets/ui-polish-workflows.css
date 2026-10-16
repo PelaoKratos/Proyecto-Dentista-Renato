@@ -45,19 +45,12 @@
 .appointment-form {
   gap: 14px;
 }
-.appointment-form-patient,
 .appointment-tooth-description,
 .appointment-form .appointment-wide,
 .appointment-form .appointment-total,
 .appointment-form .appointment-form-actions,
 .appointment-form .form-status {
   grid-column: 1 / -1;
-}
-.appointment-form-patient {
-  margin-top: -8px;
-  color: #64748b;
-  font-size: 1rem;
-  font-weight: 700;
 }
 .appointment-tooth-description {
   margin: -9px 0 0;
@@ -68,6 +61,48 @@
 .appointment-form input[readonly] {
   background: #f8fafc;
   color: #334155;
+}
+.appointment-discount-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.appointment-discount-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.appointment-discount-heading label {
+  margin: 0;
+}
+.appointment-discount-modes {
+  display: inline-flex;
+  max-width: 100%;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.appointment-discount-modes button {
+  min-height: 30px;
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.appointment-discount-modes button[aria-pressed="true"] {
+  border-color: var(--teal);
+  background: var(--surface-strong);
+  color: var(--teal-dark);
+}
+.appointment-discount-modes button:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
 }
 .appointment-total {
   display: flex;

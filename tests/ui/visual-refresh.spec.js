@@ -45,7 +45,8 @@ test('la agenda agrupa acciones y conserva las notas al cambiar el estado', asyn
   await card.getByText('Más acciones').click();
   await card.getByLabel('Estado de la cita').selectOption('attended');
   await card.getByRole('button', { name: 'Guardar estado' }).click();
-  await expect(card).toContainText('Atendida');
+  await expect(page).toHaveURL(/paciente\.html\?id=1&appointment=1&followup=1/);
+  expect(appointment.status).toBe('attended');
   expect(writes[0]).toEqual({ status: 'attended' });
   expect(appointment.notes).toBe('Paciente requiere seguimiento');
 });

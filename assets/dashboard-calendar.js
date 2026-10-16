@@ -16,7 +16,7 @@ const monthNames = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
 ];
-const businessHours = Array.from({ length: 12 }, (_, index) => `${String(index + 8).padStart(2, "0")}:00`);
+const businessHours = Array.from({ length: 15 }, (_, index) => `${String(9 + Math.floor(index / 2)).padStart(2, "0")}:${index % 2 ? "30" : "00"}`);
 
 function dateKey(value) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
@@ -46,7 +46,8 @@ function mondayOf(value) {
 function appointmentsOn(value) {
   return appointments
     .filter((appointment) => String(appointment.starts_at || "").startsWith(dateKey(value)))
-    .sort((first, second) => String(first.starts_at).localeCompare(String(second.starts_at)));
+    .sort((first, second) =>
+      String(first.starts_at || "").localeCompare(String(second.starts_at || "")) || Number(first.id) - Number(second.id));
 }
 
 function patientFor(appointment) {
@@ -87,15 +88,10 @@ function renderMonth() {
     const day = new Date(year, month, dayNumber);
     const dayAppointments = appointmentsOn(day);
     const todayClass = dateKey(day) === dateKey(new Date()) ? " today" : "";
-    const moreCount = dayAppointments.length > 3
-      ? `<small class="calendar-more">+${dayAppointments.length - 3} mas</small>`
-      : "";
-
     cells.push(`
       <div class="month-cell${todayClass}">
         <span class="month-day">${dayNumber}</span>
-        ${dayAppointments.slice(0, 3).map((appointment) => appointmentCard(appointment, false)).join("")}
-        ${moreCount}
+        ${dayAppointments.map((appointment) => appointmentCard(appointment, true)).join("")}
       </div>
     `);
   }
@@ -118,17 +114,22 @@ function renderWeek() {
   const rows = businessHours.map((hour) => {
     const slots = days.map((day) => {
       const hourAppointments = appointmentsOn(day).filter((appointment) =>
-        DentalAPI.time(appointment.starts_at).startsWith(hour.slice(0, 2))
+        String(appointment.starts_at || "").slice(11, 16) === hour
       );
       return `<div class="week-slot">${hourAppointments.map((appointment) => appointmentCard(appointment, false)).join("")}</div>`;
     }).join("");
     return `<div class="week-row"><time>${hour}</time>${slots}</div>`;
   }).join("");
+  const outside = days.map((day) => appointmentsOn(day).filter((appointment) => !businessHours.includes(String(appointment.starts_at || "").slice(11, 16))));
+  const outsideRow = outside.some((items) => items.length)
+    ? `<div class="week-row"><time>Otro horario</time>${outside.map((items) => `<div class="week-slot">${items.map((item) => appointmentCard(item, true)).join("")}</div>`).join("")}</div>`
+    : "";
 
   calendarRoot.innerHTML = `
     <div class="week-grid">
       <div class="week-header"><span></span>${header}</div>
       ${rows}
+      ${outsideRow}
     </div>
   `;
   const lastDay = days[days.length - 1];
@@ -138,7 +139,7 @@ function renderWeek() {
 function renderDay() {
   const rows = businessHours.map((hour) => {
     const hourAppointments = appointmentsOn(selectedDate).filter((appointment) =>
-      DentalAPI.time(appointment.starts_at).startsWith(hour.slice(0, 2))
+      String(appointment.starts_at || "").slice(11, 16) === hour
     );
     return `
       <div class="day-row">
@@ -148,7 +149,9 @@ function renderDay() {
     `;
   }).join("");
 
-  calendarRoot.innerHTML = `<div class="day-grid">${rows}</div>`;
+  const outside = appointmentsOn(selectedDate).filter((appointment) => !businessHours.includes(String(appointment.starts_at || "").slice(11, 16)));
+  const outsideRow = outside.length ? `<div class="day-row"><time>Otro horario</time><div>${outside.map((item) => appointmentCard(item, true)).join("")}</div></div>` : "";
+  calendarRoot.innerHTML = `<div class="day-grid">${rows}${outsideRow}</div>`;
   calendarPeriod.textContent = selectedDate.toLocaleDateString("es-CL", {
     weekday: "long", day: "numeric", month: "long", year: "numeric"
   });

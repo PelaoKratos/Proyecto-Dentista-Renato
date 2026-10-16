@@ -1,12 +1,17 @@
 /* Funciones puras del dominio de la ficha del paciente. */
 (() => {
-  const toothDescription = (code) => {
-    const value = String(code || "");
-    const quadrant = value.charAt(0);
-    const position = value.charAt(1);
-    const positions = { 1: "Incisivo central", 2: "Incisivo lateral", 3: "Canino", 4: "Primer premolar", 5: "Segundo premolar", 6: "Primer molar", 7: "Segundo molar", 8: "Tercer molar" };
-    const quadrants = { 1: "superior derecho", 2: "superior izquierdo", 3: "inferior izquierdo", 4: "inferior derecho" };
-    return positions[position] && quadrants[quadrant] ? `${positions[position]} ${quadrants[quadrant]}` : "Pieza dental seleccionada";
+  const toothDescription = (code, dentitionType = "adult") => {
+    const number = Number(code);
+    const size = dentitionType === "child" ? 5 : 8;
+    if (!Number.isInteger(number) || number < 1 || number > size * 4) return "Pieza dental seleccionada";
+    const quadrant = Math.floor((number - 1) / size);
+    const index = (number - 1) % size;
+    const position = quadrant < 2 ? (quadrant === 0 ? size - index : index + 1)
+      : (quadrant === 2 ? size - index : index + 1);
+    const type = position <= 2 ? "Incisivo" : position === 3 ? "Canino"
+      : dentitionType !== "child" && position <= 5 ? "Premolar" : "Molar";
+    const location = ["superior derecho", "superior izquierdo", "inferior izquierdo", "inferior derecho"][quadrant];
+    return `${type} ${location}`;
   };
   const catalogGroup = (name) => {
     const value = String(name || "").toLowerCase();

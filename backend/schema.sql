@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS patients (
   first_name TEXT NOT NULL,
   last_name TEXT NOT NULL,
   birth_date DATE,
+  dentition_type TEXT NOT NULL DEFAULT 'adult' CHECK (dentition_type IN ('adult', 'child')),
   phone TEXT,
   email TEXT,
   address TEXT,
@@ -29,12 +30,23 @@ CREATE TABLE IF NOT EXISTS treatment_catalog (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS patient_treatment_plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  plan_notes TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (patient_id) REFERENCES patients(id)
+);
 CREATE TABLE IF NOT EXISTS patient_treatments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   patient_id INTEGER NOT NULL,
+  treatment_plan_id INTEGER REFERENCES patient_treatment_plans(id),
   catalog_treatment_id INTEGER,
   title TEXT NOT NULL,
   tooth_code TEXT,
+  dentition_type TEXT NOT NULL DEFAULT 'adult' CHECK (dentition_type IN ('adult', 'child')),
   diagnosis TEXT,
   plan_notes TEXT,
   status TEXT NOT NULL DEFAULT 'planned',
@@ -105,6 +117,7 @@ CREATE TABLE IF NOT EXISTS payments (
   amount NUMERIC NOT NULL,
   method TEXT,
   notes TEXT,
+  payment_batch_id TEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (patient_id) REFERENCES patients(id),
   FOREIGN KEY (patient_treatment_id) REFERENCES patient_treatments(id)

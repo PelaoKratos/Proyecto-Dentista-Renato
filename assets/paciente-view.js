@@ -1,23 +1,28 @@
 /* Renderizado de componentes clinicos independientes de la pagina. */
 (() => {
-function renderOdontogram(selectedTooth = "36", treatments = []) {
-  const teeth = ["18", "17", "16", "15", "14", "13", "12", "11", "21", "22", "23", "24", "25", "26", "27", "28", "48", "47", "46", "45", "44", "43", "42", "41", "31", "32", "33", "34", "35", "36", "37", "38"];
+function renderOdontogram(selectedTooth = "1", treatments = [], dentitionType = "adult") {
+  const child = dentitionType === "child";
+  const quadrantSize = child ? 5 : 8;
+  const upperRight = Array.from({ length: quadrantSize }, (_, i) => String(i + 1));
+  const upperLeft = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize + i + 1));
+  const lowerRight = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize * 4 - i));
+  const lowerLeft = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize * 3 - i));
   const treatmentByTooth = new Map();
-  treatments.filter((item) => item.tooth_code).forEach((item) => {
-    const tooth = String(item.tooth_code);
-    if (!treatmentByTooth.has(tooth)) treatmentByTooth.set(tooth, item);
+  treatments.filter((item) => item.tooth_code && (item.dentition_type || "adult") === dentitionType).forEach((item) => {
+    String(item.tooth_code).split(",").forEach((tooth) => {
+      if (!treatmentByTooth.has(tooth)) treatmentByTooth.set(tooth, item);
+    });
   });
-  const shapeFor = (tooth) => {
-    const digit = Number(String(tooth).slice(-1));
-    if ([1, 2].includes(digit)) return "incisor";
-    if (digit === 3) return "canine";
-    if ([4, 5].includes(digit)) return "premolar";
+  const shapeFor = (position) => {
+    if (position <= 2) return "incisor";
+    if (position === 3) return "canine";
+    if (!child && position <= 5) return "premolar";
     return "molar";
   };
-  const toothMarkup = (tooth, upper) => {
+  const toothMarkup = (tooth, upper, position) => {
     const treatment = treatmentByTooth.get(tooth);
     const status = treatment?.status || "none";
-    const shape = shapeFor(tooth);
+    const shape = shapeFor(position);
     const width = shape === "molar" ? 30 : shape === "premolar" ? 24 : shape === "canine" ? 21 : 17;
     const fill = status === "completed" ? "#a5e8cf" : status === "in_progress" ? "#fbd2a4" : status === "planned" ? "#bdd7fa" : "#f7f5ee";
     const stroke = status === "completed" ? "#08775c" : status === "in_progress" ? "#a64b11" : status === "planned" ? "#1d4ed8" : "#627985";
@@ -33,11 +38,9 @@ function renderOdontogram(selectedTooth = "36", treatments = []) {
     const marker = treatment ? `<circle cx="${width + 2}" cy="${upper ? 5 : 40}" r="4" fill="${stroke}" />` : "";
     return `<button type="button" class="tooth-button ${tooth === selectedTooth ? "selected" : ""}" data-tooth="${tooth}" title="Pieza ${tooth}"><svg width="${width + 8}" height="54" viewBox="0 0 ${width + 8} 54" aria-hidden="true">${upper ? crown + roots : roots + crown}<text x="${(width + 4) / 2}" y="${labelY}" text-anchor="middle" font-size="7" font-family="monospace" font-weight="700" fill="${stroke}">${tooth}</text>${marker}</svg></button>`;
   };
-  const upperRight = teeth.slice(0, 8).map((tooth) => toothMarkup(tooth, true)).join("");
-  const upperLeft = teeth.slice(8, 16).map((tooth) => toothMarkup(tooth, true)).join("");
-  const lowerRight = teeth.slice(16, 24).map((tooth) => toothMarkup(tooth, false)).join("");
-  const lowerLeft = teeth.slice(24).map((tooth) => toothMarkup(tooth, false)).join("");
-  return `<div class="odontogram-shell"><div class="odontogram-legend"><span><i class="legend-tooth"></i>Sin tratamiento</span><span><i class="legend-tooth planned"></i>Planificado</span><span><i class="legend-tooth in-progress"></i>En curso</span><span><i class="legend-tooth completed"></i>Completado</span></div><div class="jaw-labels"><span>Der.</span><strong>Superior</strong><span>Izq.</span></div><div class="tooth-row upper"><div>${upperRight}</div><em></em><div>${upperLeft}</div></div><div class="midline"><span>LINEA MEDIA</span></div><div class="tooth-row lower"><div>${lowerRight}</div><em></em><div>${lowerLeft}</div></div><div class="jaw-labels"><span>Der.</span><strong>Inferior</strong><span>Izq.</span></div></div>`;
+  const quadrant = (numbers, upper, right) => numbers.map((tooth, index) =>
+    toothMarkup(tooth, upper, right ? quadrantSize - index : index + 1)).join("");
+  return `<div class="odontogram-shell" data-odontogram-type="${dentitionType}"><div class="odontogram-legend"><span><i class="legend-tooth"></i>Sin tratamiento</span><span><i class="legend-tooth planned"></i>Planificado</span><span><i class="legend-tooth in-progress"></i>En curso</span><span><i class="legend-tooth completed"></i>Completado</span></div><div class="jaw-labels"><span>Der.</span><strong>Superior</strong><span>Izq.</span></div><div class="tooth-row upper"><div>${quadrant(upperRight, true, true)}</div><em></em><div>${quadrant(upperLeft, true, false)}</div></div><div class="midline"><span>LINEA MEDIA</span></div><div class="tooth-row lower"><div>${quadrant(lowerRight, false, true)}</div><em></em><div>${quadrant(lowerLeft, false, false)}</div></div><div class="jaw-labels"><span>Der.</span><strong>Inferior</strong><span>Izq.</span></div></div>`;
 }
 
 function renderDataList(patient) {

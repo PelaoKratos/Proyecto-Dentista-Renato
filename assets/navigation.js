@@ -60,7 +60,7 @@ if (navigationRoot) {
   const links = navigationItems.map(({ key, label, href, icon }) => {
     const active = key === activeKey;
     const current = active ? ' aria-current="page"' : "";
-    return `<a class="nav-item${active ? " active" : ""}" href="${href}"${current}>
+    return `<a class="nav-item${active ? " active" : ""}" href="${href}" title="${label}"${current}>
       <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true">${icon}</svg></span>
       ${label}
     </a>`;
@@ -73,7 +73,7 @@ if (navigationRoot) {
     </div>
     <nav class="nav-list" aria-label="Navegacion principal">${links}</nav>
     <div class="sidebar-footer">
-      <button class="nav-item sidebar-logout" type="button" id="logoutButton">
+      <button class="nav-item sidebar-logout" type="button" id="logoutButton" title="Cerrar sesión">
         <span class="nav-icon" aria-hidden="true">↪</span>Cerrar sesión
       </button>
       <p class="sidebar-logout-status" id="logoutStatus" role="alert"></p>

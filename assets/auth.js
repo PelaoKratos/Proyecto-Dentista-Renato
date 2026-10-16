@@ -25,7 +25,7 @@ async function loadAuthStatus() {
     setupRequired = status.setup_required;
     title.textContent = setupRequired ? "Configurar acceso" : "Ingresar a la consulta";
     description.textContent = setupRequired
-      ? "Crea una clave de al menos 12 caracteres. La necesitarás cada vez que venza la sesión."
+      ? "Crea una clave de al menos 6 caracteres. La necesitarás cada vez que venza la sesión."
       : "Ingresa la clave de administrador para ver los datos de la consulta.";
     confirmation.hidden = !setupRequired;
     confirmationLabel.hidden = !setupRequired;

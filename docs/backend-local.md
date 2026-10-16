@@ -56,7 +56,7 @@ Las escrituras HTTP aceptan únicamente solicitudes del mismo origen local. El s
 
 Los adjuntos admitidos son JPG, PNG, GIF, WEBP y PDF, con validación de firma y un máximo de 25 MB por archivo. Documentos deben ser PDF; radiografías y fotos deben ser imágenes. El MIME se determina desde el contenido.
 
-El respaldo usa una copia consistente de SQLite. Las copias automaticas diarias incluyen base y adjuntos; las manuales pueden omitir adjuntos. Cada ZIP incorpora metadatos y hashes SHA-256 y se restaura en una carpeta temporal para comprobar SQLite antes de publicarlo.
+El respaldo usa una copia consistente de SQLite. Las copias automaticas semanales incluyen base y adjuntos; las manuales pueden omitir adjuntos. Cada ZIP incorpora metadatos y hashes SHA-256 y se restaura en una carpeta temporal para comprobar SQLite antes de publicarlo.
 
 ## Eliminaciones
 

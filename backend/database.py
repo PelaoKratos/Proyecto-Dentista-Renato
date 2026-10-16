@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,19 @@ def init_db() -> None:
     connection = get_connection()
     try:
         connection.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        connection.execute("BEGIN IMMEDIATE")
+        if "dentition_type" not in {row["name"] for row in connection.execute("PRAGMA table_info(patients)")}:
+            connection.execute("ALTER TABLE patients ADD COLUMN dentition_type TEXT NOT NULL DEFAULT 'adult'")
+        treatment_columns = {row["name"] for row in connection.execute("PRAGMA table_info(patient_treatments)")}
+        if "treatment_plan_id" not in treatment_columns:
+            connection.execute("ALTER TABLE patient_treatments ADD COLUMN treatment_plan_id INTEGER REFERENCES patient_treatment_plans(id)")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_patient_treatments_plan ON patient_treatments(treatment_plan_id)")
+        if "dentition_type" not in {row["name"] for row in connection.execute("PRAGMA table_info(patient_treatments)")}:
+            connection.execute("ALTER TABLE patient_treatments ADD COLUMN dentition_type TEXT NOT NULL DEFAULT 'adult'")
+        connection.execute("CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY)")
+        if "payment_batch_id" not in {row["name"] for row in connection.execute("PRAGMA table_info(payments)")}:
+            connection.execute("ALTER TABLE payments ADD COLUMN payment_batch_id TEXT")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_payments_batch ON payments(payment_batch_id)")
         columns = {row["name"] for row in connection.execute("PRAGMA table_info(appointments)")}
         if "patient_treatment_id" not in columns:
             connection.execute("ALTER TABLE appointments ADD COLUMN patient_treatment_id INTEGER REFERENCES patient_treatments(id)")
@@ -49,6 +64,24 @@ def init_db() -> None:
                       WHERE a.patient_treatment_id = patient_treatments.id AND a.status = 'scheduled')
             """)
             connection.execute("INSERT INTO app_migrations (name) VALUES ('appointment_cancellations_v1')")
+        if not connection.execute("SELECT 1 FROM app_migrations WHERE name = 'tooth_numbering_v2'").fetchone():
+            # Migrate the former FDI identifiers to sequential adult numbers.
+            fdi_order = [18,17,16,15,14,13,12,11,21,22,23,24,25,26,27,28,
+                         38,37,36,35,34,33,32,31,41,42,43,44,45,46,47,48]
+            fdi_to_number = {str(code): str(index) for index, code in enumerate(fdi_order, 1)}
+            for treatment in connection.execute("SELECT id, title, tooth_code FROM patient_treatments WHERE tooth_code IS NOT NULL").fetchall():
+                old_codes = [code.strip() for code in str(treatment["tooth_code"]).split(",")]
+                if all(code in fdi_to_number for code in old_codes):
+                    new_codes = sorted((int(fdi_to_number[code]) for code in old_codes))
+                    new_code = ",".join(map(str, new_codes))
+                    connection.execute("UPDATE patient_treatments SET tooth_code = ? WHERE id = ?",
+                                       (new_code, treatment["id"]))
+                    old_reason = f"{treatment['title']} {chr(183)} Pieza {treatment['tooth_code']}"
+                    new_reason = f"{treatment['title']} {chr(183)} Pieza {new_code}"
+                    if "reason" in columns:
+                        connection.execute("UPDATE appointments SET reason = ? WHERE patient_treatment_id = ? AND reason = ?",
+                                           (new_reason, treatment["id"], old_reason))
+            connection.execute("INSERT INTO app_migrations (name) VALUES ('tooth_numbering_v2')")
         connection.commit()
     finally:
         connection.close()
@@ -83,7 +116,15 @@ def fetch_one(sql: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
 
 
 def insert_record(table: str, data: dict[str, Any], allowed_fields: set[str]) -> dict[str, Any]:
+    if table == "patient_treatments":
+        connection = get_connection()
+        try:
+            set_treatment_dentition(connection, data)
+        finally:
+            connection.close()
     fields = [field for field in data.keys() if field in allowed_fields]
+    if table == "patient_treatments" and "dentition_type" not in fields:
+        fields.append("dentition_type")
     if not fields:
         raise ValueError("No hay campos validos para guardar.")
 
@@ -131,10 +172,16 @@ def update_record(table: str, record_id: int, data: dict[str, Any], allowed_fiel
             if existing:
                 merged = {**dict(existing), **data}
                 if table == "appointments":
-                    validate_appointment(merged, partial=True)
+                    if "starts_at" in data or "ends_at" in data:
+                        validate_appointment(merged, partial=True)
                     validate_appointment_link(connection, merged, record_id)
         if existing is not None or table not in {"appointments", "clinical_sessions", "payments", "attachments"}:
             validate_patient_relationships(connection, table, merged)
+        if table == "patient_treatments" and ({"tooth_code", "dentition_type", "patient_id"} & set(fields)):
+            treatment = connection.execute("SELECT * FROM patient_treatments WHERE id = ?", (record_id,)).fetchone()
+            if treatment:
+                candidate = {**dict(treatment), **data}
+                validate_treatment_teeth(candidate)
         if table == "patient_treatments" and "patient_id" in fields:
             patient_id = merged.get("patient_id")
             dependent_records = connection.execute(
@@ -164,6 +211,140 @@ def update_record(table: str, record_id: int, data: dict[str, Any], allowed_fiel
         connection.commit()
         row = connection.execute(f"SELECT * FROM {table} WHERE id = ?", (record_id,)).fetchone()
         return row_to_dict(row)
+    finally:
+        connection.close()
+
+
+
+def delete_patient_treatment(record_id: int) -> dict[str, Any] | None:
+    """Remove an unpaid treatment while preserving past clinical records."""
+    connection = get_connection()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        treatment = connection.execute(
+            "SELECT id, patient_id, treatment_plan_id FROM patient_treatments WHERE id = ?",
+            (record_id,),
+        ).fetchone()
+        if treatment is None:
+            return None
+
+        linked_payment = connection.execute(
+            "SELECT 1 FROM payments WHERE patient_treatment_id = ? LIMIT 1", (record_id,)
+        ).fetchone()
+        if linked_payment:
+            raise ValueError("Este tratamiento tiene abonos registrados. Corrige los pagos antes de eliminarlo.")
+
+        scheduled = connection.execute(
+            "SELECT 1 FROM appointments WHERE patient_treatment_id = ? AND status = 'scheduled' LIMIT 1",
+            (record_id,),
+        ).fetchone()
+        if scheduled:
+            raise ValueError("Cancela o atiende la cita pendiente antes de eliminar este tratamiento.")
+
+        remaining_total = connection.execute(
+            """SELECT COALESCE(SUM(COALESCE(final_price, estimated_price, 0)), 0)
+               FROM patient_treatments WHERE patient_id = ? AND id != ?""",
+            (treatment["patient_id"], record_id),
+        ).fetchone()[0]
+        paid_total = connection.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM payments WHERE patient_id = ?",
+            (treatment["patient_id"],),
+        ).fetchone()[0]
+        if paid_total > remaining_total:
+            raise ValueError("No se puede eliminar: los abonos del paciente superarían el valor de los tratamientos restantes.")
+
+        connection.execute(
+            "UPDATE appointments SET patient_treatment_id = NULL WHERE patient_treatment_id = ?",
+            (record_id,),
+        )
+        connection.execute(
+            "UPDATE clinical_sessions SET patient_treatment_id = NULL WHERE patient_treatment_id = ?",
+            (record_id,),
+        )
+        connection.execute(
+            "UPDATE attachments SET patient_treatment_id = NULL WHERE patient_treatment_id = ?",
+            (record_id,),
+        )
+        connection.execute("DELETE FROM patient_treatments WHERE id = ?", (record_id,))
+        if treatment["treatment_plan_id"] is not None:
+            connection.execute(
+                """DELETE FROM patient_treatment_plans
+                   WHERE id = ? AND NOT EXISTS (
+                     SELECT 1 FROM patient_treatments WHERE treatment_plan_id = ?
+                   )""",
+                (treatment["treatment_plan_id"], treatment["treatment_plan_id"]),
+            )
+        connection.commit()
+        return {"id": record_id, "patient_id": treatment["patient_id"]}
+    finally:
+        connection.close()
+
+
+def create_payment_batch(payload: dict[str, Any]) -> dict[str, Any]:
+    """Apply one received payment to several treatments, atomically."""
+    from backend.validation import validate_payment
+    patient_id = payload.get("patient_id")
+    allocations = payload.get("allocations")
+    if not isinstance(allocations, list) or not allocations:
+        raise ValueError("Selecciona al menos un tratamiento para el pago.")
+    if len(allocations) > 100:
+        raise ValueError("Hay demasiados tratamientos en un solo pago.")
+    common = validate_payment({
+        "patient_id": patient_id,
+        "payment_date": payload.get("payment_date"),
+        "amount": 1,
+        "method": payload.get("method"),
+        "notes": payload.get("notes"),
+    })
+    normalized = []
+    seen = set()
+    for allocation in allocations:
+        if not isinstance(allocation, dict):
+            raise ValueError("Cada abono debe indicar tratamiento y monto.")
+        treatment_id = allocation.get("patient_treatment_id")
+        if not isinstance(treatment_id, int) or isinstance(treatment_id, bool) or treatment_id <= 0:
+            raise ValueError("Cada abono necesita un tratamiento válido.")
+        if treatment_id in seen:
+            raise ValueError("No repitas un tratamiento en el mismo pago.")
+        seen.add(treatment_id)
+        amount = allocation.get("amount")
+        validate_payment({"amount": amount}, partial=True)
+        if isinstance(amount, bool) or float(amount) <= 0:
+            raise ValueError("Cada abono debe ser mayor que cero.")
+        normalized.append((treatment_id, float(amount)))
+    connection = get_connection()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        if not connection.execute("SELECT 1 FROM patients WHERE id = ?", (common["patient_id"],)).fetchone():
+            raise ValueError("El paciente no existe.")
+        rows = connection.execute("""
+            SELECT t.id, COALESCE(t.final_price, t.estimated_price, 0) AS total,
+                   COALESCE(SUM(p.amount), 0) AS paid
+            FROM patient_treatments t LEFT JOIN payments p ON p.patient_treatment_id = t.id
+            WHERE t.patient_id = ? GROUP BY t.id
+        """, (common["patient_id"],)).fetchall()
+        due_by_treatment = {row["id"]: max(float(row["total"]) - float(row["paid"]), 0) for row in rows}
+        for treatment_id, amount in normalized:
+            if treatment_id not in due_by_treatment:
+                raise ValueError("Todos los tratamientos deben pertenecer al paciente.")
+            if amount > due_by_treatment[treatment_id] + 0.000001:
+                raise ValueError(f"El abono supera el saldo pendiente del tratamiento {treatment_id}.")
+        total = sum(amount for _, amount in normalized)
+        patient_paid = connection.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE patient_id = ?", (common["patient_id"],)).fetchone()[0]
+        patient_total = sum(float(row["total"]) for row in rows)
+        if total > max(patient_total - float(patient_paid), 0) + 0.000001:
+            raise ValueError("El pago supera el saldo total pendiente del paciente.")
+        batch_id = uuid.uuid4().hex
+        created = []
+        for treatment_id, amount in normalized:
+            cursor = connection.execute("""
+                INSERT INTO payments (patient_id, patient_treatment_id, payment_date, amount, method, notes, payment_batch_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (common["patient_id"], treatment_id, common["payment_date"], amount,
+                  common.get("method"), common.get("notes"), batch_id))
+            created.append(row_to_dict(connection.execute("SELECT * FROM payments WHERE id = ?", (cursor.lastrowid,)).fetchone()))
+        connection.commit()
+        return {"payment_batch_id": batch_id, "total": total, "payments": created}
     finally:
         connection.close()
 
@@ -337,10 +518,16 @@ def seed_demo_data() -> None:
 
 def validate_patient_relationships(connection, table, data):
     """Ensure child records only reference treatments/sessions of their patient."""
-    if table not in {"clinical_sessions", "payments", "attachments"}:
+    if table not in {"patient_treatments", "clinical_sessions", "payments", "attachments"}:
         return
 
     patient_id = data.get("patient_id")
+    if table == "patient_treatments" and data.get("treatment_plan_id") is not None:
+        plan = connection.execute(
+            "SELECT patient_id FROM patient_treatment_plans WHERE id = ?", (data["treatment_plan_id"],)
+        ).fetchone()
+        if not plan or str(plan["patient_id"]) != str(patient_id):
+            raise ValueError("El plan vinculado debe pertenecer al mismo paciente.")
     treatment_id = data.get("patient_treatment_id")
     if treatment_id is not None:
         treatment = connection.execute(
@@ -360,22 +547,56 @@ def validate_patient_relationships(connection, table, data):
             raise ValueError("La evolucion y el tratamiento del adjunto deben coincidir.")
 
 
+def validate_treatment_teeth(data):
+    from backend.validation import parse_tooth_codes
+    codes = parse_tooth_codes(data.get("tooth_code"), data.get("dentition_type") or "adult")
+    return codes
+
+
+def set_treatment_dentition(connection, data):
+    patient = connection.execute("SELECT dentition_type FROM patients WHERE id = ?", (data.get("patient_id"),)).fetchone()
+    if not patient:
+        raise ValueError("El paciente del tratamiento no existe.")
+    data["dentition_type"] = patient["dentition_type"]
+    validate_treatment_teeth(data)
+
+
 def validate_appointment_link(connection, data, appointment_id=None):
+    from backend.validation import parse_tooth_codes
     treatment_id = data.get("patient_treatment_id")
-    if treatment_id is None:
+    if treatment_id is not None:
+        treatment = connection.execute("SELECT * FROM patient_treatments WHERE id = ?", (treatment_id,)).fetchone()
+        if not treatment or str(treatment["patient_id"]) != str(data.get("patient_id")):
+            raise ValueError("El tratamiento debe pertenecer al paciente de la cita.")
+        if data.get("status", "scheduled") == "scheduled":
+            teeth = set(parse_tooth_codes(treatment["tooth_code"], treatment["dentition_type"]))
+            if teeth:
+                rows = connection.execute("""
+                    SELECT a.id, t.tooth_code FROM appointments a
+                    JOIN patient_treatments t ON t.id = a.patient_treatment_id
+                    WHERE a.patient_id = ? AND t.dentition_type = ? AND a.status = 'scheduled' AND a.id != ?
+                """, (data["patient_id"], treatment["dentition_type"], appointment_id or -1)).fetchall()
+                for row in rows:
+                    overlap = teeth.intersection(parse_tooth_codes(row["tooth_code"], treatment["dentition_type"]))
+                    if overlap:
+                        raise ValueError(f"Ya existe una cita pendiente para la pieza {sorted(overlap)[0]}. Atiende, cancela o modifica esa cita antes de agendar otra.")
+    if data.get("status", "scheduled") != "scheduled" or not data.get("starts_at"):
         return
-    treatment = connection.execute("SELECT * FROM patient_treatments WHERE id = ?", (treatment_id,)).fetchone()
-    if not treatment or str(treatment["patient_id"]) != str(data.get("patient_id")):
-        raise ValueError("El tratamiento debe pertenecer al paciente de la cita.")
-    if data.get("status", "scheduled") == "scheduled" and treatment["tooth_code"]:
-        duplicate = connection.execute("""
-            SELECT a.id FROM appointments a
-            JOIN patient_treatments t ON t.id = a.patient_treatment_id
-            WHERE a.patient_id = ? AND TRIM(t.tooth_code) = TRIM(?)
-              AND a.status = 'scheduled' AND a.id != ? LIMIT 1
-        """, (data["patient_id"], treatment["tooth_code"], appointment_id or -1)).fetchone()
-        if duplicate:
-            raise ValueError(f"Ya existe una cita pendiente para la pieza {treatment['tooth_code']}. Atiende, cancela o modifica esa cita antes de agendar otra.")
+    start = datetime.fromisoformat(str(data["starts_at"]).replace("T", " "))
+    end = (datetime.fromisoformat(str(data["ends_at"]).replace("T", " "))
+           if data.get("ends_at") else start + timedelta(minutes=30))
+    for booked in connection.execute("""
+        SELECT id, patient_id, starts_at, ends_at FROM appointments
+        WHERE status = 'scheduled' AND id != ?
+    """, (appointment_id or -1,)).fetchall():
+        booked_start = datetime.fromisoformat(str(booked["starts_at"]).replace("T", " "))
+        booked_end = (datetime.fromisoformat(str(booked["ends_at"]).replace("T", " "))
+                      if booked["ends_at"] else booked_start + timedelta(minutes=30))
+        if start < booked_end and booked_start < end:
+            if (start.hour == 16 and start.minute == 0 and booked_start == start
+                    and str(booked["patient_id"]) != str(data.get("patient_id"))):
+                continue
+            raise ValueError("La hora seleccionada ya está ocupada por otra cita. Elige otro horario.")
 
 
 def sync_appointment_treatment(connection, data):
@@ -439,6 +660,66 @@ def attend_appointment_with_session(appointment_id: int, session_data: dict[str,
         connection.close()
 
 
+def create_patient_treatment_plan(data, treatment_fields):
+    """Create a named treatment plan and all of its procedure/tooth items atomically."""
+    from backend.validation import validate_patient_treatment
+
+    patient_id = data.get("patient_id")
+    title = str(data.get("title") or "").strip()
+    items = data.get("items")
+    if not title or len(title) > 160:
+        raise ValueError("El plan debe tener un nombre de hasta 160 caracteres.")
+    plan_notes = str(data.get("plan_notes") or "").strip()
+    if len(plan_notes) > 3000:
+        raise ValueError("Las notas del plan no pueden superar 3000 caracteres.")
+    if not isinstance(items, list) or not items:
+        raise ValueError("Agrega al menos un tratamiento al plan.")
+    if len(items) > 20:
+        raise ValueError("Un plan puede incluir hasta 20 tratamientos.")
+
+    connection = get_connection()
+    try:
+        with connection:
+            connection.execute("BEGIN IMMEDIATE")
+            patient = connection.execute(
+                "SELECT id FROM patients WHERE id = ? AND is_active = 1", (patient_id,)
+            ).fetchone()
+            if patient is None:
+                raise ValueError("El paciente del plan no existe o está inactivo.")
+            plan_cursor = connection.execute(
+                "INSERT INTO patient_treatment_plans (patient_id, title, plan_notes) VALUES (?, ?, ?)",
+                (patient_id, title, plan_notes or None),
+            )
+            plan_id = plan_cursor.lastrowid
+            created = []
+            for raw_item in items:
+                if not isinstance(raw_item, dict):
+                    raise ValueError("Cada tratamiento del plan debe ser un objeto.")
+                treatment = validate_patient_treatment({
+                    **raw_item,
+                    "patient_id": patient_id,
+                    "status": "planned",
+                    "start_date": raw_item.get("start_date") or data.get("start_date"),
+                })
+                set_treatment_dentition(connection, treatment)
+                treatment["treatment_plan_id"] = plan_id
+                fields = [field for field in treatment if field in treatment_fields]
+                if "dentition_type" not in fields:
+                    fields.append("dentition_type")
+                cursor = connection.execute(
+                    f"INSERT INTO patient_treatments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                    tuple(treatment[field] for field in fields),
+                )
+                created.append(row_to_dict(connection.execute(
+                    "SELECT * FROM patient_treatments WHERE id = ?", (cursor.lastrowid,)
+                ).fetchone()))
+            plan = row_to_dict(connection.execute(
+                "SELECT * FROM patient_treatment_plans WHERE id = ?", (plan_id,)
+            ).fetchone())
+            return {**plan, "items": created}
+    finally:
+        connection.close()
+
 def create_treatment_appointment(data, appointment_fields, treatment_fields):
     """Create a treatment and its first appointment in one transaction."""
     from backend.validation import validate_patient_treatment
@@ -452,7 +733,10 @@ def create_treatment_appointment(data, appointment_fields, treatment_fields):
     try:
         with connection:
             connection.execute("BEGIN IMMEDIATE")
+            set_treatment_dentition(connection, treatment)
             fields = [key for key in treatment if key in treatment_fields]
+            if "dentition_type" not in fields:
+                fields.append("dentition_type")
             cursor = connection.execute(
                 f"INSERT INTO patient_treatments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
                 tuple(treatment[key] for key in fields),

@@ -22,11 +22,14 @@ if __package__ is None or __package__ == "":
     sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from backend.auth import AuthManager, SESSION_SECONDS  # noqa: E402
-from backend.backup import create_backup, create_daily_backup_if_due  # noqa: E402
+from backend.backup import create_backup, create_weekly_backup_if_due  # noqa: E402
 from backend.database import (  # noqa: E402
     DATA_DIR,
     DB_PATH,
     create_treatment_appointment,
+    create_patient_treatment_plan,
+    create_payment_batch,
+    delete_patient_treatment,
     attend_appointment_with_session,
     ROOT_DIR,
     execute,
@@ -70,6 +73,7 @@ PATIENT_FIELDS = {
     "first_name",
     "last_name",
     "birth_date",
+    "dentition_type",
     "phone",
     "email",
     "address",
@@ -84,9 +88,11 @@ PATIENT_FIELDS = {
 CATALOG_FIELDS = {"name", "description", "default_price", "is_active"}
 PATIENT_TREATMENT_FIELDS = {
     "patient_id",
+    "treatment_plan_id",
     "catalog_treatment_id",
     "title",
     "tooth_code",
+    "dentition_type",
     "diagnosis",
     "plan_notes",
     "status",
@@ -213,12 +219,16 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(insert_record("patients", validate_patient(data), PATIENT_FIELDS), 201)
             elif path == "/api/treatment-catalog":
                 self._send_json(insert_record("treatment_catalog", validate_treatment_catalog(data), CATALOG_FIELDS), 201)
+            elif path == "/api/patient-treatment-plans":
+                self._send_json(create_patient_treatment_plan(data, PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/patient-treatments":
                 self._send_json(insert_record("patient_treatments", validate_patient_treatment(data), PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/clinical-sessions":
                 self._send_json(insert_record("clinical_sessions", validate_session(data), SESSION_FIELDS), 201)
             elif path == "/api/appointments":
                 self._send_json(create_treatment_appointment(validate_appointment(data), APPOINTMENT_FIELDS, PATIENT_TREATMENT_FIELDS), 201)
+            elif path == "/api/payments/batch":
+                self._send_json(create_payment_batch(data), 201)
             elif path == "/api/payments":
                 self._send_json(insert_record("payments", validate_payment(data), PAYMENT_FIELDS), 201)
             else:
@@ -267,6 +277,15 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": True, "patient": updated})
                 return
 
+            treatment_id = self._match_id(path, "/api/patient-treatments/")
+            if treatment_id is not None:
+                deleted = delete_patient_treatment(treatment_id)
+                if deleted is None:
+                    self._send_json({"error": "Tratamiento no encontrado."}, 404)
+                    return
+                self._send_json({"ok": True, "treatment": deleted})
+                return
+
             attachment_id = self._match_id(path, "/api/attachments/")
             if attachment_id is not None:
                 deleted = execute("DELETE FROM attachments WHERE id = ?", (attachment_id,))
@@ -277,6 +296,10 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                 return
 
             self._send_json({"error": "Ruta no encontrada."}, 404)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, 409)
+        except sqlite3.IntegrityError as exc:
+            self._send_request_error(exc)
         except Exception as exc:
             self._send_request_error(exc)
 
@@ -344,10 +367,11 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/patient-treatments":
             patient_filter = query.get("patient_id", [None])[0]
+            query_sql = "SELECT t.*, p.title AS plan_title FROM patient_treatments t LEFT JOIN patient_treatment_plans p ON p.id = t.treatment_plan_id"
             if patient_filter:
-                self._send_json(fetch_all("SELECT * FROM patient_treatments WHERE patient_id = ? ORDER BY id DESC", (patient_filter,)))
+                self._send_json(fetch_all(query_sql + " WHERE t.patient_id = ? ORDER BY t.id DESC", (patient_filter,)))
             else:
-                self._send_json(fetch_all("SELECT * FROM patient_treatments ORDER BY updated_at DESC"))
+                self._send_json(fetch_all(query_sql + " ORDER BY t.updated_at DESC"))
             return
 
         if path == "/api/clinical-sessions":
@@ -355,7 +379,7 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/appointments":
-            self._send_json(fetch_all("SELECT * FROM appointments ORDER BY starts_at"))
+            self._send_json(fetch_all("SELECT * FROM appointments ORDER BY starts_at ASC, id ASC"))
             return
 
         if path == "/api/payments":
@@ -389,7 +413,7 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
 
         return {
             "patient": patient,
-            "treatments": fetch_all("SELECT * FROM patient_treatments WHERE patient_id = ? ORDER BY updated_at DESC", (patient_id,)),
+            "treatments": fetch_all("SELECT t.*, p.title AS plan_title FROM patient_treatments t LEFT JOIN patient_treatment_plans p ON p.id = t.treatment_plan_id WHERE t.patient_id = ? ORDER BY t.updated_at DESC", (patient_id,)),
             "sessions": fetch_all("SELECT * FROM clinical_sessions WHERE patient_id = ? ORDER BY session_date DESC", (patient_id,)),
             "attachments": fetch_all("SELECT * FROM attachments WHERE patient_id = ? ORDER BY created_at DESC", (patient_id,)),
             "appointments": fetch_all("SELECT * FROM appointments WHERE patient_id = ? ORDER BY starts_at DESC", (patient_id,)),
@@ -774,16 +798,16 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
 
 def run(host: str = "127.0.0.1", port: int = 8000) -> None:
     init_db()
-    def daily_backups() -> None:
+    def weekly_backups() -> None:
         while True:
             try:
-                create_daily_backup_if_due(DB_PATH, MEDIA_DIR, BACKUPS_DIR)
+                create_weekly_backup_if_due(DB_PATH, MEDIA_DIR, BACKUPS_DIR)
             except Exception as error:
                 print(f"[backup] No se pudo crear el respaldo automático: {error}")
             threading.Event().wait(3600)
 
     server = ThreadingHTTPServer((host, port), DentalRequestHandler)
-    threading.Thread(target=daily_backups, daemon=True, name="daily-backups").start()
+    threading.Thread(target=weekly_backups, daemon=True, name="weekly-backups").start()
     print(f"Consulta Dental corriendo en http://{host}:{port}")
     print("Presiona Ctrl+C para detener el servidor.")
     server.serve_forever()

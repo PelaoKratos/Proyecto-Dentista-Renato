@@ -11,6 +11,7 @@ const newTreatmentCatalog = document.querySelector("#newTreatmentCatalog");
 const newTreatmentTitle = document.querySelector("#newTreatmentTitle");
 const newTreatmentPrice = document.querySelector("#newTreatmentPrice");
 const newTreatmentStatus = document.querySelector("#newTreatmentStatus");
+const newTreatmentTooth = newTreatmentForm.elements.tooth_code;
 
 let patients = [];
 let catalog = [];
@@ -41,12 +42,21 @@ function renderFormOptions() {
     .map((patient) => `<option value="${patient.id}">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</option>`)
     .join("");
 
+  updateToothHint();
   newTreatmentCatalog.innerHTML =
     `<option value="">Personalizado</option>` +
     catalog
       .map((item) => `<option value="${item.id}" data-title="${DentalAPI.escapeHtml(item.name)}" data-price="${Number(item.default_price || 0)}">${DentalAPI.escapeHtml(item.name)} · ${DentalAPI.money(item.default_price)}</option>`)
       .join("");
 }
+
+function updateToothHint() {
+  const patient = patients.find((item) => Number(item.id) === Number(newTreatmentPatient.value));
+  const maximum = patient?.dentition_type === "child" ? 20 : 32;
+  newTreatmentTooth.placeholder = `Ej. 1, 2, 3 (hasta ${maximum})`;
+  newTreatmentTooth.title = `Piezas del odontograma ${maximum === 20 ? "infantil" : "adulto"}: 1 a ${maximum}`;
+}
+newTreatmentPatient.addEventListener("change", updateToothHint);
 
 function treatmentIcon(item) {
   const value = String(item.category || item.name || "").toLowerCase();
@@ -61,7 +71,7 @@ function treatmentIcon(item) {
 function renderTreatmentCard(treatment, patientById) {
   const patient = patientById.get(treatment.patient_id);
   const patientName = patient ? DentalAPI.fullName(patient) : "Paciente";
-  const toothLabel = treatment.tooth_code ? ` · Pieza ${DentalAPI.escapeHtml(treatment.tooth_code)}` : "";
+  const toothLabel = treatment.tooth_code ? ` · Piezas ${DentalAPI.escapeHtml(treatment.tooth_code)} (${(treatment.dentition_type || "adult") === "child" ? "infantil" : "adulto"})` : "";
   const canComplete = treatment.status !== "completed" && treatment.status !== "cancelled";
   const treatmentName = DentalAPI.escapeHtml(treatment.title || "Tratamiento sin nombre");
   const statusLabel = DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status));
@@ -80,7 +90,7 @@ function renderTreatmentCard(treatment, patientById) {
           <summary>Editar</summary>
           <div class="editor-controls treatment-editor">
             <label class="treatment-form-wide">Nombre<input data-treatment-title value="${DentalAPI.escapeHtml(treatment.title || "")}" /></label>
-            <label>Pieza<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" /></label>
+            <label>Piezas<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" /></label>
             <label>Estado<select data-treatment-status>${statusOptions(treatment.status)}</select></label>
             <label>Presupuesto<input data-treatment-estimated type="number" min="0" value="${DentalAPI.escapeHtml(treatment.estimated_price || "")}" /></label>
             <label>Valor final<input data-treatment-final type="number" min="0" value="${DentalAPI.escapeHtml(treatment.final_price || "")}" /></label>

@@ -1,0 +1,63 @@
+.backup-history-tools {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 18px 0 6px;
+}
+.backup-history-tools label {
+  display: grid;
+  gap: 5px;
+  min-width: 150px;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+}
+.backup-history-tools input {
+  min-width: 0;
+  min-height: 38px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+.backup-history-tools .text-button { min-height: 38px; }
+.backup-results-count {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: .84rem;
+}
+.backup-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.backup-pagination[hidden] { display: none; }
+.backup-pagination button {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--teal-dark);
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.backup-pagination button[aria-current="page"] {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: white;
+}
+.backup-pagination button:disabled {
+  opacity: .48;
+  cursor: default;
+}
+.backup-records .records-row > span { min-width: 0; overflow-wrap: anywhere; }

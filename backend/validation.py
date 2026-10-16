@@ -12,7 +12,7 @@ VALID_ATTACHMENT_TYPES = {"radiography", "photo", "document", "other"}
 TEXT_LIMITS = {
     "first_name": 100, "last_name": 100, "rut": 20, "phone": 40, "email": 254,
     "address": 255, "emergency_contact_name": 100, "emergency_contact_phone": 40,
-    "name": 160, "title": 160, "tooth_code": 32, "reason": 255, "method": 60,
+    "name": 160, "title": 160, "tooth_code": 95, "reason": 255, "method": 60,
     "category": 100, "original_filename": 255, "mime_type": 100,
     "diagnosis": 10000, "plan_notes": 10000, "medical_notes": 10000,
     "allergies": 10000, "active_alert": 10000, "description": 10000,
@@ -111,6 +111,7 @@ def validate_patient(data: dict[str, Any], partial: bool = False) -> dict[str, A
     if not partial:
         require(data, "first_name", "last_name")
     validate_text_lengths(data)
+    validate_dentition_type(data.get("dentition_type"))
     validate_date(data.get("birth_date"), "birth_date")
     if data.get("birth_date") and date.fromisoformat(str(data["birth_date"])) > date.today():
         raise ValueError("La fecha de nacimiento no puede estar en el futuro.")
@@ -129,12 +130,35 @@ def validate_treatment_catalog(data: dict[str, Any], partial: bool = False) -> d
     return data
 
 
+def validate_dentition_type(value: Any) -> None:
+    if value is not None and value not in {"adult", "child"}:
+        raise ValueError("El odontograma debe ser adulto o infantil.")
+
+
+def parse_tooth_codes(value: Any, dentition_type: str = "adult") -> list[str]:
+    """Normalize sequential tooth numbers for the selected dentition."""
+    if value in (None, ""):
+        return []
+    validate_dentition_type(dentition_type)
+    maximum = 20 if dentition_type == "child" else 32
+    codes = re.split(r"[,;\s]+", str(value).strip())
+    if any(not re.fullmatch(r"[1-9][0-9]?", code) or int(code) > maximum for code in codes):
+        raise ValueError(f"Indica piezas entre 1 y {maximum}, separadas por coma.")
+    if len(codes) != len(set(codes)):
+        raise ValueError("No repitas una pieza dental en el mismo tratamiento.")
+    return sorted(codes, key=int)
+
 def validate_patient_treatment(data: dict[str, Any], partial: bool = False) -> dict[str, Any]:
     data = clean_payload(data)
     if not partial:
         require(data, "patient_id", "title")
     validate_positive_id(data, "patient_id", required=not partial)
     validate_positive_id(data, "catalog_treatment_id")
+    if partial and "dentition_type" in data:
+        raise ValueError("El tipo del tratamiento queda fijado al crearlo; cambia el odontograma del paciente para tratamientos nuevos.")
+    validate_dentition_type(data.get("dentition_type"))
+    if "tooth_code" in data:
+        data["tooth_code"] = ",".join(parse_tooth_codes(data["tooth_code"], data.get("dentition_type") or "adult")) or None
     validate_text_lengths(data)
     validate_status(data.get("status"), VALID_TREATMENT_STATUSES, "status")
     validate_money(data.get("estimated_price"), "estimated_price")
@@ -164,6 +188,11 @@ def validate_appointment(data: dict[str, Any], partial: bool = False) -> dict[st
     validate_text_lengths(data)
     validate_datetime(data.get("starts_at"), "starts_at")
     validate_datetime(data.get("ends_at"), "ends_at")
+    if data.get("starts_at"):
+        start = datetime.strptime(str(data["starts_at"]).replace("T", " "), "%Y-%m-%d %H:%M")
+        minutes = start.hour * 60 + start.minute
+        if minutes < 9 * 60 or minutes > 16 * 60 or start.minute not in (0, 30):
+            raise ValueError("Agenda citas entre las 09:00 y las 16:00, en intervalos de 30 minutos.")
     if data.get("starts_at") and data.get("ends_at"):
         start = datetime.strptime(str(data["starts_at"]).replace("T", " "), "%Y-%m-%d %H:%M")
         end = datetime.strptime(str(data["ends_at"]).replace("T", " "), "%Y-%m-%d %H:%M")

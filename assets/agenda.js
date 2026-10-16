@@ -30,6 +30,7 @@ function renderCalendar() {
   const start = new Date(base);
   start.setDate(base.getDate() - 3);
   calendarTitle.textContent = titleForDate(selectedDate);
+  document.querySelector("#agendaDatePicker").value = selectedDate;
   miniCalendar.innerHTML = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(start);
     date.setDate(start.getDate() + index);
@@ -37,7 +38,8 @@ function renderCalendar() {
     const weekday = date.toLocaleDateString("es-CL", { weekday: "short" }).replace(".", "");
     const fullDate = date.toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" });
     const selected = value === selectedDate;
-    return `<button class="${selected ? "selected" : ""}" type="button" data-date="${value}" aria-label="${fullDate}" aria-pressed="${selected}"><span>${weekday}</span><strong>${date.getDate()}</strong></button>`;
+    const count = appointments.filter((item) => String(item.starts_at || "").startsWith(value)).length;
+    return `<button class="${selected ? "selected" : ""}" type="button" data-date="${value}" aria-label="${fullDate}, ${count} citas" aria-pressed="${selected}"><span>${weekday}</span><strong>${date.getDate()}</strong><small>${count ? `${count} ${count === 1 ? "cita" : "citas"}` : "—"}</small></button>`;
   }).join("");
 }
 
@@ -49,7 +51,8 @@ function renderAppointments() {
       const matchesStatus = !selectedStatus || appointment.status === selectedStatus;
       return matchesDate && matchesStatus;
     })
-    .sort((first, second) => String(first.starts_at || "").localeCompare(String(second.starts_at || "")));
+    .sort((first, second) =>
+      String(first.starts_at || "").localeCompare(String(second.starts_at || "")) || Number(first.id) - Number(second.id));
   agendaCount.textContent = `${visibleAppointments.length} ${visibleAppointments.length === 1 ? "cita" : "citas"} en esta vista`;
   dayTimeline.innerHTML = visibleAppointments.map((appointment) => {
     const patient = patientById.get(appointment.patient_id);
@@ -98,6 +101,22 @@ miniCalendar.addEventListener("click", (event) => {
   renderAppointments();
 });
 
+function selectDate(value) {
+  selectedDate = value;
+  renderCalendar();
+  renderAppointments();
+}
+document.querySelector("#agendaDatePicker").addEventListener("change", (event) => {
+  if (event.target.value) selectDate(event.target.value);
+});
+[["agendaPrevious", -7], ["agendaNext", 7]].forEach(([id, offset]) => {
+  document.querySelector(`#${id}`).addEventListener("click", () => {
+    const date = new Date(`${selectedDate}T00:00:00`);
+    date.setDate(date.getDate() + offset);
+    selectDate(localDateString(date));
+  });
+});
+
 goTodayBtn.addEventListener("click", () => {
   selectedDate = localDateString();
   renderCalendar();
@@ -129,6 +148,11 @@ dayTimeline.addEventListener("click", async (event) => {
   try {
     await DentalAPI.put(`/api/appointments/${appointmentId}`, { status });
     message.textContent = "Estado actualizado.";
+    if (status === "attended") {
+      const appointment = appointments.find(item => Number(item.id) === Number(appointmentId));
+      window.location.href = `./paciente.html?id=${appointment.patient_id}&appointment=${appointment.id}&followup=${appointment.id}`;
+      return;
+    }
     await loadAgenda();
   } catch (error) {
     message.textContent = error.message;

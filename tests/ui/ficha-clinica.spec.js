@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 
 const summary = {
   patient: { id: 41, first_name: 'Ana', last_name: 'Pérez', rut: '12.345.678-9', phone: '912345678', email: 'ana@example.test', birth_date: '1980-04-10', address: 'Av. Centro 12', medical_notes: 'Antecedente', allergies: 'Penicilina' },
-  treatments: [{id: 3, title: 'Endodoncia', tooth_code: '36', status: 'in_progress', final_price: 120000}],
+  treatments: [{id: 3, title: 'Endodoncia', tooth_code: '19', status: 'in_progress', final_price: 120000}],
   sessions: [{id: 8, patient_treatment_id: 3, session_date: '2026-09-01 10:00', reason: 'Control', diagnosis: 'Diagnostico principal', procedure_done: 'Texto privado de procedimiento', notes: 'Texto privado de notas', next_steps: 'Texto privado de proximos pasos'}],
   appointments: [], payments: [], attachments: []
 };
@@ -22,16 +22,23 @@ test('la ficha exporta el documento compacto sin campos retirados de evolución'
   await expect(contact.locator('span')).toHaveCount(5);
   await expect(page.locator('.sidebar a[href="./radiografias.html"]')).toHaveCount(0);
   await expect(page.locator('.sidebar a[href="./documentos.html"]')).toHaveCount(0);
-  const popupPromise = page.waitForEvent('popup');
   await page.getByRole('button', {name:'Exportar ficha clinica'}).click();
+  await expect(page.getByRole('dialog', {name:'Elegir tratamientos para exportar'})).toBeVisible();
+  const popupPromise = page.waitForEvent('popup');
+  await page.getByRole('dialog').getByRole('button', {name:'Exportar ficha'}).click();
   const popup = await popupPromise;
   await popup.waitForLoadState('load');
   await expect.poll(() => popup.locator('.clinical-patient-inline p').first().evaluate(el => getComputedStyle(el).fontSize)).toBe('12px');
   const sheet = popup.locator('.print-sheet');
   await expect(sheet).toContainText('Ana Pérez');
+  await expect(sheet).toContainText('Renato A. Saldivia Salas');
+  await expect(sheet).toContainText('9.936.382-7');
+  await expect(sheet).toContainText('Caupolican 567, 7tho Piso Of. 708');
   await expect(sheet).toContainText('Av. Centro 12');
   await expect(sheet).toContainText('En curso');
-  await expect(sheet).toContainText('Diagnostico principal');
+  await expect(sheet).toContainText('Valor total: $120.000');
+  await expect(sheet).toContainText('Saldo pendiente: $120.000');
+  await expect(sheet).not.toContainText('Diagnostico principal');
   await expect(sheet).not.toContainText('Texto privado de procedimiento');
   await expect(sheet).not.toContainText('Texto privado de notas');
   await expect(sheet).not.toContainText('Texto privado de proximos pasos');
@@ -50,4 +57,58 @@ test('la vista de Documentos usa la misma ficha clínica', async ({ page }, test
   await expect(page.locator('#documentPreview')).toContainText('En curso');
   await expect(page.locator('#documentPreview')).not.toContainText('Texto privado de notas');
   await page.screenshot({path:testInfo.outputPath('ficha-vista-previa.png'),fullPage:true});
+});
+
+
+test('exporta solo los tratamientos elegidos con sus citas y valores', async ({ page }) => {
+  const patientSummary = {
+    ...summary,
+    treatments: [
+      { id: 3, patient_id: 41, title: 'Endodoncia', tooth_code: '19', status: 'in_progress', final_price: 120000 },
+      { id: 4, patient_id: 41, title: 'Limpieza', tooth_code: '3', status: 'planned', final_price: 30000 }
+    ],
+    appointments: [
+      { id: 10, patient_treatment_id: 3, starts_at: '2026-10-09 09:00', status: 'scheduled', reason: 'Control endodoncia' },
+      { id: 11, patient_treatment_id: 4, starts_at: '2026-10-10 10:00', status: 'attended', reason: 'Control limpieza' }
+    ],
+    sessions: [
+      ...summary.sessions,
+      { id: 9, patient_treatment_id: 4, session_date: '2026-10-10 10:00', reason: 'Limpieza', diagnosis: 'Diagnóstico de limpieza' }
+    ],
+    payments: [
+      { id: 20, patient_treatment_id: 3, amount: 20000 },
+      { id: 21, patient_treatment_id: 4, amount: 10000 }
+    ],
+    attachments: [
+      { id: 30, patient_treatment_id: 3, category: 'Radiografía', original_filename: 'endo.png' },
+      { id: 31, patient_treatment_id: 4, category: 'Radiografía', original_filename: 'limpieza.png' }
+    ]
+  };
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path.endsWith('/summary')) return route.fulfill({ json: patientSummary });
+    if (path === '/api/treatment-catalog') return route.fulfill({ json: [] });
+    return route.fulfill({ json: [] });
+  });
+  await page.goto('/paciente.html?id=41');
+  await page.getByRole('button', { name: 'Exportar ficha clinica' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Elegir tratamientos para exportar' });
+  await expect(dialog.locator('input[name="export_treatment"]')).toHaveCount(2);
+  await dialog.locator('input[value="4"]').uncheck();
+  const popupPromise = page.waitForEvent('popup');
+  await dialog.getByRole('button', { name: 'Exportar ficha' }).click();
+  const popup = await popupPromise;
+  const sheet = popup.locator('.print-sheet');
+  await expect(sheet).toContainText('Endodoncia');
+  await expect(sheet).toContainText('Control endodoncia');
+  await expect(sheet).toContainText('09:00');
+  await expect(sheet).toContainText('120.000');
+  await expect(sheet).toContainText('20.000');
+  await expect(sheet).toContainText('Abonos: $20.000');
+  await expect(sheet).toContainText('Saldo pendiente: $100.000');
+  await expect(sheet).not.toContainText('endo.png');
+  await expect(sheet).not.toContainText('Control limpieza');
+  await expect(sheet).not.toContainText('Diagnóstico de limpieza');
+  await expect(sheet).not.toContainText('limpieza.png');
+  await expect(sheet).not.toContainText('30.000');
 });

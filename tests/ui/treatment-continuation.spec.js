@@ -3,7 +3,7 @@ const { test, expect } = require('@playwright/test');
 test('continuar tratamiento conserva presupuesto y muestra historial', async ({ page }) => {
   const summary = {
     patient: { id: 1, first_name: 'Ana', last_name: 'Prueba' },
-    treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', tooth_code: '36', status: 'in_progress', final_price: 100 }],
+    treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', tooth_code: '19', status: 'in_progress', final_price: 100 }],
     payments: [{ id: 1, patient_treatment_id: 7, amount: 100, payment_date: '2026-09-01' }],
     appointments: [{ id: 1, patient_id: 1, patient_treatment_id: 7, starts_at: '2026-09-01 10:00', status: 'attended' }],
     sessions: [], attachments: []
@@ -44,7 +44,7 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
   await expect(history).toContainText('Cita pendiente:');
   await expect(history.getByRole('button', { name: 'Agendar continuacion' })).toHaveCount(0);
   await page.getByRole('tab', { name: 'Agenda y piezas', exact: true }).click();
-  await page.locator('[data-tooth="36"]').click();
+  await page.locator('[data-tooth="19"]').click();
   await page.locator('#toothNote').getByRole('button', { name: 'Agendar tratamiento para esta pieza' }).click();
   await expect(page.locator('[data-duplicate-message]')).toBeVisible();
   await expect(page.locator('#actionDrawer').getByRole('button', { name: 'Agendar cita', exact: true })).toBeDisabled();

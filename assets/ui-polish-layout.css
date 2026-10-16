@@ -362,3 +362,93 @@ td, th, p, strong, span, label, a, time, small, h1, h2, h3, h4 { overflow-wrap: 
 .document-section table tbody tr:hover {
   background-color: var(--surface-hover);
 }
+
+/* Estados semánticos consistentes entre las tarjetas de agenda y su leyenda. */
+.day-timeline article.appointment-editor.status-scheduled { border-left-color:var(--teal); }
+.day-timeline article.appointment-editor.status-attended { border-left-color:var(--blue); }
+.day-timeline article.appointment-editor.status-missed { border-left-color:#d97706; }
+.day-timeline article.appointment-editor.status-cancelled { border-left-color:#64748b; }
+.status-scheduled .appointment-status { background:var(--mint); color:var(--teal-dark); }
+.status-attended .appointment-status { background:var(--blue-soft); color:var(--blue); }
+.status-missed .appointment-status { background:#fef3c7; color:#a16207; }
+.status-cancelled .appointment-status { background:#e2e8f0; color:#475569; }
+.appointment-status-legend .legend-dot.scheduled { background:var(--teal); }
+.appointment-status-legend .legend-dot.attended { background:var(--blue); }
+.appointment-status-legend .legend-dot.missed { background:#d97706; }
+.appointment-status-legend .legend-dot.cancelled { background:#64748b; }
+
+/* Navegacion compacta: conserva el ancho de trabajo y se abre al usarla. */
+@media screen and (min-width: 821px) {
+  .app-shell {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    align-self: start;
+    width: 72px;
+    height: 100vh;
+    padding: 20px 10px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transition: width 180ms ease, box-shadow 180ms ease;
+  }
+
+  .sidebar:hover,
+  .sidebar:focus-within {
+    width: 256px;
+    box-shadow: 10px 0 24px rgba(23, 38, 35, 0.12);
+  }
+
+  .sidebar:not(:hover):not(:focus-within) .brand > div,
+  .sidebar:not(:hover):not(:focus-within) .backup-status,
+  .sidebar:not(:hover):not(:focus-within) .sidebar-logout-status {
+    display: none;
+  }
+
+  .sidebar:not(:hover):not(:focus-within) .brand,
+  .sidebar:not(:hover):not(:focus-within) .nav-item {
+    justify-content: center;
+  }
+
+  .sidebar:not(:hover):not(:focus-within) .nav-item {
+    font-size: 0;
+    gap: 0;
+    padding: 8px;
+  }
+
+  .sidebar .nav-icon {
+    flex: 0 0 30px;
+  }
+
+  .sidebar:not(:hover):not(:focus-within) .sidebar-logout .nav-icon {
+    font-size: 1.1rem;
+  }
+
+  .sidebar:is(:hover, :focus-within) .brand {
+    justify-content: flex-start;
+  }
+
+  .sidebar:is(:hover, :focus-within) .brand > div {
+    font-size: 1rem;
+  }
+
+  .sidebar:is(:hover, :focus-within) .nav-item {
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+  }
+
+  .sidebar:is(:hover, :focus-within) .backup-status {
+    display: flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
+}

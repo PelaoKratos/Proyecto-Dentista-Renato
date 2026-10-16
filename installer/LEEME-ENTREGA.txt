@@ -9,14 +9,19 @@ No se necesita Node.js ni conexion a internet.
    %LOCALAPPDATA%\ConsultaDentalRenato
    y creara el acceso directo Consulta Dental Renato en el Escritorio.
 4. La aplicacion se abrira en el navegador. En el primer ingreso,
-   crea una clave de administrador de al menos 12 caracteres.
-5. Para cerrar la aplicacion y detener el servidor, usa el icono
+   crea una clave de administrador de al menos 6 caracteres.
+5. En Procedimientos base veras el catalogo de tratamientos ya cargado.
+   Usa Editar para cambiar el precio de cada uno segun la consulta.
+6. Para cerrar la aplicacion y detener el servidor, usa el icono
    Consulta Dental Renato en el area de notificacion de Windows.
 
-La entrega no contiene pacientes, pagos, radiografias, claves ni
-respaldos anteriores. La instalacion crea los datos nuevos en la
-carpeta data del destino. Si se ejecuta de nuevo sobre una instalacion
-existente, conserva data, media y backups de ese computador.
+La base incluida tiene 0 pacientes, citas, pagos, tratamientos asignados,
+evoluciones y adjuntos. Solo contiene los procedimientos base activos,
+con sus nombres, descripciones y precios actuales para ajustar.
+
+Si se instala de nuevo sobre una instalacion existente, el instalador
+conserva su base de datos, media y respaldos. El catalogo inicial se copia
+solo cuando aun no existe una base de datos en el computador de destino.
 
 Los respaldos se generan en la carpeta backups del destino. Copia
 periodicamente esos ZIP a una unidad externa segura.

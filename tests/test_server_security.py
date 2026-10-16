@@ -152,6 +152,46 @@ class LocalServerSecurityTests(unittest.TestCase):
             finally:
                 database.DATA_DIR, database.DB_PATH = original_data_dir, original_db_path
 
+    def test_delete_treatment_updates_patient_balance_and_reports_conflicts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            original_data_dir, original_db_path = database.DATA_DIR, database.DB_PATH
+            database.DATA_DIR = root / "data"
+            database.DB_PATH = database.DATA_DIR / "test.sqlite3"
+            try:
+                database.init_db()
+                patient = database.insert_record(
+                    "patients", {"first_name": "Ana", "last_name": "Prueba"}, {"first_name", "last_name"}
+                )
+                first = database.insert_record(
+                    "patient_treatments",
+                    {"patient_id": patient["id"], "title": "Resina", "final_price": 100000},
+                    {"patient_id", "title", "final_price"},
+                )
+                second = database.insert_record(
+                    "patient_treatments",
+                    {"patient_id": patient["id"], "title": "Limpieza", "final_price": 50000},
+                    {"patient_id", "title", "final_price"},
+                )
+                with patch("backend.server.DB_PATH", database.DB_PATH):
+                    status, _headers, body = self.request("DELETE", f"/api/patient-treatments/{first['id']}")
+                    self.assertEqual(status, 200)
+                    self.assertTrue(json.loads(body)["ok"])
+                    status, _headers, body = self.request("GET", f"/api/patients/{patient['id']}/summary")
+                    self.assertEqual(status, 200)
+                    self.assertEqual([item["id"] for item in json.loads(body)["treatments"]], [second["id"]])
+                    status, _headers, _body = self.request("DELETE", f"/api/patient-treatments/{first['id']}")
+                    self.assertEqual(status, 404)
+                    database.execute(
+                        "INSERT INTO payments (patient_id, patient_treatment_id, payment_date, amount) VALUES (?, ?, ?, ?)",
+                        (patient["id"], second["id"], "2026-10-01", 10000),
+                    )
+                    status, _headers, body = self.request("DELETE", f"/api/patient-treatments/{second['id']}")
+                    self.assertEqual(status, 409)
+                    self.assertIn("abonos", json.loads(body)["error"])
+            finally:
+                database.DATA_DIR, database.DB_PATH = original_data_dir, original_db_path
+
     def test_backup_option_includes_media_and_unique_names(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

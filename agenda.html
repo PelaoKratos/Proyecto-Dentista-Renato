@@ -25,23 +25,30 @@
               <div><span class="eyebrow">Jornada</span><h2 id="calendarTitle">Hoy</h2><p class="section-subtitle" id="agendaCount" aria-live="polite"></p></div>
               <div class="inline-actions">
                 <button class="text-button" id="goTodayBtn" type="button">Hoy</button>
-                <select id="agendaStatusFilter" aria-label="Filtrar citas por estado">
-                  <option value="">Todos</option>
-                  <option value="scheduled">Confirmadas</option>
-                  <option value="attended">Atendidas</option>
-                  <option value="missed">No asistio</option>
-                  <option value="cancelled">Canceladas</option>
-                </select>
               </div>
             </div>
-            <div class="mini-calendar agenda-date-filter" id="miniCalendar" aria-label="Filtrar agenda por dia"></div>
-            <div class="day-timeline" id="dayTimeline">
-              <article><time>09:30</time><div><strong>Camila Torres</strong><span>Control ortodoncia · En box</span></div></article>
-              <article><time>10:15</time><div><strong>Mario Araya</strong><span>Evaluacion implante · Confirmada</span></div></article>
-              <article><time>11:00</time><div><strong>Valentina Soto</strong><span>Radiografia y diagnostico · Pendiente</span></div></article>
-              <article><time>12:30</time><div><strong>Pedro Riquelme</strong><span>Endodoncia pieza 36 · Confirmada</span></div></article>
-              <article><time>15:00</time><div><strong>Disponible</strong><span>Bloque libre para urgencia o control breve</span></div></article>
+            <div class="agenda-date-tools">
+              <button class="text-button" id="agendaPrevious" type="button" aria-label="Semana anterior">← Semana anterior</button>
+              <label>Ir al día <input id="agendaDatePicker" type="date" /></label>
+              <button class="text-button" id="agendaNext" type="button" aria-label="Semana siguiente">Semana siguiente →</button>
             </div>
+            <div class="mini-calendar agenda-date-filter" id="miniCalendar" aria-label="Filtrar agenda por dia"></div>
+            <div class="agenda-calendar-legend-filter">
+              <div class="appointment-status-legend" aria-label="Leyenda de estados de citas">
+                <span><i class="legend-dot scheduled"></i>Confirmada</span>
+                <span><i class="legend-dot attended"></i>Atendida</span>
+                <span><i class="legend-dot missed"></i>No asistió</span>
+                <span><i class="legend-dot cancelled"></i>Cancelada</span>
+              </div>
+              <label class="agenda-status-filter">Estado<select id="agendaStatusFilter" aria-label="Filtrar citas por estado">
+                <option value="">Todos</option>
+                <option value="scheduled">Confirmadas</option>
+                <option value="attended">Atendidas</option>
+                <option value="missed">No asistió</option>
+                <option value="cancelled">Canceladas</option>
+              </select></label>
+            </div>
+            <div class="day-timeline" id="dayTimeline"><p class="empty-state">Cargando citas…</p></div>
           </section>
         </section>
       </main>

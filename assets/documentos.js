@@ -124,12 +124,12 @@ function renderBudget(summary, note) {
       <h3>Detalle de tratamientos</h3>
       ${
         treatments.length
-          ? `<table><thead><tr><th>Tratamiento</th><th>Pieza</th><th>Diagnostico</th><th>Valor</th></tr></thead><tbody>${treatments
+          ? `<table><thead><tr><th>Tratamiento</th><th>Piezas</th><th>Diagnostico</th><th>Valor</th></tr></thead><tbody>${treatments
               .map(
                 (treatment) => `
                   <tr>
                     <td>${clean(treatment.title)}</td>
-                    <td>${clean(treatment.tooth_code, "General")}</td>
+                    <td>${clean(treatment.tooth_code, "General")} ${treatment.tooth_code ? `(${treatment.dentition_type === "child" ? "infantil" : "adulto"})` : ""}</td>
                     <td>${clean(treatment.diagnosis)}</td>
                     <td>${money(treatmentAmount(treatment))}</td>
                   </tr>
@@ -207,7 +207,7 @@ function renderConsent(summary, note) {
       <h3>Tratamientos relacionados</h3>
       ${
         activeTreatments.length
-          ? `<ul>${activeTreatments.map((treatment) => `<li>${clean(treatment.title)} ${treatment.tooth_code ? `- pieza ${clean(treatment.tooth_code, "")}` : ""}</li>`).join("")}</ul>`
+          ? `<ul>${activeTreatments.map((treatment) => `<li>${clean(treatment.title)} ${treatment.tooth_code ? `- piezas ${clean(treatment.tooth_code, "")} (${treatment.dentition_type === "child" ? "infantil" : "adulto"})` : ""}</li>`).join("")}</ul>`
           : emptyLine("No hay tratamientos activos registrados.")
       }
     </section>
