@@ -82,6 +82,11 @@
 .appointment-menu-panel h3, .appointment-menu-panel p, .appointment-menu-panel form > button { grid-column: 1 / -1; margin: 0; }
 .appointment-menu-panel .payment-allocation-list { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
 .appointment-menu-panel .payment-allocation-row { width: 100%; box-sizing: border-box; }
+.appointment-procedure-breakdown { display: grid; grid-column: 1 / -1; gap: 6px; min-width: 0; padding: 9px; border-radius: 7px; background: var(--surface-strong); }
+.appointment-procedure-breakdown > p { margin: 0; color: var(--muted); font-size: .72rem; }
+.appointment-procedure-balance { display: grid; grid-template-columns: minmax(100px, 1fr) repeat(3, max-content); align-items: baseline; gap: 5px 12px; min-width: 0; font-size: .75rem; }
+.appointment-procedure-balance strong { min-width: 0; overflow-wrap: anywhere; }
+.appointment-procedure-balance span { white-space: nowrap; }
 .appointment-menu-panel label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 700; }
 .appointment-menu-panel input, .appointment-menu-panel select { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
 .calendar-appointment-dialog [data-menu-status] { min-height: 18px; margin: 8px 18px; }

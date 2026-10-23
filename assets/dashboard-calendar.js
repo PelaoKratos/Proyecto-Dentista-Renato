@@ -655,6 +655,51 @@ function showMenuPanel(markup) {
   panel.querySelector("input,select")?.focus();
 }
 
+function allocateProcedureAmount(total, weights) {
+  const amount = Math.max(0, Math.round(Number(total) || 0));
+  const weightTotal = weights.reduce((sum, weight) => sum + Math.max(0, Number(weight) || 0), 0);
+  if (!amount || !weightTotal) return weights.map(() => 0);
+  const portions = weights.map((weight, index) => {
+    const exact = amount * Math.max(0, Number(weight) || 0) / weightTotal;
+    return { index, value: Math.floor(exact), remainder: exact - Math.floor(exact) };
+  });
+  let remaining = amount - portions.reduce((sum, part) => sum + part.value, 0);
+  portions.slice().sort((a, b) => b.remainder - a.remainder || a.index - b.index)
+    .slice(0, remaining).forEach((part) => { portions[part.index].value += 1; });
+  return portions.map((part) => part.value);
+}
+
+function procedurePaymentBreakdown(treatment, treatmentPaid) {
+  let procedures = [];
+  try { procedures = JSON.parse(treatment.procedure_items_json || "[]"); } catch { return ""; }
+  if (!Array.isArray(procedures) || !procedures.length) return "";
+  const netLines = procedures.map((procedure) => {
+    const price = Math.max(0, Math.round(Number(procedure.price) || 0));
+    const discount = procedure.discount_type === "percent"
+      ? Math.round(price * Math.min(100, Math.max(0, Number(procedure.discount_value) || 0)) / 100)
+      : Math.min(price, Math.max(0, Math.round(Number(procedure.discount_value) || 0)));
+    return Math.max(0, price - discount);
+  });
+  const afterLineDiscounts = netLines.reduce((sum, value) => sum + value, 0);
+  const treatmentTotal = Math.max(0, Math.round(Number(treatment.final_price ?? afterLineDiscounts) || 0));
+  const totalDiscount = Math.min(afterLineDiscounts, Math.max(0, afterLineDiscounts - treatmentTotal));
+  const allocatedDiscounts = allocateProcedureAmount(totalDiscount, netLines);
+  const procedureTotals = netLines.map((value, index) => Math.max(0, value - allocatedDiscounts[index]));
+  const totalPaid = Math.min(treatmentTotal, Math.max(0, Math.round(Number(treatmentPaid) || 0)));
+  const paidByProcedure = allocateProcedureAmount(totalPaid, procedureTotals);
+  return `<div class="appointment-procedure-breakdown">
+    <p>Abonos distribuidos proporcionalmente entre los procedimientos del tratamiento.</p>
+    ${procedures.map((procedure, index) => {
+      const procedureTotal = procedureTotals[index];
+      const paid = Math.min(procedureTotal, paidByProcedure[index]);
+      const teeth = procedure.tooth_code ? ` · Piezas ${DentalAPI.escapeHtml(procedure.tooth_code)}` : "";
+      return `<div class="appointment-procedure-balance"><strong>${DentalAPI.escapeHtml(procedure.name)}${teeth}</strong>
+        <span>Total ${DentalAPI.money(procedureTotal)}</span><span>Abonado ${DentalAPI.money(paid)}</span>
+        <span>Pendiente ${DentalAPI.money(procedureTotal - paid)}</span></div>`;
+    }).join("")}
+  </div>`;
+}
+
 function openNextBooking(appointment) {
   appointmentDialog.close();
   bookingForm.reset();
@@ -724,14 +769,15 @@ appointmentMenu.addEventListener("click", async (event) => {
       const balances = patientTreatments.map((item) => {
         const paid = payments.filter((payment) => Number(payment.patient_treatment_id) === Number(item.id))
           .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-        return { treatment: item, due: Math.max(Number(item.final_price ?? item.estimated_price ?? 0) - paid, 0) };
+        return { treatment: item, paid, due: Math.max(Number(item.final_price ?? item.estimated_price ?? 0) - paid, 0) };
       }).filter((item) => item.due > 0);
       const preferredTreatmentId = Number(treatment?.id);
-      const rows = balances.map(({ treatment: item, due }) => {
+      const rows = balances.map(({ treatment: item, paid, due }) => {
         const checked = Number(item.id) === preferredTreatmentId;
         return `<div class="payment-allocation-row" data-menu-payment-row data-treatment-id="${Number(item.id)}" data-title="${DentalAPI.escapeHtml(item.title)}" data-due="${due}">
           <label><input type="checkbox" data-menu-payment-include ${checked ? "checked" : ""} /><span><strong>${DentalAPI.escapeHtml(item.title)}</strong><small>Saldo pendiente ${DentalAPI.money(due)}</small></span></label>
           <label>Abono<input type="number" data-menu-payment-amount min="1" max="${due}" step="1" value="${due}" ${checked ? "" : "readonly"} /></label>
+          ${procedurePaymentBreakdown(item, paid)}
         </div>`;
       }).join("");
       showMenuPanel(balances.length ? `<form data-menu-form="payment"><h3>Selecciona los tratamientos que vas a abonar</h3>
