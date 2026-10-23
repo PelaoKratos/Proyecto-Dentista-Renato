@@ -1,5 +1,14 @@
 /* Funciones puras del dominio de la ficha del paciente. */
 (() => {
+  // Correspondencia visual con la notación Universal A–T de la dentición temporal (ADA).
+  // La fila inferior se muestra de derecha anatómica a izquierda: T, S, ..., K.
+  const primaryToothLetter = (code) => {
+    const number = Number(code);
+    if (!Number.isInteger(number) || number < 1 || number > 20) return "";
+    return String.fromCharCode(number <= 10 ? 64 + number : 95 - number);
+  };
+  const toothLabel = (code, dentitionType = "adult") =>
+    `Pieza ${code}${dentitionType === "child" ? ` (${primaryToothLetter(code)})` : ""}`;
   const toothDescription = (code, dentitionType = "adult") => {
     const number = Number(code);
     const size = dentitionType === "child" ? 5 : 8;
@@ -10,7 +19,7 @@
       : (quadrant === 2 ? size - index : index + 1);
     const type = position <= 2 ? "Incisivo" : position === 3 ? "Canino"
       : dentitionType !== "child" && position <= 5 ? "Premolar" : "Molar";
-    const location = ["superior derecho", "superior izquierdo", "inferior izquierdo", "inferior derecho"][quadrant];
+    const location = ["superior derecho", "superior izquierdo", "inferior derecho", "inferior izquierdo"][quadrant];
     return `${type} ${location}`;
   };
   const catalogGroup = (name) => {
@@ -83,5 +92,5 @@
     };
     return labels[type] || type || "Adjunto";
   }
-  window.PatientDomain = Object.freeze({ toothDescription, catalogGroup, ageFromBirthDate, totalTreatments, totalPayments, balance, treatmentTotal, treatmentPaid, treatmentBalance, paymentState, paymentStateClass, progressForStatus, dateKey, attachmentTypeLabel });
+  window.PatientDomain = Object.freeze({ primaryToothLetter, toothLabel, toothDescription, catalogGroup, ageFromBirthDate, totalTreatments, totalPayments, balance, treatmentTotal, treatmentPaid, treatmentBalance, paymentState, paymentStateClass, progressForStatus, dateKey, attachmentTypeLabel });
 })();

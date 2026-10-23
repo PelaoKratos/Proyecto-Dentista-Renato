@@ -23,6 +23,10 @@ let selectedPaymentState = "";
 let currentPaymentPage = 1;
 const PAYMENT_PAGE_SIZE = 20;
 const PAYMENT_PAGE_WINDOW = 5;
+window.UnsavedEdits.register("payment-editor", {
+  isDirty: () => Boolean(document.querySelector('[data-payment-row][data-unsaved-payment="true"]')),
+  discard: () => renderPayments()
+});
 
 function localDateString(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -289,6 +293,20 @@ function renderPayments() {
         .join("") || `<p class="empty-state">No hay pagos para los filtros seleccionados.</p>`
     }
   `;
+  paymentsTable.querySelectorAll("[data-payment-row]").forEach((row) => {
+    row.dataset.originalAmount = row.querySelector("[data-payment-amount]").value;
+    row.dataset.originalMethod = row.querySelector("[data-payment-method]").value;
+    row.dataset.unsavedPayment = "false";
+  });
+}
+
+function acceptPaymentFilterChange(filter) {
+  if (!window.UnsavedEdits.confirmDiscard()) {
+    filter.value = filter.dataset.appliedValue || "";
+    return false;
+  }
+  filter.dataset.appliedValue = filter.value;
+  return true;
 }
 
 async function loadPagos() {
@@ -307,12 +325,16 @@ async function loadPagos() {
   renderMetrics();
   renderPaymentFilters();
   renderPayments();
+  [paymentStateFilter, paymentDateFrom, paymentDateTo, paymentPatientFilter, paymentTreatmentFilter].forEach((filter) => {
+    filter.dataset.appliedValue = filter.value;
+  });
 }
 
 paymentPatient.addEventListener("change", renderTreatmentsForPatient);
 paymentTreatment.addEventListener("change", updatePaymentAmountSuggestion);
 
 paymentStateFilter.addEventListener("change", () => {
+  if (!acceptPaymentFilterChange(paymentStateFilter)) return;
   selectedPaymentState = paymentStateFilter.value;
   currentPaymentPage = 1;
   renderPayments();
@@ -320,6 +342,7 @@ paymentStateFilter.addEventListener("change", () => {
 
 [paymentDateFrom, paymentDateTo, paymentPatientFilter, paymentTreatmentFilter].forEach((filter) => {
   filter.addEventListener("change", () => {
+    if (!acceptPaymentFilterChange(filter)) return;
     currentPaymentPage = 1;
     renderPayments();
   });
@@ -329,6 +352,7 @@ paginationContainers.forEach((container) => {
   container.addEventListener("click", (event) => {
     const button = event.target.closest("[data-payment-page]");
     if (!button || button.disabled) return;
+    if (!window.UnsavedEdits.confirmDiscard()) return;
     currentPaymentPage = Number(button.dataset.paymentPage);
     renderPayments();
   });
@@ -341,6 +365,7 @@ focusPaymentForm.addEventListener("click", () => {
 
 paymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (!window.UnsavedEdits.confirmDiscard()) return;
   const formData = new FormData(paymentForm);
   const submitButton = paymentForm.querySelector("button[type='submit']");
   paymentStatus.textContent = "Guardando pago...";
@@ -380,6 +405,7 @@ paymentForm.addEventListener("submit", async (event) => {
 paymentsTable.addEventListener("click", async (event) => {
   const registerButton = event.target.closest("[data-register-pending]");
   if (registerButton) {
+    if (!window.UnsavedEdits.confirmDiscard()) return;
     const treatment = treatments.find((item) => Number(item.id) === Number(registerButton.dataset.registerPending));
     if (!treatment) return;
     paymentPatient.value = String(treatment.patient_id);
@@ -392,6 +418,10 @@ paymentsTable.addEventListener("click", async (event) => {
   }
   const editButton = event.target.closest("[data-edit-payment]");
   if (editButton) {
+    if (window.UnsavedEdits.hasChanges()) {
+      editButton.closest("[data-payment-row]").querySelector("[data-payment-message]").textContent = "Guarda o cancela el otro pago antes de editar este.";
+      return;
+    }
     const row = editButton.closest("[data-payment-row]");
     row.querySelectorAll("[data-payment-readonly]").forEach((item) => { item.hidden = true; });
     row.querySelectorAll("[data-payment-amount], [data-payment-method]").forEach((item) => { item.hidden = false; item.disabled = false; });
@@ -402,6 +432,7 @@ paymentsTable.addEventListener("click", async (event) => {
     return;
   }
   if (event.target.closest("[data-cancel-payment-edit]")) {
+    if (!window.UnsavedEdits.confirmDiscard()) return;
     renderPayments();
     return;
   }
@@ -410,6 +441,11 @@ paymentsTable.addEventListener("click", async (event) => {
   const paymentId = button.dataset.savePayment;
   const row = button.closest("[data-payment-row]");
   const message = row.querySelector("[data-payment-message]");
+
+  if ([...paymentsTable.querySelectorAll('[data-payment-row][data-unsaved-payment="true"]')].some((other) => other !== row)) {
+    message.textContent = "Guarda o cancela los otros pagos modificados antes de continuar.";
+    return;
+  }
 
   button.disabled = true;
   message.textContent = "Guardando...";
@@ -420,12 +456,24 @@ paymentsTable.addEventListener("click", async (event) => {
       method: row.querySelector("[data-payment-method]").value
     });
     message.textContent = "Pago actualizado.";
+    row.dataset.unsavedPayment = "false";
     await loadPagos();
   } catch (error) {
     message.textContent = error.message;
     button.disabled = false;
   }
 });
+
+function updatePaymentDirty(event) {
+  const row = event.target.closest("[data-payment-row]");
+  if (!row) return;
+  row.dataset.unsavedPayment = String(
+    row.querySelector("[data-payment-amount]").value !== row.dataset.originalAmount ||
+    row.querySelector("[data-payment-method]").value !== row.dataset.originalMethod
+  );
+}
+paymentsTable.addEventListener("input", updatePaymentDirty);
+paymentsTable.addEventListener("change", updatePaymentDirty);
 
 loadPagos().catch((error) => {
   paymentsTable.innerHTML = `<p class="empty-state">No se pudieron cargar pagos: ${DentalAPI.escapeHtml(error.message)}</p>`;

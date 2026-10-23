@@ -45,6 +45,30 @@ class LocalServerSecurityTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertIn("objeto JSON", body.decode("utf-8"))
 
+    def test_procedure_budget_update_keeps_existing_appointments(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            old_data_dir, old_db_path = database.DATA_DIR, database.DB_PATH
+            database.DATA_DIR = root
+            database.DB_PATH = root / "test.sqlite3"
+            try:
+                database.init_db()
+                patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Prueba"}, {"first_name", "last_name"})
+                treatment = database.insert_record("patient_treatments", {"patient_id": patient["id"], "title": "Plan"}, {"patient_id", "title"})
+                database.insert_record("appointments", {"patient_id": patient["id"], "patient_treatment_id": treatment["id"],
+                    "starts_at": "2026-10-22 09:00", "status": "attended"},
+                    {"patient_id", "patient_treatment_id", "starts_at", "status"})
+                payload = json.dumps({"procedures": [{"name": "Endodoncia", "tooth_code": "4", "price": 80000,
+                    "discount_type": "percent", "discount_value": 10}]}).encode()
+                status, _headers, response = self.request("PUT", f'/api/patient-treatments/{treatment["id"]}/procedures',
+                    headers={"Origin": f"http://127.0.0.1:{self.server.server_port}",
+                        "Content-Type": "application/json", "Content-Length": str(len(payload))}, body=payload)
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(response)["final_price"], 72000)
+                self.assertEqual(len(database.fetch_all("SELECT id FROM appointments")), 1)
+            finally:
+                database.DATA_DIR, database.DB_PATH = old_data_dir, old_db_path
+
     def test_static_server_hides_project_private_files(self):
         for path in ("/data/consulta_dental.sqlite3", "/backups/private.zip", "/.git/config", "/backend/server.py", "/docs/backend-local.md"):
             with self.subTest(path=path):

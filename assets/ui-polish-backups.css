@@ -61,3 +61,7 @@
   cursor: default;
 }
 .backup-records .records-row > span { min-width: 0; overflow-wrap: anywhere; }
+.backup-records .backup-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.backup-records .backup-actions small { flex-basis: 100%; color: var(--muted); font-weight: 600; }
+.backup-records .backup-actions small.success { color: #23734d; }
+.backup-records .backup-actions small.error { color: #a83229; }

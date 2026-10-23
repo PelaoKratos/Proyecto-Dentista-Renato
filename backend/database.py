@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from backend.validation import validate_appointment, validate_session
+from backend.treatment_pricing import price_treatment
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
@@ -36,6 +37,10 @@ def init_db() -> None:
         connection.execute("CREATE INDEX IF NOT EXISTS idx_patient_treatments_plan ON patient_treatments(treatment_plan_id)")
         if "dentition_type" not in {row["name"] for row in connection.execute("PRAGMA table_info(patient_treatments)")}:
             connection.execute("ALTER TABLE patient_treatments ADD COLUMN dentition_type TEXT NOT NULL DEFAULT 'adult'")
+        treatment_columns = {row["name"] for row in connection.execute("PRAGMA table_info(patient_treatments)")}
+        for name, column_type in (("procedure_items_json", "TEXT"), ("total_discount_type", "TEXT"), ("total_discount_value", "NUMERIC")):
+            if name not in treatment_columns:
+                connection.execute(f"ALTER TABLE patient_treatments ADD COLUMN {name} {column_type}")
         connection.execute("CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY)")
         if "payment_batch_id" not in {row["name"] for row in connection.execute("PRAGMA table_info(payments)")}:
             connection.execute("ALTER TABLE payments ADD COLUMN payment_batch_id TEXT")
@@ -182,6 +187,10 @@ def update_record(table: str, record_id: int, data: dict[str, Any], allowed_fiel
             if treatment:
                 candidate = {**dict(treatment), **data}
                 validate_treatment_teeth(candidate)
+        if table == "patient_treatments" and {"tooth_code", "estimated_price", "final_price"} & set(fields):
+            itemized = connection.execute("SELECT procedure_items_json FROM patient_treatments WHERE id = ?", (record_id,)).fetchone()
+            if itemized and itemized[0]:
+                raise ValueError("Edita las piezas y valores del tratamiento detallado desde «Editar procedimientos».")
         if table == "patient_treatments" and "patient_id" in fields:
             patient_id = merged.get("patient_id")
             dependent_records = connection.execute(
@@ -721,27 +730,77 @@ def create_patient_treatment_plan(data, treatment_fields):
         connection.close()
 
 def create_treatment_appointment(data, appointment_fields, treatment_fields):
-    """Create a treatment and its first appointment in one transaction."""
+    """Create an appointment, its treatment changes and optional follow-up atomically."""
     from backend.validation import validate_patient_treatment
     new_treatment = data.pop("new_treatment", None)
-    if new_treatment is None:
+    treatment_update = data.pop("treatment_update", None)
+    followup_id = data.pop("followup_for_appointment_id", None)
+    if followup_id is not None:
+        if isinstance(followup_id, bool) or not str(followup_id).isdigit() or int(followup_id) <= 0:
+            raise ValueError("La cita anterior no es válida.")
+        followup_id = int(followup_id)
+    if new_treatment is not None and not isinstance(new_treatment, dict):
+        raise ValueError("El tratamiento nuevo no es válido.")
+    if treatment_update is not None and not isinstance(treatment_update, dict):
+        raise ValueError("Los cambios del tratamiento no son válidos.")
+    if new_treatment is None and treatment_update is None and followup_id is None:
         return insert_record("appointments", data, appointment_fields)
-    if data.get("patient_treatment_id"):
+    if new_treatment and data.get("patient_treatment_id"):
         raise ValueError("Selecciona un tratamiento existente o uno nuevo.")
-    treatment = validate_patient_treatment({**new_treatment, "patient_id": data["patient_id"]})
+    if treatment_update and (new_treatment or not data.get("patient_treatment_id")):
+        raise ValueError("Selecciona un tratamiento existente para modificarlo.")
+    if new_treatment and ("procedure_items_json" in new_treatment or
+                          "procedures" not in new_treatment and {"total_discount_type", "total_discount_value"} & new_treatment.keys()):
+        raise ValueError("El desglose de procedimientos debe calcularse a partir de sus procedimientos.")
     connection = get_connection()
     try:
         with connection:
             connection.execute("BEGIN IMMEDIATE")
-            set_treatment_dentition(connection, treatment)
-            fields = [key for key in treatment if key in treatment_fields]
-            if "dentition_type" not in fields:
-                fields.append("dentition_type")
-            cursor = connection.execute(
-                f"INSERT INTO patient_treatments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
-                tuple(treatment[key] for key in fields),
-            )
-            data["patient_treatment_id"] = cursor.lastrowid
+            if new_treatment:
+                treatment = validate_patient_treatment({**new_treatment, "patient_id": data["patient_id"]})
+                set_treatment_dentition(connection, treatment)
+                if "procedures" in new_treatment:
+                    treatment.update(price_treatment(new_treatment, treatment["dentition_type"]))
+                fields = [key for key in treatment if key in treatment_fields]
+                if "dentition_type" not in fields:
+                    fields.append("dentition_type")
+                cursor = connection.execute(
+                    f"INSERT INTO patient_treatments ({', '.join(fields)}) VALUES ({', '.join('?' for _ in fields)})",
+                    tuple(treatment[key] for key in fields),
+                )
+                data["patient_treatment_id"] = cursor.lastrowid
+            elif treatment_update:
+                treatment = connection.execute("SELECT * FROM patient_treatments WHERE id = ? AND patient_id = ?", (data["patient_treatment_id"], data["patient_id"])).fetchone()
+                if not treatment:
+                    raise ValueError("El tratamiento no pertenece a este paciente.")
+                title = str(treatment_update.get("title") or "").strip()
+                if not title or len(title) > 160:
+                    raise ValueError("El tratamiento necesita un nombre de hasta 160 caracteres.")
+                priced = price_treatment(treatment_update, treatment["dentition_type"])
+                paid = connection.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE patient_treatment_id = ?", (treatment["id"],)).fetchone()[0]
+                if priced["final_price"] < float(paid):
+                    raise ValueError("El nuevo total no puede ser menor que los abonos ya registrados.")
+                other_total = connection.execute("SELECT COALESCE(SUM(COALESCE(final_price, estimated_price, 0)), 0) FROM patient_treatments WHERE patient_id = ? AND id != ?", (data["patient_id"], treatment["id"])).fetchone()[0]
+                all_paid = connection.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE patient_id = ?", (data["patient_id"],)).fetchone()[0]
+                if priced["final_price"] + float(other_total) < float(all_paid):
+                    raise ValueError("El nuevo total de tratamientos no puede ser menor que los pagos del paciente.")
+                connection.execute("""UPDATE patient_treatments SET title = ?, tooth_code = ?, estimated_price = ?, final_price = ?,
+                    procedure_items_json = ?, total_discount_type = ?, total_discount_value = ? WHERE id = ?""",
+                    (title, priced["tooth_code"], priced["estimated_price"], priced["final_price"],
+                     priced["procedure_items_json"], priced["total_discount_type"], priced["total_discount_value"], treatment["id"]))
+                for booked in connection.execute("SELECT * FROM appointments WHERE patient_treatment_id = ? AND status = 'scheduled'", (treatment["id"],)).fetchall():
+                    validate_appointment_link(connection, dict(booked), booked["id"])
+            if followup_id is not None:
+                previous = connection.execute("SELECT * FROM appointments WHERE id = ?", (followup_id,)).fetchone()
+                if previous is None or str(previous["patient_id"]) != str(data["patient_id"]):
+                    raise ValueError("La cita anterior no pertenece a este paciente.")
+                if previous["status"] not in ("scheduled", "attended"):
+                    raise ValueError("Solo una cita pendiente o atendida permite agendar el próximo control.")
+                if str(data["starts_at"]).replace("T", " ") <= str(previous["starts_at"]).replace("T", " "):
+                    raise ValueError("La próxima cita debe ser posterior a la cita anterior.")
+                if previous["status"] == "scheduled":
+                    connection.execute("UPDATE appointments SET status = 'attended' WHERE id = ?", (followup_id,))
+                    sync_appointment_treatment(connection, {**dict(previous), "status": "attended"})
             validate_appointment_link(connection, data)
             fields = [key for key in data if key in appointment_fields]
             cursor = connection.execute(
@@ -750,6 +809,38 @@ def create_treatment_appointment(data, appointment_fields, treatment_fields):
             )
             sync_appointment_treatment(connection, data)
             return dict(connection.execute("SELECT * FROM appointments WHERE id = ?", (cursor.lastrowid,)).fetchone())
+    finally:
+        connection.close()
+
+
+def update_treatment_procedures(treatment_id, data):
+    """Save the procedure breakdown without creating or changing an appointment."""
+    if not isinstance(data, dict) or not isinstance(data.get("procedures"), list):
+        raise ValueError("Indica los procedimientos del tratamiento.")
+    if {"patient_id", "procedure_items_json", "estimated_price", "final_price", "tooth_code"} & data.keys():
+        raise ValueError("Los valores del tratamiento se calculan a partir de sus procedimientos.")
+    connection = get_connection()
+    try:
+        with connection:
+            connection.execute("BEGIN IMMEDIATE")
+            treatment = connection.execute("SELECT * FROM patient_treatments WHERE id = ?", (treatment_id,)).fetchone()
+            if treatment is None:
+                return None
+            priced = price_treatment(data, treatment["dentition_type"])
+            paid = connection.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE patient_treatment_id = ?", (treatment_id,)).fetchone()[0]
+            if priced["final_price"] < float(paid):
+                raise ValueError("El nuevo total no puede ser menor que los abonos ya registrados.")
+            other_total = connection.execute("SELECT COALESCE(SUM(COALESCE(final_price, estimated_price, 0)), 0) FROM patient_treatments WHERE patient_id = ? AND id != ?", (treatment["patient_id"], treatment_id)).fetchone()[0]
+            all_paid = connection.execute("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE patient_id = ?", (treatment["patient_id"],)).fetchone()[0]
+            if priced["final_price"] + float(other_total) < float(all_paid):
+                raise ValueError("El nuevo total de tratamientos no puede ser menor que los pagos del paciente.")
+            connection.execute("""UPDATE patient_treatments SET tooth_code = ?, estimated_price = ?, final_price = ?,
+                procedure_items_json = ?, total_discount_type = ?, total_discount_value = ? WHERE id = ?""",
+                (priced["tooth_code"], priced["estimated_price"], priced["final_price"],
+                 priced["procedure_items_json"], priced["total_discount_type"], priced["total_discount_value"], treatment_id))
+            for booked in connection.execute("SELECT * FROM appointments WHERE patient_treatment_id = ? AND status = 'scheduled'", (treatment_id,)).fetchall():
+                validate_appointment_link(connection, dict(booked), booked["id"])
+            return dict(connection.execute("SELECT * FROM patient_treatments WHERE id = ?", (treatment_id,)).fetchone())
     finally:
         connection.close()
 
@@ -766,6 +857,11 @@ def create_treatment_appointments(data, appointment_fields, treatment_fields):
     base = {key: value for key, value in data.items() if key != "starts_at"}
     appointment_data = [validate_appointment({**base, "starts_at": value}) for value in starts_at]
     new_treatment = base.get("new_treatment")
+    if new_treatment is not None and not isinstance(new_treatment, dict):
+        raise ValueError("El tratamiento nuevo no es válido.")
+    if new_treatment and ("procedure_items_json" in new_treatment or
+                          "procedures" not in new_treatment and {"total_discount_type", "total_discount_value"} & new_treatment.keys()):
+        raise ValueError("El desglose de procedimientos debe calcularse a partir de sus procedimientos.")
     if new_treatment and base.get("patient_treatment_id"):
         raise ValueError("Selecciona un tratamiento existente o uno nuevo.")
     connection = get_connection()
@@ -775,6 +871,8 @@ def create_treatment_appointments(data, appointment_fields, treatment_fields):
             if new_treatment:
                 treatment = validate_patient_treatment({**new_treatment, "patient_id": base["patient_id"]})
                 set_treatment_dentition(connection, treatment)
+                if "procedures" in new_treatment:
+                    treatment.update(price_treatment(new_treatment, treatment["dentition_type"]))
                 fields = [key for key in treatment if key in treatment_fields]
                 if "dentition_type" not in fields:
                     fields.append("dentition_type")

@@ -5,8 +5,8 @@ function renderOdontogram(selectedTooth = "1", treatments = [], dentitionType = 
   const quadrantSize = child ? 5 : 8;
   const upperRight = Array.from({ length: quadrantSize }, (_, i) => String(i + 1));
   const upperLeft = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize + i + 1));
-  const lowerRight = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize * 4 - i));
-  const lowerLeft = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize * 3 - i));
+  const lowerRight = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize * 2 + i + 1));
+  const lowerLeft = Array.from({ length: quadrantSize }, (_, i) => String(quadrantSize * 3 + i + 1));
   const treatmentByTooth = new Map();
   treatments.filter((item) => item.tooth_code && (item.dentition_type || "adult") === dentitionType).forEach((item) => {
     String(item.tooth_code).split(",").forEach((tooth) => {
@@ -35,12 +35,16 @@ function renderOdontogram(selectedTooth = "1", treatments = [], dentitionType = 
     }).join("");
     const crown = upper ? `<rect x="2" y="3" width="${width}" height="21" rx="${shape === "incisor" ? 3 : 5}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />` : `<rect x="2" y="15" width="${width}" height="21" rx="${shape === "incisor" ? 3 : 5}" fill="${fill}" stroke="${stroke}" stroke-width="1.5" />`;
     const labelY = upper ? 16 : 29;
+    const letter = child ? window.PatientDomain.primaryToothLetter(tooth) : "";
+    const numberLabel = child
+      ? `<text x="${(width + 4) / 2}" y="${upper ? 12 : 24}" text-anchor="middle" font-size="7" font-family="monospace" font-weight="700" fill="${stroke}">${tooth}</text><text x="${(width + 4) / 2}" y="${upper ? 21 : 33}" text-anchor="middle" font-size="8" font-family="monospace" font-weight="800" fill="${stroke}">${letter}</text>`
+      : `<text x="${(width + 4) / 2}" y="${labelY}" text-anchor="middle" font-size="7" font-family="monospace" font-weight="700" fill="${stroke}">${tooth}</text>`;
     const marker = treatment ? `<circle cx="${width + 2}" cy="${upper ? 5 : 40}" r="4" fill="${stroke}" />` : "";
-    return `<button type="button" class="tooth-button ${tooth === selectedTooth ? "selected" : ""}" data-tooth="${tooth}" title="Pieza ${tooth}"><svg width="${width + 8}" height="54" viewBox="0 0 ${width + 8} 54" aria-hidden="true">${upper ? crown + roots : roots + crown}<text x="${(width + 4) / 2}" y="${labelY}" text-anchor="middle" font-size="7" font-family="monospace" font-weight="700" fill="${stroke}">${tooth}</text>${marker}</svg></button>`;
+    return `<button type="button" class="tooth-button ${tooth === selectedTooth ? "selected" : ""}" data-tooth="${tooth}"${child ? ` data-letter="${letter}"` : ""} title="${window.PatientDomain.toothLabel(tooth, dentitionType)}" aria-label="${window.PatientDomain.toothLabel(tooth, dentitionType)}"><svg width="${width + 8}" height="54" viewBox="0 0 ${width + 8} 54" aria-hidden="true">${upper ? crown + roots : roots + crown}${numberLabel}${marker}</svg></button>`;
   };
   const quadrant = (numbers, upper, right) => numbers.map((tooth, index) =>
     toothMarkup(tooth, upper, right ? quadrantSize - index : index + 1)).join("");
-  return `<div class="odontogram-shell" data-odontogram-type="${dentitionType}"><div class="odontogram-legend"><span><i class="legend-tooth"></i>Sin tratamiento</span><span><i class="legend-tooth planned"></i>Planificado</span><span><i class="legend-tooth in-progress"></i>En curso</span><span><i class="legend-tooth completed"></i>Completado</span></div><div class="jaw-labels"><span>Der.</span><strong>Superior</strong><span>Izq.</span></div><div class="tooth-row upper"><div>${quadrant(upperRight, true, true)}</div><em></em><div>${quadrant(upperLeft, true, false)}</div></div><div class="midline"><span>LINEA MEDIA</span></div><div class="tooth-row lower"><div>${quadrant(lowerRight, false, true)}</div><em></em><div>${quadrant(lowerLeft, false, false)}</div></div><div class="jaw-labels"><span>Der.</span><strong>Inferior</strong><span>Izq.</span></div></div>`;
+  return `<div class="odontogram-shell" data-odontogram-type="${dentitionType}"><div class="odontogram-legend"><span><i class="legend-tooth"></i>Sin tratamiento</span><span><i class="legend-tooth planned"></i>Planificado</span><span><i class="legend-tooth in-progress"></i>En curso</span><span><i class="legend-tooth completed"></i>Completado</span></div>${child ? '<p class="odontogram-code-help">Infantil: número y letra en cada pieza (A–J arriba, T–K abajo).</p>' : ""}<div class="jaw-labels"><span>Der.</span><strong>Superior</strong><span>Izq.</span></div><div class="tooth-row upper"><div>${quadrant(upperRight, true, true)}</div><em></em><div>${quadrant(upperLeft, true, false)}</div></div><div class="midline"><span>LINEA MEDIA</span></div><div class="tooth-row lower"><div>${quadrant(lowerRight, false, true)}</div><em></em><div>${quadrant(lowerLeft, false, false)}</div></div><div class="jaw-labels"><span>Der.</span><strong>Inferior</strong><span>Izq.</span></div></div>`;
 }
 
 function renderDataList(patient) {

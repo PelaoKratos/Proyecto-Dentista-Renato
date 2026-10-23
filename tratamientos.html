@@ -72,6 +72,26 @@
         </section>
       </main>
     </div>
+    <dialog class="treatment-procedures-dialog" id="treatmentProceduresDialog" aria-labelledby="treatmentProceduresTitle">
+      <form id="treatmentProceduresForm">
+        <div class="treatment-procedures-heading">
+          <div><span class="eyebrow">Presupuesto</span><h2 id="treatmentProceduresTitle">Procedimientos del tratamiento</h2><p id="treatmentProceduresPatient"></p></div>
+          <button class="text-button" type="button" data-close-procedures aria-label="Cerrar">Cerrar</button>
+        </div>
+        <div class="treatment-procedures-list" id="treatmentProceduresList"></div>
+        <div class="treatment-procedures-add">
+          <label>Procedimiento base<select id="treatmentProcedureCatalog"><option value="">Personalizado</option></select></label>
+          <button class="text-button" type="button" id="addTreatmentProcedure">Agregar procedimiento</button>
+        </div>
+        <div class="treatment-procedures-summary">
+          <label>Descuento total<select name="total_discount_type"><option value="amount">Valor $</option><option value="percent">Porcentaje %</option></select></label>
+          <label>Valor del descuento<input name="total_discount_value" type="number" min="0" step="any" placeholder="0" /></label>
+          <strong id="treatmentProceduresTotal">Total: $0</strong>
+        </div>
+        <p class="form-status" id="treatmentProceduresStatus" role="status" aria-live="polite"></p>
+        <div class="inline-actions"><button class="text-button primary-action" type="submit">Guardar presupuesto</button></div>
+      </form>
+    </dialog>
     <script src="./assets/navigation.js"></script>
     <script src="./assets/api.js"></script>
     <script src="./assets/tratamientos.js"></script>

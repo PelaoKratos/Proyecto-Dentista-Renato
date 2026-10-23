@@ -60,13 +60,14 @@
           final_price: cost - discount,
           start_date: data.appointment_date
         } : null;
-        const weeklyCount = Number(data.weekly_count || 1);
-        const startsAt = PatientAppointments.weeklyStarts(data.appointment_date, data.appointment_time, weeklyCount);
-        const scheduled = await DentalAPI.post(weeklyCount > 1 ? "/api/appointments/batch" : "/api/appointments", {
+        const startsAt = PatientAppointments.selectedStarts(form);
+        if (startsAt.some((value) => !/^\d{4}-\d{2}-\d{2} (09|1[0-5]):(00|30)$/.test(value) && !/^\d{4}-\d{2}-\d{2} 16:00$/.test(value))) throw new Error("Revisa la fecha y hora de cada cita.");
+        if (new Set(startsAt).size !== startsAt.length) throw new Error("No repitas la misma fecha y hora.");
+        const scheduled = await DentalAPI.post(startsAt.length > 1 ? "/api/appointments/batch" : "/api/appointments", {
           patient_id: patientId,
           patient_treatment_id: patientTreatment?.id || null,
           ...(newTreatment ? { new_treatment: newTreatment } : {}),
-          starts_at: weeklyCount > 1 ? startsAt : startsAt[0],
+          starts_at: startsAt.length > 1 ? startsAt : startsAt[0],
           reason: patientTreatment ? `${patientTreatment.title}${patientTreatment.tooth_code ? ` · Piezas ${patientTreatment.tooth_code}` : ""}` : catalogTreatment ? `${catalogTreatment.name}${data.tooth_code ? ` · Piezas ${data.tooth_code}` : ""}` : "Control clinico",
           notes: data.notes || null,
           status: "scheduled"

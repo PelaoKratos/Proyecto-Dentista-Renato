@@ -22,7 +22,7 @@ if __package__ is None or __package__ == "":
     sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from backend.auth import AuthManager, SESSION_SECONDS  # noqa: E402
-from backend.backup import create_backup, create_weekly_backup_if_due  # noqa: E402
+from backend.backup import create_backup, create_weekly_backup_if_due, verify_backup  # noqa: E402
 from backend.database import (  # noqa: E402
     DATA_DIR,
     DB_PATH,
@@ -39,6 +39,7 @@ from backend.database import (  # noqa: E402
     init_db,
     insert_record,
     update_record,
+    update_treatment_procedures,
 )
 from backend.validation import (  # noqa: E402
     validate_appointment,
@@ -99,6 +100,9 @@ PATIENT_TREATMENT_FIELDS = {
     "status",
     "estimated_price",
     "final_price",
+    "procedure_items_json",
+    "total_discount_type",
+    "total_discount_value",
     "start_date",
     "end_date",
 }
@@ -206,6 +210,23 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                     raise ValueError("include_media debe ser verdadero o falso.")
                 self._create_backup(include_media=include_media)
                 return
+            if path == "/api/backups/verify":
+                name = self._read_json().get("name")
+                if not isinstance(name, str) or Path(name).name != name or not name.startswith("consulta-dental-backup-") or not name.endswith(".zip"):
+                    raise ValueError("Selecciona un respaldo ZIP válido.")
+                backup_path = (BACKUPS_DIR / name).resolve()
+                if not backup_path.is_relative_to(BACKUPS_DIR.resolve()) or not backup_path.is_file():
+                    self._send_json({"error": "No se encontró el respaldo seleccionado."}, 404)
+                    return
+                with tempfile.TemporaryDirectory(prefix="consulta-dental-restore-check-") as temporary:
+                    try:
+                        report = verify_backup(backup_path, Path(temporary))
+                    except (zipfile.BadZipFile, OSError, json.JSONDecodeError, sqlite3.DatabaseError) as exc:
+                        raise ValueError("El respaldo está dañado o no se puede leer.") from exc
+                self._send_json({"ok": True, "name": name, "integrity": report["integrity"],
+                    "files": report["files"], "includes_media": report["metadata"].get("includes_media", False),
+                    "created_at": report["metadata"].get("created_at")})
+                return
 
             data = self._read_json()
             attend_match = re.fullmatch(r"/api/appointments/([1-9][0-9]*)/attend", path)
@@ -223,6 +244,8 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             elif path == "/api/patient-treatment-plans":
                 self._send_json(create_patient_treatment_plan(data, PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/patient-treatments":
+                if {"procedures", "procedure_items_json", "total_discount_type", "total_discount_value"} & data.keys():
+                    raise ValueError("Los tratamientos con varios procedimientos se guardan desde el calendario.")
                 self._send_json(insert_record("patient_treatments", validate_patient_treatment(data), PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/clinical-sessions":
                 self._send_json(insert_record("clinical_sessions", validate_session(data), SESSION_FIELDS), 201)
@@ -251,7 +274,17 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             if not self._require_auth(path):
                 return
             data = self._read_json()
+            procedures_match = re.fullmatch(r"/api/patient-treatments/([1-9][0-9]*)/procedures", path)
+            if procedures_match:
+                updated = update_treatment_procedures(int(procedures_match.group(1)), data)
+                if updated is None:
+                    self._send_json({"error": "Tratamiento no encontrado."}, 404)
+                else:
+                    self._send_json(updated)
+                return
             table, allowed_fields, validator, record_id = self._resolve_update_route(path)
+            if table == "patient_treatments" and {"procedures", "procedure_items_json", "total_discount_type", "total_discount_value"} & data.keys():
+                raise ValueError("Modifica los procedimientos desde «Editar procedimientos» en Tratamientos.")
             updated = update_record(table, record_id, validator(data, partial=True), allowed_fields)
             if updated is None:
                 self._send_json({"error": "Registro no encontrado."}, 404)
@@ -323,7 +356,8 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
 
     def _handle_api_get(self, path: str, query: dict[str, list[str]]) -> None:
         if path == "/api/health":
-            self._send_json({"ok": True, "database": str(DB_PATH.relative_to(ROOT_DIR))})
+            self._send_json({"ok": True, "database": str(DB_PATH.relative_to(ROOT_DIR)),
+                             "features": {"itemized_treatments": True}})
             return
 
         if path == "/api/dashboard-stats":
@@ -383,6 +417,15 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
 
         if path == "/api/appointments":
             self._send_json(fetch_all("SELECT * FROM appointments ORDER BY starts_at ASC, id ASC"))
+            return
+
+        if path == "/api/audit-log":
+            self._send_json(fetch_all("""
+                SELECT a.id, a.created_at, a.entity_type, a.entity_id, a.patient_id, a.action,
+                       a.before_json, a.after_json, p.first_name, p.last_name
+                FROM audit_log a LEFT JOIN patients p ON p.id = a.patient_id
+                ORDER BY a.id DESC LIMIT 100
+            """))
             return
 
         if path == "/api/payments":

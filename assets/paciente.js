@@ -1,6 +1,6 @@
 const patientPage = document.querySelector(".patient-page");
 const { renderOdontogram, renderDataList, renderSessions } = window.PatientView;
-const { toothDescription, catalogGroup, ageFromBirthDate, totalTreatments, totalPayments, balance, treatmentTotal, treatmentPaid, treatmentBalance, paymentState, paymentStateClass, progressForStatus, dateKey, attachmentTypeLabel } = window.PatientDomain;
+const { toothDescription, toothLabel, catalogGroup, ageFromBirthDate, totalTreatments, totalPayments, balance, treatmentTotal, treatmentPaid, treatmentBalance, paymentState, paymentStateClass, progressForStatus, dateKey, attachmentTypeLabel } = window.PatientDomain;
 let currentSummary = null;
 let patientActiveTab = "clinical";
 let historyFilter = "all";
@@ -8,6 +8,20 @@ let historySearch = "";
 let currentCatalog = [];
 let selectedToothForAppointment = null;
 let postAttendanceAppointmentId = null;
+const treatmentEditOriginals = new WeakMap();
+
+function discardTreatmentEdits() {
+  document.querySelectorAll("[data-patient-treatment-card]").forEach((card) => {
+    const originals = treatmentEditOriginals.get(card);
+    if (!originals) return;
+    originals.forEach((value, control) => { control.value = value; });
+    delete card.dataset.unsavedTreatment;
+  });
+}
+window.UnsavedEdits.register("treatment-editor", {
+  isDirty: () => Boolean(document.querySelector('[data-patient-treatment-card][data-unsaved-treatment="true"]')),
+  discard: discardTreatmentEdits
+});
 
 const { bindPatientAppointmentActions, cleanFormData, bindAppointmentPriceForm, bindAppointmentAvailability } = window.PatientAppointments.create({
   getSummary: () => currentSummary,
@@ -140,6 +154,23 @@ function exportTreatmentStartDate(value) {
   return match ? `${match[3]}/${match[2]}/${match[1]}` : "Sin fecha registrada";
 }
 
+function treatmentProcedureItems(treatment) {
+  try { return JSON.parse(treatment.procedure_items_json || "[]"); }
+  catch { return []; }
+}
+
+function renderProcedureBreakdown(treatment) {
+  const items = treatmentProcedureItems(treatment);
+  if (!items.length) return "";
+  return `<div class="patient-procedure-breakdown"><strong>Procedimientos (${items.length})</strong><ul>${items.map((item) => {
+    const discount = item.discount_type === "percent"
+      ? Math.round(Number(item.price) * Number(item.discount_value || 0) / 100)
+      : Number(item.discount_value || 0);
+    const discountLabel = discount ? ` · Descuento ${item.discount_type === "percent" ? `${item.discount_value}%` : DentalAPI.money(item.discount_value)}` : "";
+    return `<li><span>${DentalAPI.escapeHtml(item.name)}<small>${DentalAPI.escapeHtml(item.tooth_code ? `Piezas ${item.tooth_code}` : "General")} · Valor ${DentalAPI.money(item.price)}${DentalAPI.escapeHtml(discountLabel)}</small></span><b>${DentalAPI.money(Math.max(Number(item.price) - discount, 0))}</b></li>`;
+  }).join("")}</ul>${Number(treatment.total_discount_value || 0) ? `<small>Descuento general: ${DentalAPI.escapeHtml(treatment.total_discount_type === "percent" ? `${treatment.total_discount_value}%` : DentalAPI.money(treatment.total_discount_value))}</small>` : ""}</div>`;
+}
+
 function renderTreatmentHistory(summary) {
   return [...summary.treatments].sort((a, b) => {
     const rank = (item) => item.status === "in_progress" || item.status === "planned" ? 0 : item.status === "completed" ? 1 : 2;
@@ -160,9 +191,10 @@ function renderTreatmentHistory(summary) {
       ${!pending && !["completed", "cancelled"].includes(treatment.status) ? `<button class="text-button" data-finish-history="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>
       <details class="history-details"><summary>Ver historial y notas</summary>
         <p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin notas del tratamiento.")}</p>
+        ${renderProcedureBreakdown(treatment)}
         <ol class="visit-history">${visits.map(visit => `<li><div><time>${DentalAPI.date(visit.starts_at)} · ${DentalAPI.time(visit.starts_at)}</time><span class="pill">${DentalAPI.escapeHtml(DentalAPI.statusLabel(visit.status))}</span></div>${visit.notes ? `<p>${DentalAPI.escapeHtml(visit.notes)}</p>` : ""}</li>`).join("") || "<li>Sin citas vinculadas.</li>"}</ol>
         ${sessions.length ? `<h4>Notas clinicas</h4>${renderSessions(sessions, summary.treatments)}` : ""}
-        <p>Presupuesto: ${DentalAPI.money(treatmentTotal(treatment))} · Abonos: ${DentalAPI.money(treatmentPaid(summary, treatment.id))}</p>
+        <p>Presupuesto: ${treatment.final_price == null && treatment.estimated_price == null ? "Pendiente de ingresar" : DentalAPI.money(treatmentTotal(treatment))} · Abonos: ${DentalAPI.money(treatmentPaid(summary, treatment.id))}</p>
         <button class="text-button danger-action" type="button" data-delete-patient-treatment="${treatment.id}">Eliminar tratamiento</button>
       </details><p class="form-status" data-history-message="${treatment.id}" role="status"></p>
     </article>`;
@@ -220,29 +252,32 @@ function renderTreatments(treatments) {
 }
 function renderTreatmentCard(treatment) {
   const canComplete = treatment.status !== "completed" && treatment.status !== "cancelled";
+  const itemized = treatmentProcedureItems(treatment).length > 0;
   return `
     <article data-patient-treatment-card="${treatment.id}">
       <header>
         <div>
           <strong>${DentalAPI.escapeHtml(treatment.title)}</strong>
-          <span>${DentalAPI.escapeHtml(treatment.tooth_code ? `Piezas ${treatment.tooth_code}` : "Sin pieza asignada")} · ${DentalAPI.money(treatment.final_price ?? treatment.estimated_price ?? 0)}</span>
+          <span>${DentalAPI.escapeHtml(treatment.tooth_code ? `Piezas ${treatment.tooth_code}` : "Sin pieza asignada")} · ${treatment.final_price == null && treatment.estimated_price == null ? "Presupuesto pendiente" : DentalAPI.money(treatment.final_price ?? treatment.estimated_price)}</span>
         </div>
         <span class="pill ${treatment.status === "planned" ? "warning" : treatment.status === "completed" ? "attention" : ""}">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span>
       </header>
       <p>Pago: ${treatmentPaymentLabel(currentSummary, treatment)}</p>
       <p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin notas del plan.")}</p>
+      ${renderProcedureBreakdown(treatment)}
       <details><summary>Editar datos y presupuesto</summary>
       <div class="editor-controls treatment-editor">
         <label>Nombre<input data-treatment-title value="${DentalAPI.escapeHtml(treatment.title || "")}" /></label>
-        <label>Piezas<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" /></label>
+        <label>Piezas<input data-treatment-tooth value="${DentalAPI.escapeHtml(treatment.tooth_code || "")}" ${itemized ? "disabled" : ""} /></label>
         <label>Estado<select data-treatment-status>${statusOptions(treatment.status)}</select></label>
-        <label>Presupuesto<input data-treatment-estimated type="number" min="0" value="${DentalAPI.escapeHtml(treatment.estimated_price || "")}" /></label>
-        <label>Valor final<input data-treatment-final type="number" min="0" value="${DentalAPI.escapeHtml(treatment.final_price || "")}" /></label>
+        <label>Presupuesto<input data-treatment-estimated type="number" min="0" value="${DentalAPI.escapeHtml(treatment.estimated_price || "")}" ${itemized ? "disabled" : ""} /></label>
+        <label>Valor final<input data-treatment-final type="number" min="0" value="${DentalAPI.escapeHtml(treatment.final_price || "")}" ${itemized ? "disabled" : ""} /></label>
         <label>Inicio<input data-treatment-start type="date" value="${DentalAPI.escapeHtml(treatment.start_date || "")}" /></label>
         <label>Termino<input data-treatment-end type="date" value="${DentalAPI.escapeHtml(treatment.end_date || "")}" /></label>
         <label>Diagnostico<textarea data-treatment-diagnosis>${DentalAPI.escapeHtml(treatment.diagnosis || "")}</textarea></label>
         <label>Plan clinico<textarea data-treatment-plan>${DentalAPI.escapeHtml(treatment.plan_notes || "")}</textarea></label>
       </div>
+      ${itemized ? '<p class="form-helper">Las piezas y valores se modifican al continuar este tratamiento desde el calendario de Inicio.</p>' : ""}
       <div class="inline-actions">
         <button class="text-button" type="button" data-save-patient-treatment="${treatment.id}">Guardar tratamiento</button>
         ${canComplete ? `<button class="text-button" type="button" data-complete-patient-treatment="${treatment.id}">Finalizar</button>` : ""}
@@ -534,7 +569,7 @@ function renderPatient(summary) {
       <section class="detail-card">
         <div class="section-heading odontogram-heading"><div><span class="eyebrow">Odontograma</span><h2>Piezas observadas</h2></div><div class="dentition-switch" role="group" aria-label="Tipo de odontograma"><button type="button" data-dentition-type="adult" aria-pressed="${dentitionType === "adult"}" class="${dentitionType === "adult" ? "active" : ""}">Adulto · 32</button><button type="button" data-dentition-type="child" aria-pressed="${dentitionType === "child"}" class="${dentitionType === "child" ? "active" : ""}">Infantil · 20</button></div></div>
         <div class="odontogram" aria-label="Odontograma ${dentitionType === "child" ? "infantil" : "adulto"}">${renderOdontogram(selectedTooth, summary.treatments, dentitionType)}</div>
-        <div class="tooth-note" id="toothNote"><strong>Pieza ${DentalAPI.escapeHtml(selectedTooth)}</strong><span>${DentalAPI.escapeHtml(visibleTreatment?.plan_notes || "Sin observaciones registradas para esta pieza.")}</span></div>
+        <div class="tooth-note" id="toothNote"><strong>${DentalAPI.escapeHtml(toothLabel(selectedTooth, dentitionType))}</strong><span>${DentalAPI.escapeHtml(visibleTreatment?.plan_notes || "Sin observaciones registradas para esta pieza.")}</span></div>
       </section>
       <aside class="detail-card">
         <div class="section-heading"><div><span class="eyebrow">Antecedentes</span><h2>Ficha medica</h2></div></div>
@@ -644,6 +679,7 @@ function bindTabs() {
   const tabButtons = Array.from(document.querySelectorAll("[data-tab]"));
   const tabPanels = document.querySelectorAll(".tab-panel");
   const activate = (button, focus = false) => {
+    if (patientActiveTab === "treatments" && button.dataset.tab !== "treatments" && !window.UnsavedEdits.confirmDiscard()) return;
     patientActiveTab = button.dataset.tab;
     tabButtons.forEach((item) => {
       const selected = item === button;
@@ -688,11 +724,12 @@ function bindOdontogram() {
     button.addEventListener("click", () => {
       toothButtons.forEach((item) => item.classList.toggle("selected", item === button));
       const code = button.dataset.tooth;
+      const label = DentalAPI.escapeHtml(toothLabel(code, currentSummary.patient.dentition_type || "adult"));
       selectedToothForAppointment = code;
       const treatment = currentSummary.treatments.find((item) => (item.dentition_type || "adult") === (currentSummary.patient.dentition_type || "adult") && String(item.tooth_code || "").split(",").includes(String(code)));
       toothNote.innerHTML = treatment
-         ? `<strong>Pieza ${DentalAPI.escapeHtml(code)} · ${DentalAPI.escapeHtml(treatment.title)}</strong><span class="tooth-status">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span><p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin observaciones registradas para esta pieza.")}</p><div class="tooth-note-actions"><button class="text-button primary-action" type="button" data-action="appointment" data-tooth-code="${DentalAPI.escapeHtml(code)}">Agendar tratamiento para esta pieza</button>${treatment.status !== "completed" && treatment.status !== "cancelled" ? `<button class="text-button success-action" type="button" data-complete-tooth-treatment="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>`
-        : `<strong>Pieza ${DentalAPI.escapeHtml(code)}</strong><span>Sin tratamiento asociado</span><p>${DentalAPI.escapeHtml("Puedes agendar un tratamiento para esta pieza desde esta ficha.")}</p><button class="text-button primary-action" type="button" data-action="appointment" data-tooth-code="${DentalAPI.escapeHtml(code)}">Agendar tratamiento para esta pieza</button>`;
+         ? `<strong>${label} · ${DentalAPI.escapeHtml(treatment.title)}</strong><span class="tooth-status">${DentalAPI.escapeHtml(DentalAPI.statusLabel(treatment.status))}</span><p>${DentalAPI.escapeHtml(treatment.plan_notes || treatment.diagnosis || "Sin observaciones registradas para esta pieza.")}</p><div class="tooth-note-actions"><button class="text-button primary-action" type="button" data-action="appointment" data-tooth-code="${DentalAPI.escapeHtml(code)}">Agendar tratamiento para esta pieza</button>${treatment.status !== "completed" && treatment.status !== "cancelled" ? `<button class="text-button success-action" type="button" data-complete-tooth-treatment="${treatment.id}">Finalizar tratamiento</button>` : ""}</div>`
+        : `<strong>${label}</strong><span>Sin tratamiento asociado</span><p>${DentalAPI.escapeHtml("Puedes agendar un tratamiento para esta pieza desde esta ficha.")}</p><button class="text-button primary-action" type="button" data-action="appointment" data-tooth-code="${DentalAPI.escapeHtml(code)}">Agendar tratamiento para esta pieza</button>`;
       toothNote.querySelector('[data-action="appointment"]').addEventListener("click", () => {
         renderActionForm("appointment");
       });
@@ -763,6 +800,23 @@ function bindActions() {
 }
 
 function bindTreatmentEditors() {
+  document.querySelectorAll("[data-patient-treatment-card]").forEach((card) => {
+    const controls = [...card.querySelectorAll(".treatment-editor input, .treatment-editor select, .treatment-editor textarea")];
+    const originals = new Map(controls.map((control) => [control, control.value]));
+    treatmentEditOriginals.set(card, originals);
+    const updateDirty = () => {
+      card.dataset.unsavedTreatment = String(controls.some((control) => control.value !== originals.get(control)));
+    };
+    controls.forEach((control) => {
+      control.addEventListener("input", updateDirty);
+      control.addEventListener("change", updateDirty);
+    });
+    card.querySelector("details > summary")?.addEventListener("click", (event) => {
+      if (card.querySelector("details").open && card.dataset.unsavedTreatment === "true" && !window.UnsavedEdits.confirmDiscard()) {
+        event.preventDefault();
+      }
+    });
+  });
   document.querySelectorAll("[data-save-patient-treatment]").forEach((button) => {
     button.addEventListener("click", async () => {
       const treatmentId = Number(button.dataset.savePatientTreatment);
@@ -774,18 +828,20 @@ function bindTreatmentEditors() {
       try {
         const title = card.querySelector("[data-treatment-title]").value.trim();
         if (!title) throw new Error("El tratamiento necesita un nombre.");
+        const itemized = treatmentProcedureItems(currentSummary.treatments.find((item) => item.id === treatmentId) || {}).length > 0;
         await DentalAPI.put(`/api/patient-treatments/${treatmentId}`, {
           title,
-          tooth_code: card.querySelector("[data-treatment-tooth]").value || null,
+          ...(!itemized ? { tooth_code: card.querySelector("[data-treatment-tooth]").value || null,
+            estimated_price: card.querySelector("[data-treatment-estimated]").value || null,
+            final_price: card.querySelector("[data-treatment-final]").value || null } : {}),
           diagnosis: card.querySelector("[data-treatment-diagnosis]").value || null,
           plan_notes: card.querySelector("[data-treatment-plan]").value || null,
           status: card.querySelector("[data-treatment-status]").value,
-          estimated_price: card.querySelector("[data-treatment-estimated]").value || null,
-          final_price: card.querySelector("[data-treatment-final]").value || null,
           start_date: card.querySelector("[data-treatment-start]").value || null,
           end_date: card.querySelector("[data-treatment-end]").value || null
         });
         message.textContent = "Tratamiento actualizado.";
+        delete card.dataset.unsavedTreatment;
         await loadPatient();
       } catch (error) {
         message.textContent = error.message;
@@ -1136,6 +1192,20 @@ async function loadPatient() {
     renderActionForm("appointment");
     const url = new URL(window.location.href);
     url.searchParams.delete("agendar");
+    window.history.replaceState(null, "", url);
+  }
+  const requestedAction = parameters.get("action");
+  const appointment = selectedAppointment();
+  if (appointment && requestedAction === "appointment-session" && appointment.status === "scheduled") {
+    renderActionForm("appointment-session");
+  } else if (appointment && requestedAction === "session" && appointment.status === "attended") {
+    renderActionForm("session");
+    const treatmentSelect = document.querySelector('#actionDrawer select[name="patient_treatment_id"]');
+    if (treatmentSelect && appointment.patient_treatment_id) treatmentSelect.value = String(appointment.patient_treatment_id);
+  }
+  if (requestedAction === "appointment-session" || requestedAction === "session") {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("action");
     window.history.replaceState(null, "", url);
   }
   const followupId = postAttendanceAppointmentId || Number(parameters.get("followup"));

@@ -1,0 +1,173 @@
+/* El contraste entre horas ayuda a seguir una fila a través de toda la semana. */
+.week-grid .week-row:nth-child(even),
+.day-grid .day-row:nth-child(odd) { background: var(--surface); }
+.week-grid .week-row:nth-child(odd),
+.day-grid .day-row:nth-child(even) { background: var(--surface-alt); }
+.week-slot, .day-row > div { min-width: 0; }
+.week-row > time, .day-row > time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: start;
+  min-height: 30px;
+  margin: 7px 5px;
+  padding: 0 3px;
+  border-left: 3px solid var(--teal);
+  border-radius: 6px;
+  background: var(--surface-strong);
+  color: var(--teal-dark);
+  font: 900 .92rem/1.1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: -.025em;
+  text-align: center;
+}
+.outside-hours-row > time {
+  font-size: .68rem;
+  letter-spacing: 0;
+}
+
+.calendar-feedback:empty { display: none; }
+.calendar-feedback { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; font-weight: 700; }
+.calendar-feedback[data-state="success"] { background: #e9f4ed; color: #286343; }
+.calendar-feedback[data-state="error"] { background: #fbefec; color: #a83229; }
+.audit-activity { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.audit-activity > summary { color: var(--ink); font-weight: 800; cursor: pointer; }
+.audit-activity > p { margin: 9px 0 12px; color: var(--muted); font-size: .86rem; }
+.audit-activity ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.audit-activity li { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(200px, 2fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface-strong); }
+.audit-activity li > div { display: grid; gap: 3px; min-width: 0; }
+.audit-activity li > div strong { overflow-wrap: anywhere; }
+.audit-activity li > div span, .audit-activity li time { color: var(--muted); font-size: .8rem; }
+.audit-activity li p { margin: 0; font-size: .84rem; }
+.audit-activity li .patient-name-link { color: var(--teal-dark); }
+@media (max-width: 720px) { .audit-activity li { grid-template-columns: 1fr; gap: 4px; } }
+.calendar-book-slot {
+  display: block; width: 100%; min-height: 27px; margin-top: 4px;
+  padding: 3px 6px; border: 1px dashed transparent; border-radius: 6px;
+  background: transparent; color: var(--teal-dark); text-align: left;
+  font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer;
+}
+.calendar-book-slot:hover, .calendar-book-slot:focus-visible {
+  border-color: var(--teal); background: var(--mint);
+}
+.calendar-book-slot.occupied { color: var(--muted); border-color: var(--line); }
+.calendar-appointment { width: 100%; min-width: 0; text-align: left; font: inherit; cursor: pointer; }
+.calendar-appointment:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.calendar-appointment-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: 90vh; padding: 0;
+  overflow-y: auto; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 22px 60px rgba(21, 37, 34, .22);
+}
+.calendar-appointment-dialog::backdrop { background: rgba(23, 38, 35, .52); }
+.appointment-menu-header, .calendar-appointment-dialog footer { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding: 18px; }
+.appointment-menu-header { border-bottom: 1px solid var(--line); }
+.appointment-menu-header h2 { margin: 4px 0; font-size: 1.2rem; overflow-wrap: anywhere; }
+.appointment-menu-header p { margin: 0; color: var(--muted); font-size: .83rem; overflow-wrap: anywhere; }
+.appointment-menu-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 18px; }
+.appointment-menu-actions button { min-width: 0; min-height: 42px; justify-content: flex-start; text-align: left; }
+.appointment-menu-actions [data-menu-action="register"],
+.appointment-menu-actions [data-menu-action="session"] { color: var(--blue, #315f9b); border-color: #c7d7ed; background: var(--blue-soft, #edf3fb); }
+.appointment-menu-actions [data-menu-action="attended"],
+.appointment-menu-actions [data-menu-action="attended"] { color: #286343; border-color: #c5dfce; background: #e9f4ed; }
+.appointment-menu-actions [data-menu-action="finish"] { color: #fff; border-color: #21834f; background: #21834f; font-weight: 800; }
+.appointment-menu-actions [data-menu-action="finish"]:not(:disabled):hover { background: #17683e; border-color: #17683e; }
+.appointment-menu-actions [data-menu-action="missed"] { color: #a83229; border-color: #e8c1ba; background: var(--rose-soft, #fbefec); }
+.appointment-menu-actions [data-menu-action="reschedule"] { color: #795515; border-color: #e8d6a8; background: #fbf4df; }
+.appointment-menu-actions [data-menu-action="next"] { color: var(--teal-dark); border-color: #b8d9d2; background: var(--mint); }
+.appointment-menu-actions [data-menu-action="payment"] { color: #6941a5; border-color: #d8caeb; background: #f2edfa; }
+.appointment-menu-actions button:not(:disabled):hover { filter: saturate(1.2) brightness(.97); }
+.appointment-menu-actions button:disabled { opacity: .52; cursor: not-allowed; }
+.appointment-menu-note { margin: 0 18px 12px; color: var(--muted); font-size: .8rem; }
+.appointment-menu-panel { margin: 0 18px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-alt); }
+.appointment-menu-panel form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.appointment-menu-panel h3, .appointment-menu-panel p, .appointment-menu-panel form > button { grid-column: 1 / -1; margin: 0; }
+.appointment-menu-panel .payment-allocation-list { grid-column: 1 / -1; width: 100%; box-sizing: border-box; }
+.appointment-menu-panel .payment-allocation-row { width: 100%; box-sizing: border-box; }
+.appointment-menu-panel label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 700; }
+.appointment-menu-panel input, .appointment-menu-panel select { width: 100%; min-width: 0; padding: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
+.calendar-appointment-dialog [data-menu-status] { min-height: 18px; margin: 8px 18px; }
+.calendar-appointment-dialog footer { border-top: 1px solid var(--line); }
+.calendar-booking-dialog {
+  width: min(930px, calc(100vw - 32px)); max-height: min(92vh, 900px);
+  padding: 0; border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(21, 37, 34, .25);
+}
+.calendar-booking-dialog::backdrop { background: rgba(23, 38, 35, .56); }
+.calendar-booking-form { display: flex; flex-direction: column; max-height: inherit; }
+.calendar-booking-form header, .calendar-booking-form footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--line);
+}
+.calendar-booking-form header h2 { margin: 2px 0 0; font-size: 1.3rem; }
+.calendar-booking-form footer { justify-content: flex-end; border-top: 1px solid var(--line); border-bottom: 0; }
+.booking-footer-total { margin-right: auto; color: var(--teal-dark); font-size: 1rem; white-space: nowrap; }
+.calendar-booking-close { border: 0; background: transparent; color: var(--muted); font-size: 1.5rem; cursor: pointer; }
+.calendar-booking-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 20px; overflow-y: auto; }
+.calendar-booking-fields > label, .calendar-booking-new > label, .booking-patient-picker > label,
+.booking-patient-create-fields > label { display: grid; min-width: 0; gap: 5px; font-size: .8rem; font-weight: 700; }
+.booking-patient-picker, .booking-patient-create, .calendar-booking-treatment, .calendar-booking-fields > p { grid-column: 1 / -1; }
+.calendar-booking-observation { display: grid; grid-column: 1 / -1; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-alt); }
+.calendar-booking-observation > label { display: grid; max-width: 280px; gap: 5px; font-size: .8rem; font-weight: 700; }
+.calendar-booking-fields input, .calendar-booking-fields select, .calendar-booking-fields textarea {
+  width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); color: var(--ink);
+}
+.calendar-booking-treatment { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.calendar-booking-treatment > label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 700; }
+.booking-procedure-picker { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-alt); }
+.booking-procedure-picker-fields { display: grid; grid-template-columns: minmax(150px, 1.4fr) minmax(140px, 1fr) minmax(125px, .8fr) auto; align-items: end; gap: 9px; }
+.booking-procedure-picker-fields > label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 700; }
+.booking-procedure-picker-fields [data-booking-custom-name] { grid-column: 1 / -1; }
+.booking-procedure-picker-fields button { min-height: 40px; white-space: nowrap; }
+.booking-procedure-picker [data-booking-picker-error] { margin: 7px 0 0; color: #a83229; font-size: .8rem; }
+.booking-procedure-list { display: grid; gap: 7px; min-width: 0; }
+.booking-procedure-list > p { padding: 12px; border: 1px dashed var(--line); border-radius: 8px; }
+.booking-procedure-row { display: grid; grid-template-columns: minmax(150px, 1.5fr) minmax(100px, .7fr) minmax(125px, .8fr) minmax(100px, .7fr) auto; align-items: end; gap: 9px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); }
+.booking-procedure-identity { min-width: 0; align-self: center; }
+.booking-procedure-identity strong, .booking-procedure-identity small { display: block; min-width: 0; overflow-wrap: anywhere; }
+.booking-procedure-identity small { color: var(--muted); font-size: .72rem; margin-top: 3px; }
+.booking-procedure-identity label { display: grid; gap: 2px; margin-top: 4px; color: var(--muted); font-size: .69rem; font-weight: 700; }
+.booking-procedure-identity input { min-height: 32px; padding: 4px 7px; font-size: .77rem; }
+.booking-procedure-row label { display: grid; min-width: 0; gap: 4px; font-size: .73rem; font-weight: 700; }
+.booking-procedure-row button { min-height: 40px; }
+.booking-treatment-totals { display: grid; gap: 8px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-alt); }
+.booking-treatment-totals > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.booking-treatment-totals > label { display: grid; grid-template-columns: minmax(0, 1fr) 130px 140px; align-items: center; gap: 9px; font-size: .8rem; font-weight: 700; }
+.booking-treatment-totals .booking-total-final { padding-top: 9px; border-top: 1px solid var(--line); color: var(--teal-dark); font-weight: 800; }
+.booking-total-final strong { font-size: 1.25rem; }
+.booking-treatment-totals [data-booking-pricing-error] { color: #a83229; }
+.calendar-booking-new { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.calendar-booking-new label:first-child, .calendar-booking-new label:nth-child(2) { grid-column: 1 / -1; }
+.calendar-booking-fields p { margin: 0; color: var(--muted); font-size: .83rem; }
+.calendar-booking-fields .time-occupied { color: #a83229; }
+.booking-patient-picker { display: grid; gap: 9px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.booking-patient-picker button { justify-self: start; }
+.booking-patient-picker p { margin: 0; color: var(--muted); font-size: .82rem; }
+.booking-patient-create { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-strong); }
+.booking-patient-create h3 { margin: 0; font-size: 1rem; }
+.booking-patient-create-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.booking-patient-create-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.booking-patient-create .patient-phone-entry { display: flex; align-items: center; min-width: 0; }
+.booking-patient-create .patient-phone-entry input { min-width: 0; }
+.booking-patient-create details { color: var(--muted); font-size: .82rem; }
+.booking-patient-create details label { display: grid; gap: 5px; margin-top: 8px; }
+.booking-patient-create [data-booking-create-status] { margin: 0; color: var(--muted); font-size: .82rem; }
+[hidden] { display: none !important; }
+@media (max-width: 780px) {
+  .booking-procedure-picker-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .booking-procedure-picker-fields button { grid-column: 1 / -1; }
+  .booking-procedure-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .booking-procedure-identity { grid-column: 1 / -1; }
+  .booking-treatment-totals > label { grid-template-columns: minmax(0, 1fr) 110px; }
+  .booking-treatment-totals > label input { grid-column: 1 / -1; }
+}
+
+.today-followups { min-width: 0; margin-bottom: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.today-followups .section-heading { margin-bottom: 10px; }
+.today-followups h2 { display: flex; align-items: center; gap: 9px; }
+.today-followups-list { display: grid; gap: 6px; }
+.today-followups-list > a { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-width: 0; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-alt); color: var(--ink); }
+.today-followups-list > a:hover, .today-followups-list > a:focus-visible { border-color: var(--teal); background: var(--mint); }
+.today-followups-list time { color: var(--teal-dark); font-weight: 800; }
+.today-followups-list strong, .today-followups-list small { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-followups-list small, .today-followups-list > p { margin: 0; color: var(--muted); font-size: .8rem; }
+.today-followups-action { color: var(--teal-dark); font-size: .78rem; font-weight: 800; }

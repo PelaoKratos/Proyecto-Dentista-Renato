@@ -4,6 +4,7 @@ const calendarTitle = document.querySelector("#calendarTitle");
 const goTodayBtn = document.querySelector("#goTodayBtn");
 const agendaStatusFilter = document.querySelector("#agendaStatusFilter");
 const agendaCount = document.querySelector("#agendaCount");
+const agendaFeedback = document.querySelector("#agendaFeedback");
 
 let patients = [];
 let appointments = [];
@@ -140,20 +141,25 @@ dayTimeline.addEventListener("click", async (event) => {
   const message = card.querySelector("[data-appointment-message]");
   const status = cancelButton ? "cancelled" : missedButton ? "missed" : card.querySelector("[data-appointment-status]").value;
 
-  if (cancelButton && !window.confirm("Cancelar esta cita? La cita quedara registrada como cancelada.")) return;
+  if (cancelButton && !window.confirm("¿Cancelar esta cita? Se liberará este horario. Si tiene un tratamiento vinculado sin otras citas pendientes, también quedará cancelado. El historial y los pagos se conservarán.")) return;
 
   button.disabled = true;
   message.textContent = "Guardando...";
 
   try {
     await DentalAPI.put(`/api/appointments/${appointmentId}`, { status });
-    message.textContent = "Estado actualizado.";
+    message.textContent = status === "cancelled" ? "Cita cancelada y horario liberado."
+      : status === "missed" ? "Inasistencia registrada; la cita queda en el historial."
+        : "Estado de la cita guardado.";
     if (status === "attended") {
       const appointment = appointments.find(item => Number(item.id) === Number(appointmentId));
       window.location.href = `./paciente.html?id=${appointment.patient_id}&appointment=${appointment.id}&followup=${appointment.id}`;
       return;
     }
     await loadAgenda();
+    agendaFeedback.textContent = status === "cancelled" ? "Cita cancelada; el horario quedó disponible y el tratamiento se actualizó según sus citas pendientes."
+      : status === "missed" ? "Inasistencia guardada. La cita se conserva en el historial."
+        : "Estado de la cita actualizado.";
   } catch (error) {
     message.textContent = error.message;
     button.disabled = false;

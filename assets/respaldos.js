@@ -90,11 +90,33 @@ function renderBackups() {
         <span>${DentalAPI.escapeHtml(backup.name)}</span>
         <span>${backupDate(backup.created_at)}</span>
         <span>${fileSize(backup.size)}<small>${backup.mode === "automatic" ? "Automatico" : "Manual"} · ${backup.includes_media ? "Base y adjuntos" : "Solo base de datos"}</small></span>
-        <span><a class="inline-link" href="${DentalAPI.escapeHtml(backup.download_url || backup.backup_path)}" download>Descargar</a></span>
+        <span class="backup-actions"><button class="text-button" type="button" data-verify-backup="${DentalAPI.escapeHtml(backup.name)}">Verificar</button><a class="inline-link" href="${DentalAPI.escapeHtml(backup.download_url || backup.backup_path)}" download>Descargar</a><small data-backup-verify-status="${DentalAPI.escapeHtml(backup.name)}" role="status" aria-live="polite"></small></span>
       </div>
     `).join("") || `<p class="empty-state">${allBackups.length ? "No hay respaldos para estas fechas." : "Todavia no hay respaldos creados."}</p>`}
   `;
 }
+
+backupTable.addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-verify-backup]");
+  if (!button) return;
+  const name = button.dataset.verifyBackup;
+  const status = backupTable.querySelector(`[data-backup-verify-status="${CSS.escape(name)}"]`);
+  button.disabled = true;
+  status.textContent = "Verificando copia de prueba…";
+  try {
+    const report = await DentalAPI.post("/api/backups/verify", { name });
+    const media = report.includes_media ? "Incluye adjuntos." : "No incluye adjuntos.";
+    status.textContent = `Verificado: base íntegra y ${report.files} archivo(s). ${media}`;
+    status.classList.remove("error");
+    status.classList.add("success");
+  } catch (error) {
+    status.textContent = `No se pudo verificar: ${error.message}`;
+    status.classList.remove("success");
+    status.classList.add("error");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 async function loadBackupPage() {
   const [status, backups] = await Promise.all([DentalAPI.get("/api/backup-status"), DentalAPI.get("/api/backups")]);

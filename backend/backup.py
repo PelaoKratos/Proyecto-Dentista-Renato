@@ -59,6 +59,8 @@ def verify_backup(archive_path: Path, destination: Path) -> dict:
                 "includes_media": any(name.startswith("media/") for name in names),
                 "mode": "legacy",
             }
+    if not isinstance(metadata, dict) or not isinstance(metadata.get("sha256", {}), dict):
+        raise ValueError("El respaldo tiene metadatos inválidos.")
     for name, expected in metadata.get("sha256", {}).items():
         if name not in names or _digest(destination / name) != expected:
             raise ValueError("El respaldo no coincide con su suma de verificación.")
@@ -74,6 +76,7 @@ def verify_backup(archive_path: Path, destination: Path) -> dict:
         "metadata": metadata,
         "files": len([name for name in names if name != "respaldo-info.json"]),
         "restored_to": str(destination),
+        "integrity": "ok",
     }
 
 

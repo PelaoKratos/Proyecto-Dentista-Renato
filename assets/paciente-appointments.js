@@ -18,6 +18,15 @@
     });
   }
 
+  function selectedStarts(form) {
+    const first = `${form.elements.appointment_date.value} ${form.elements.appointment_time.value}`;
+    const mode = form.elements.schedule_mode?.value || "single";
+    if (mode === "weekly") return weeklyStarts(form.elements.appointment_date.value, form.elements.appointment_time.value, Number(form.elements.weekly_count.value));
+    if (mode === "custom") return [first, ...[...form.querySelectorAll("[data-custom-row]")].map((row) =>
+      `${row.querySelector('[type="date"]').value} ${row.querySelector("select").value}`)];
+    return [first];
+  }
+
   function create(dependencies) {
     const { getSummary, getCatalog, getSelectedTooth, setSelectedTooth, pendingToothAppointment, loadPatient, onAttended, toothDescription } = dependencies;
     function bindPatientAppointmentActions() {
@@ -28,7 +37,7 @@
           const message = document.querySelector(`[data-patient-appointment-message="${appointmentId}"]`);
           const label = DentalAPI.statusLabel(status);
 
-          if (status === "cancelled" && !window.confirm("Cancelar esta cita? El tratamiento vinculado quedara cancelado si no tiene otras citas pendientes. Sus pagos e historial se conservaran.")) return;
+          if (status === "cancelled" && !window.confirm("¿Cancelar esta cita? Se liberará este horario. Si tiene un tratamiento vinculado sin otras citas pendientes, también quedará cancelado. El historial y los pagos se conservarán.")) return;
 
           button.disabled = true;
           message.textContent = "Guardando...";
@@ -37,7 +46,9 @@
             await DentalAPI.put(`/api/appointments/${appointmentId}`, {
               status
             });
-            message.textContent = `Cita marcada como ${label}.`;
+            message.textContent = status === "cancelled" ? "Cita cancelada y horario liberado. El tratamiento se actualizó según sus otras citas pendientes."
+              : status === "missed" ? "Inasistencia registrada; la cita queda en el historial."
+                : `Cita marcada como ${label}.`;
             if (status === "attended") onAttended(appointmentId);
             await loadPatient();
           } catch (error) {
@@ -138,6 +149,30 @@
       let appointments = [];
       let requestNumber = 0;
 
+      const modeSelect = form.elements.schedule_mode;
+      const customRows = form.querySelector("[data-custom-rows]");
+      const hourOptions = [...timeSelect.options].map((option) => `<option value="${option.value}">${option.value}</option>`).join("");
+      function addCustomRow() {
+        if (customRows.children.length >= 11) return;
+        const row = document.createElement("div");
+        row.className = "custom-appointment-row";
+        row.dataset.customRow = "";
+        row.innerHTML = `<label>Fecha<input type="date" required value="${dateInput.value}" /></label><label>Hora<select>${hourOptions}</select></label><button type="button" class="text-button" aria-label="Quitar esta cita">Quitar</button>`;
+        row.querySelector("select").value = timeSelect.value;
+        row.querySelector("button").addEventListener("click", () => { row.remove(); update(); });
+        row.querySelectorAll("input, select").forEach((input) => input.addEventListener("change", update));
+        customRows.append(row);
+        update();
+      }
+      function updateMode() {
+        const mode = modeSelect.value;
+        form.querySelector("[data-weekly-fields]").hidden = mode !== "weekly";
+        form.querySelector("[data-custom-appointments]").hidden = mode !== "custom";
+        if (mode === "custom" && !customRows.children.length) addCustomRow();
+        [...customRows.querySelectorAll("input,select")].forEach((input) => { input.disabled = mode !== "custom"; });
+        update();
+      }
+
       function update() {
         const date = dateInput.value;
         const count = Number(form.elements.weekly_count?.value || 1);
@@ -163,15 +198,16 @@
           option.textContent = `${option.value} · ${first.busy ? first.blocked ? "Ocupada" : "Ocupada (permite otra cita)" : "Disponible"}`;
           option.dataset.occupied = String(first.busy);
         });
-        const dates = weeklyStarts(date, timeSelect.value, count);
-        const unavailable = dates.filter((value) => conflictOn(timeSelect.value, value.slice(0, 10)).blocked);
-        const busy = dates.some((value) => conflictOn(timeSelect.value, value.slice(0, 10)).busy);
-        const blocked = unavailable.length > 0;
+        const dates = modeSelect ? selectedStarts(form) : [`${date} ${timeSelect.value}`];
+        const unavailable = dates.filter((value) => conflictOn(value.slice(11, 16), value.slice(0, 10)).blocked);
+        const busy = dates.some((value) => conflictOn(value.slice(11, 16), value.slice(0, 10)).busy);
+        const duplicates = new Set(dates).size !== dates.length;
+        const blocked = unavailable.length > 0 || duplicates;
         form.dataset.timeConflict = String(blocked);
         message.textContent = blocked
-          ? `La hora ${timeSelect.value} ya está ocupada el ${unavailable.map((value) => DentalAPI.date(value)).join(", ")}. Selecciona otra fecha u hora.`
+          ? duplicates ? "Hay dos citas con la misma fecha y hora. Cambia una de ellas." : `La hora ya está ocupada el ${unavailable.map((value) => DentalAPI.date(value)).join(", ")}. Selecciona otra fecha u hora.`
           : busy ? `Las 16:00 están ocupadas en alguna fecha, pero puedes agendar otro paciente a esa hora.`
-          : count > 1 ? `${count} citas disponibles: ${dates.map((value) => DentalAPI.date(value)).join(", ")}.`
+          : dates.length > 1 ? `${dates.length} citas disponibles: ${dates.map((value) => `${DentalAPI.date(value)} ${value.slice(11, 16)}`).join(", ")}.`
           : `${timeSelect.value} disponible para agendar.`;
         message.classList.toggle("time-occupied", blocked);
         submit.disabled = blocked || form.dataset.toothConflict === "true";
@@ -197,10 +233,13 @@
       dateInput.addEventListener("change", refresh);
       timeSelect.addEventListener("change", update);
       form.elements.weekly_count?.addEventListener("change", update);
+      modeSelect?.addEventListener("change", updateMode);
+      form.querySelector("[data-add-custom-date]")?.addEventListener("click", addCustomRow);
+      if (modeSelect) updateMode();
       refresh();
     }
 
     return Object.freeze({ bindPatientAppointmentActions, cleanFormData, bindAppointmentPriceForm, bindAppointmentAvailability });
   }
-  window.PatientAppointments = Object.freeze({ create, appointmentDiscount, weeklyStarts });
+  window.PatientAppointments = Object.freeze({ create, appointmentDiscount, weeklyStarts, selectedStarts });
 })();

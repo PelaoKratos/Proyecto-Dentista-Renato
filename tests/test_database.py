@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 from backend import database
@@ -19,6 +20,118 @@ class DatabaseTests(unittest.TestCase):
         database.DATA_DIR = self.original_data_dir
         database.DB_PATH = self.original_db_path
         self.tempdir.cleanup()
+
+    def test_next_appointment_attends_previous_only_when_booking_succeeds(self):
+        fields = {"patient_id", "patient_treatment_id", "starts_at", "reason", "status"}
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        other = database.insert_record("patients", {"first_name": "Luis", "last_name": "Rios"}, {"first_name", "last_name"})
+        treatment = database.insert_record("patient_treatments", {"patient_id": patient["id"], "title": "Plan", "status": "planned"},
+                                           {"patient_id", "title", "status"})
+        previous = database.insert_record("appointments", {"patient_id": patient["id"], "patient_treatment_id": treatment["id"],
+            "starts_at": "2026-10-22 09:00", "status": "scheduled"}, fields)
+        database.insert_record("appointments", {"patient_id": other["id"], "starts_at": "2026-10-23 10:00",
+            "status": "scheduled"}, fields)
+        next_data = {"patient_id": patient["id"], "patient_treatment_id": treatment["id"],
+            "starts_at": "2026-10-23 10:00", "status": "scheduled", "followup_for_appointment_id": previous["id"]}
+        with self.assertRaisesRegex(ValueError, "ocupada"):
+            database.create_treatment_appointment(next_data.copy(), fields, set())
+        self.assertEqual(database.fetch_one("SELECT status FROM appointments WHERE id = ?", (previous["id"],))["status"], "scheduled")
+        self.assertEqual(len(database.fetch_all("SELECT * FROM appointments")), 2)
+        next_data["starts_at"] = "2026-10-23 10:30"
+        created = database.create_treatment_appointment(next_data, fields, set())
+        self.assertEqual(created["status"], "scheduled")
+        self.assertEqual(database.fetch_one("SELECT status FROM appointments WHERE id = ?", (previous["id"],))["status"], "attended")
+        self.assertEqual(database.fetch_one("SELECT status FROM patient_treatments WHERE id = ?", (treatment["id"],))["status"], "in_progress")
+
+    def test_changing_appointment_time_keeps_it_pending_and_releases_previous_hour(self):
+        fields = {"patient_id", "starts_at", "status"}
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        other = database.insert_record("patients", {"first_name": "Luis", "last_name": "Rios"}, {"first_name", "last_name"})
+        original = database.insert_record("appointments", {"patient_id": patient["id"],
+            "starts_at": "2026-10-22 09:00", "status": "scheduled"}, fields)
+        moved = database.update_record("appointments", original["id"], {"starts_at": "2026-10-22 09:30"}, {"starts_at"})
+        self.assertEqual(moved["status"], "scheduled")
+        replacement = database.insert_record("appointments", {"patient_id": other["id"],
+            "starts_at": "2026-10-22 09:00", "status": "scheduled"}, fields)
+        self.assertEqual(replacement["starts_at"], "2026-10-22 09:00")
+
+    def test_calendar_creates_one_itemized_treatment_with_calculated_total(self):
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        fields = {"patient_id", "patient_treatment_id", "starts_at", "reason", "status"}
+        treatment_fields = {"patient_id", "title", "tooth_code", "estimated_price", "final_price",
+                            "procedure_items_json", "total_discount_type", "total_discount_value", "start_date"}
+        appointment = database.create_treatment_appointment({
+            "patient_id": patient["id"], "starts_at": "2026-10-22 09:00", "reason": "Plan integral", "status": "scheduled",
+            "new_treatment": {"title": "Plan integral", "start_date": "2026-10-22", "total_discount_type": "amount", "total_discount_value": 5000,
+                "procedures": [
+                    {"name": "Endodoncia", "tooth_code": "4,5", "price": 85000, "discount_type": "percent", "discount_value": 10},
+                    {"name": "Resina", "tooth_code": "6", "price": 30000, "discount_type": "amount", "discount_value": 0},
+                ]},
+        }, fields, treatment_fields)
+        treatment = database.fetch_one("SELECT * FROM patient_treatments WHERE id = ?", (appointment["patient_treatment_id"],))
+        self.assertEqual((treatment["tooth_code"], treatment["estimated_price"], treatment["final_price"]), ("4,5,6", 115000, 101500))
+        self.assertEqual(len(json.loads(treatment["procedure_items_json"])), 2)
+        self.assertEqual(len(database.fetch_all("SELECT * FROM patient_treatments")), 1)
+        with self.assertRaisesRegex(ValueError, "Edita las piezas y valores"):
+            database.update_record("patient_treatments", treatment["id"], {"final_price": 1}, {"final_price"})
+
+    def test_existing_completed_treatment_can_receive_procedure_budget_without_new_appointment(self):
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        treatment = database.insert_record("patient_treatments", {"patient_id": patient["id"], "title": "Plan", "status": "completed"},
+                                           {"patient_id", "title", "status"})
+        appointment = database.insert_record("appointments", {"patient_id": patient["id"],
+            "patient_treatment_id": treatment["id"], "starts_at": "2026-10-22 09:00", "status": "attended"},
+            {"patient_id", "patient_treatment_id", "starts_at", "status"})
+        updated = database.update_treatment_procedures(treatment["id"], {"procedures": [
+            {"name": "Limpieza", "tooth_code": "3,4", "price": 65000, "discount_type": "amount", "discount_value": 5000},
+            {"name": "Endodoncia", "tooth_code": "5", "price": 280000, "discount_type": "percent", "discount_value": 10}],
+            "total_discount_type": "percent", "total_discount_value": 5})
+        self.assertEqual((updated["estimated_price"], updated["final_price"], updated["tooth_code"]), (345000, 296400, "3,4,5"))
+        self.assertEqual([item["discount_value"] for item in json.loads(updated["procedure_items_json"])], [5000, 10])
+        self.assertEqual(database.fetch_one("SELECT status FROM appointments WHERE id = ?", (appointment["id"],))["status"], "attended")
+        self.assertEqual(len(database.fetch_all("SELECT * FROM appointments")), 1)
+
+    def test_editing_procedures_cannot_reduce_total_below_paid_amount(self):
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        treatment = database.insert_record("patient_treatments", {"patient_id": patient["id"], "title": "Plan",
+            "estimated_price": 80000}, {"patient_id", "title", "estimated_price"})
+        database.insert_record("payments", {"patient_id": patient["id"], "patient_treatment_id": treatment["id"],
+            "payment_date": "2026-10-22", "amount": 50000}, {"patient_id", "patient_treatment_id", "payment_date", "amount"})
+        with self.assertRaisesRegex(ValueError, "abonos"):
+            database.update_treatment_procedures(treatment["id"], {"procedures": [
+                {"name": "Resina", "price": 20000}]})
+        self.assertIsNone(database.fetch_one("SELECT procedure_items_json FROM patient_treatments WHERE id = ?", (treatment["id"],))["procedure_items_json"])
+
+    def test_existing_treatment_update_and_booking_roll_back_together(self):
+        patient = database.insert_record("patients", {"first_name": "Ana", "last_name": "Rios"}, {"first_name", "last_name"})
+        treatment_fields = {"patient_id", "title", "tooth_code", "estimated_price", "final_price",
+                            "procedure_items_json", "total_discount_type", "total_discount_value"}
+        fields = {"patient_id", "patient_treatment_id", "starts_at", "reason", "status"}
+        first = database.create_treatment_appointment({
+            "patient_id": patient["id"], "starts_at": "2026-10-22 09:00", "reason": "Plan", "status": "scheduled",
+            "new_treatment": {"title": "Plan", "procedures": [{"name": "Endodoncia", "tooth_code": "4", "price": 80000}]},
+        }, fields, treatment_fields)
+        treatment_id = first["patient_treatment_id"]
+        database.insert_record("payments", {"patient_id": patient["id"], "patient_treatment_id": treatment_id,
+                                            "payment_date": "2026-10-22", "amount": 50000},
+                               {"patient_id", "patient_treatment_id", "payment_date", "amount"})
+        changed = database.create_treatment_appointment({
+            "patient_id": patient["id"], "patient_treatment_id": treatment_id, "starts_at": "2026-10-23 09:00",
+            "reason": "Plan ampliado", "status": "scheduled",
+            "treatment_update": {"title": "Plan ampliado", "procedures": [
+                {"name": "Endodoncia", "tooth_code": "4", "price": 80000},
+                {"name": "Resina", "tooth_code": "5", "price": 20000}]},
+        }, fields, treatment_fields)
+        self.assertEqual(changed["patient_treatment_id"], treatment_id)
+        self.assertEqual(database.fetch_one("SELECT final_price FROM patient_treatments WHERE id = ?", (treatment_id,))["final_price"], 100000)
+        with self.assertRaisesRegex(ValueError, "abonos"):
+            database.create_treatment_appointment({
+                "patient_id": patient["id"], "patient_treatment_id": treatment_id, "starts_at": "2026-10-24 09:00",
+                "reason": "Plan reducido", "status": "scheduled",
+                "treatment_update": {"title": "Plan reducido", "procedures": [{"name": "Resina", "tooth_code": "5", "price": 20000}]},
+            }, fields, treatment_fields)
+        self.assertEqual(database.fetch_one("SELECT title FROM patient_treatments WHERE id = ?", (treatment_id,))["title"], "Plan ampliado")
+        self.assertEqual(len(database.fetch_all("SELECT * FROM appointments")), 2)
 
     def test_child_and_adult_treatments_keep_separate_tooth_numbers(self):
         patient = database.insert_record(

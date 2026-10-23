@@ -177,3 +177,19 @@
   min-width: 0;
   border-radius: 0 8px 8px 0;
 }
+/* Varias citas del mismo tratamiento, con fechas elegidas individualmente. */
+.custom-appointments { display: grid; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); }
+.custom-appointments p { margin: 0; color: var(--muted); font-size: .82rem; }
+.custom-appointment-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(110px, .7fr) auto; align-items: end; gap: 8px; margin-top: 8px; }
+.custom-appointment-row label { display: grid; min-width: 0; gap: 4px; }
+.custom-appointment-row input, .custom-appointment-row select { width: 100%; min-width: 0; }
+.custom-appointments > button { justify-self: start; }
+/* Identificación numérica local y letra Universal para dentición temporal. */
+.odontogram-code-help { margin: -4px 0 12px; color: var(--muted); font-size: .76rem; text-align: center; }
+.patient-procedure-breakdown { min-width: 0; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-alt); }
+.patient-procedure-breakdown > strong { display: block; margin-bottom: 5px; font-size: .83rem; }
+.patient-procedure-breakdown ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.patient-procedure-breakdown li { display: flex; justify-content: space-between; gap: 12px; min-width: 0; font-size: .82rem; }
+.patient-procedure-breakdown li span { min-width: 0; overflow-wrap: anywhere; }
+.patient-procedure-breakdown small { display: block; color: var(--muted); font-size: .73rem; }
+.patient-procedure-breakdown li b { white-space: nowrap; }

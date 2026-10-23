@@ -113,6 +113,7 @@ test('agenda cuatro martes para un mismo tratamiento en una sola acción', async
   const form = page.locator('form[data-form="appointment"]');
   await form.locator('input[name="appointment_date"]').fill('2026-10-20');
   await form.locator('select[name="appointment_time"]').selectOption('10:00');
+  await form.locator('select[name="schedule_mode"]').selectOption('weekly');
   await form.locator('select[name="weekly_count"]').selectOption('4');
   await expect(form.locator('[data-time-availability]')).toContainText('4 citas disponibles');
   await form.getByRole('button', { name: 'Agendar cita', exact: true }).click();
@@ -148,7 +149,40 @@ test('bloquea el grupo semanal si una fecha posterior ya está ocupada', async (
   const form = page.locator('form[data-form="appointment"]');
   await form.locator('input[name="appointment_date"]').fill('2026-10-20');
   await form.locator('select[name="appointment_time"]').selectOption('10:00');
+  await form.locator('select[name="schedule_mode"]').selectOption('weekly');
   await form.locator('select[name="weekly_count"]').selectOption('4');
   await expect(form.locator('[data-time-availability]')).toContainText('27-10-2026');
   await expect(form.getByRole('button', { name: 'Agendar cita', exact: true })).toBeDisabled();
+});
+
+test('agenda fechas y horas distintas para un tratamiento sin crear otro cobro', async ({ page }) => {
+  const summary = {
+    patient: { id: 1, first_name: 'Ana', last_name: 'Prueba' },
+    treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', tooth_code: '19', status: 'in_progress', final_price: 100000 }],
+    appointments: [], payments: [], sessions: [], attachments: []
+  };
+  let batch;
+  await page.route('**/api/**', route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/api/appointments/batch' && route.request().method() === 'POST') {
+      batch = route.request().postDataJSON();
+      return route.fulfill({ json: batch.starts_at.map((starts_at, index) => ({ id: index + 1, patient_id: 1, patient_treatment_id: 7, starts_at, status: 'scheduled' })) });
+    }
+    if (path.endsWith('/summary')) return route.fulfill({ json: summary });
+    return route.fulfill({ json: [] });
+  });
+  await page.goto('/paciente.html?id=1');
+  await page.getByRole('tab', { name: 'Historial', exact: true }).click();
+  await page.locator('[data-treatment-history="7"]').getByRole('button', { name: 'Agendar continuacion' }).click();
+  const form = page.locator('form[data-form="appointment"]');
+  await form.locator('input[name="appointment_date"]').fill('2026-10-20');
+  await form.locator('select[name="appointment_time"]').selectOption('09:00');
+  await form.locator('select[name="schedule_mode"]').selectOption('custom');
+  await form.locator('[data-custom-row] input[type="date"]').fill('2026-10-22');
+  await form.locator('[data-custom-row] select').selectOption('11:30');
+  await expect(form.locator('[data-time-availability]')).toContainText('2 citas disponibles');
+  await form.getByRole('button', { name: 'Agendar cita', exact: true }).click();
+  expect(batch.starts_at).toEqual(['2026-10-20 09:00', '2026-10-22 11:30']);
+  expect(batch.patient_treatment_id).toBe(7);
+  expect(batch.new_treatment).toBeUndefined();
 });

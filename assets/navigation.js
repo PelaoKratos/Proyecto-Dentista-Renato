@@ -71,6 +71,9 @@ if (navigationRoot) {
       <span class="brand-mark"><img src="./assets/icons/app-icon.svg" alt="" /></span>
       <div><strong>Consulta Dental</strong><span>Dr. Renato</span></div>
     </div>
+    <button class="nav-item sidebar-search-launch" type="button" id="openPatientSearch" title="Buscar paciente" aria-label="Buscar paciente">
+      <span class="nav-icon"><svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>Buscar paciente
+    </button>
     <nav class="nav-list" aria-label="Navegacion principal">${links}</nav>
     <div class="sidebar-footer">
       <button class="nav-item sidebar-logout" type="button" id="logoutButton" title="Cerrar sesión">
@@ -83,9 +86,70 @@ if (navigationRoot) {
       </div>
     </div>
   `;
+
+  document.body.insertAdjacentHTML("beforeend", `
+    <dialog id="patientSearchDialog" class="patient-search-dialog" aria-labelledby="patientSearchTitle">
+      <div class="patient-search-header"><h2 id="patientSearchTitle">Buscar paciente</h2><button class="text-button" type="button" data-close-patient-search>Cerrar</button></div>
+      <label>Nombre, RUT o teléfono<input id="patientSearchInput" type="search" placeholder="Escribe para buscar..." autocomplete="off" /></label>
+      <div id="patientSearchResults" class="patient-search-results" role="region" aria-live="polite"><p>Escribe un nombre, RUT o teléfono.</p></div>
+    </dialog>
+  `);
+
+  const searchDialog = document.querySelector("#patientSearchDialog");
+  const searchInput = document.querySelector("#patientSearchInput");
+  const results = document.querySelector("#patientSearchResults");
+  let searchablePatients = [];
+  const normalize = (value) => String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const compact = (value) => String(value || "").toUpperCase().replace(/[^0-9K]/g, "");
+  const renderResults = () => {
+    const query = normalize(searchInput.value.trim());
+    if (!query) {
+      results.innerHTML = "<p>Escribe un nombre, RUT o teléfono.</p>";
+      return;
+    }
+    const matches = searchablePatients.filter((patient) =>
+      normalize(`${DentalAPI.fullName(patient)} ${patient.rut || ""} ${patient.phone || ""}`).includes(query) ||
+      /\d/.test(query) && (compact(patient.rut).includes(compact(query)) || compact(patient.phone).includes(compact(query)))).slice(0, 12);
+    results.innerHTML = matches.length ? matches.map((patient) => `
+      <a href="./paciente.html?id=${Number(patient.id)}"><strong>${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</strong><span>${DentalAPI.escapeHtml(patient.rut || "Sin RUT")} · ${DentalAPI.escapeHtml(patient.phone || "Sin teléfono")}</span></a>
+    `).join("") : "<p>No se encontraron pacientes.</p>";
+  };
+  document.querySelector("#openPatientSearch").addEventListener("click", async () => {
+    searchInput.value = "";
+    searchablePatients = [];
+    results.innerHTML = "<p>Cargando pacientes...</p>";
+    searchDialog.showModal();
+    searchInput.focus();
+    try {
+      searchablePatients = await DentalAPI.get("/api/patients");
+      if (searchDialog.open) renderResults();
+    } catch (error) {
+      if (searchDialog.open) results.textContent = `No se pudo buscar: ${error.message}`;
+    }
+  });
+  searchInput.addEventListener("input", renderResults);
+  searchDialog.querySelector("[data-close-patient-search]").addEventListener("click", () => searchDialog.close());
 }
 
+const unsavedEditSources = new Map();
+window.UnsavedEdits = Object.freeze({
+  register(key, source) { unsavedEditSources.set(key, source); },
+  hasChanges() { return [...unsavedEditSources.values()].some((source) => source.isDirty()); },
+  confirmDiscard() {
+    if (!this.hasChanges()) return true;
+    if (!window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos?")) return false;
+    unsavedEditSources.forEach((source) => { if (source.isDirty()) source.discard(); });
+    return true;
+  }
+});
+window.addEventListener("beforeunload", (event) => {
+  if (!window.UnsavedEdits.hasChanges()) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
+
 document.querySelector("#logoutButton")?.addEventListener("click", async () => {
+  if (!window.UnsavedEdits.confirmDiscard()) return;
   const button = document.querySelector("#logoutButton");
   const status = document.querySelector("#logoutStatus");
   button.disabled = true;

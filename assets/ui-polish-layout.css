@@ -452,3 +452,21 @@ td, th, p, strong, span, label, a, time, small, h1, h2, h3, h4 { overflow-wrap: 
     transition: none;
   }
 }
+/* Búsqueda de pacientes disponible desde el menú de cualquier pantalla. */
+.sidebar-search-launch { flex: 0 0 auto; font: inherit; font-weight: 700; cursor: pointer; }
+.sidebar-search-launch .nav-icon svg { width: 17px; height: 17px; }
+.patient-search-dialog {
+  width: min(560px, calc(100vw - 32px)); max-height: min(80vh, 720px);
+  padding: 18px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface); color: var(--ink); box-shadow: 0 24px 70px rgba(21, 37, 34, .25);
+}
+.patient-search-dialog::backdrop { background: rgba(23, 38, 35, .52); }
+.patient-search-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+.patient-search-header h2 { margin: 0; }
+.patient-search-dialog > label { display: grid; gap: 6px; color: var(--muted); font-size: .8rem; font-weight: 700; }
+.patient-search-dialog input { width: 100%; min-height: 44px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); color: var(--ink); }
+.patient-search-results { display: grid; gap: 5px; max-height: 48vh; margin-top: 14px; overflow-y: auto; }
+.patient-search-results a { display: grid; gap: 3px; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); color: var(--ink); }
+.patient-search-results a:hover, .patient-search-results a:focus-visible { border-color: var(--teal); background: var(--mint); }
+.patient-search-results strong, .patient-search-results span { overflow-wrap: anywhere; }
+.patient-search-results span, .patient-search-results p { color: var(--muted); font-size: .81rem; }

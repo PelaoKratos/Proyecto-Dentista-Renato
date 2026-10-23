@@ -3,6 +3,17 @@ const DentalClinicalExport = (() => {
   const date = (value) => DentalAPI.date(value);
   const money = (value) => DentalAPI.money(value ?? 0);
   const treatmentAmount = (treatment) => Number(treatment.final_price ?? treatment.estimated_price ?? 0);
+  const procedureDetails = (treatment) => {
+    let items = [];
+    try { items = JSON.parse(treatment.procedure_items_json || "[]"); } catch { /* Tratamiento anterior sin desglose. */ }
+    if (!Array.isArray(items) || !items.length) return "";
+    return `<div class="clinical-procedures"><strong>Procedimientos</strong><ul>${items.map((item) => {
+      const price = Number(item.price || 0);
+      const discount = item.discount_type === "percent" ? Math.round(price * Number(item.discount_value || 0) / 100) : Number(item.discount_value || 0);
+      const discountLabel = discount ? ` · descuento ${item.discount_type === "percent" ? `${item.discount_value}%` : money(item.discount_value)}` : "";
+      return `<li>${safe(item.name)} · ${safe(item.tooth_code ? `Piezas ${item.tooth_code}` : "General")} · Valor ${money(price)}${safe(discountLabel, "")} · Final ${money(Math.max(price - discount, 0))}</li>`;
+    }).join("")}</ul>${Number(treatment.total_discount_value || 0) ? `<small>Descuento al total: ${safe(treatment.total_discount_type === "percent" ? `${treatment.total_discount_value}%` : money(treatment.total_discount_value))}</small>` : ""}</div>`;
+  };
 
   function render(summary, note = "", selectedTreatmentIds = null) {
     const patient = summary.patient;
@@ -34,6 +45,7 @@ const DentalClinicalExport = (() => {
           return `<article class="clinical-treatment-entry"><h4>${safe(treatment.title)}</h4>
             <p><strong>Piezas:</strong> ${safe(treatment.tooth_code, "General")} ${treatment.tooth_code ? `(${treatment.dentition_type === "child" ? "infantil" : "adulto"})` : ""} <span class="clinical-divider">·</span> <strong>Estado:</strong> ${safe(DentalAPI.statusLabel(treatment.status))}</p>
             <p><strong>Valor:</strong> ${money(value)} <span class="clinical-divider">·</span> <strong>Abonado:</strong> ${money(paidForTreatment)} <span class="clinical-divider">·</span> <strong>Saldo pendiente:</strong> ${money(Math.max(value - paidForTreatment, 0))}</p>
+            ${procedureDetails(treatment)}
             <div class="clinical-appointments"><strong>Citas (${treatmentAppointments.length})</strong>
               ${treatmentAppointments.length ? `<ul>${treatmentAppointments.map((appointment) => `<li>${date(appointment.starts_at)} ${safe(String(appointment.starts_at || "").slice(11, 16), "")} · ${safe(DentalAPI.statusLabel(appointment.status))}${appointment.reason ? ` · ${safe(appointment.reason)}` : ""}</li>`).join("")}</ul>` : '<p class="document-muted">Sin citas vinculadas.</p>'}
             </div></article>`;
@@ -72,6 +84,8 @@ const DentalClinicalExport = (() => {
       .clinical-treatment-entry h4 { margin: 0 0 6px; color: #126454; }
       .clinical-treatment-entry p { font-size: 12px; }
       .clinical-appointments { margin-top: 8px; padding-left: 10px; border-left: 2px solid #d9e5df; font-size: 12px; }
+      .clinical-procedures { margin: 8px 0; padding: 8px 10px; border: 1px solid #d9e5df; border-radius: 6px; font-size: 12px; }
+      .clinical-procedures ul { margin: 4px 0; padding-left: 18px; }
       .clinical-appointments ul { margin: 4px 0; padding-left: 18px; }
       .clinical-treatment-total { margin: 0 0 12px; padding: 8px 10px; border: 1px solid #d9e5df; border-radius: 6px; background: #f2f7f4; font-size: 12px; }
       .document-entry { margin: 10px 0; padding: 12px; border: 1px solid #d9e5df; border-radius: 6px; break-inside: avoid; }

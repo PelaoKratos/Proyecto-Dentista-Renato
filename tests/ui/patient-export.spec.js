@@ -66,7 +66,10 @@ test('la ficha resume solo los tratamientos elegidos y rotula el saldo pendiente
   const html = await page.evaluate(() => DentalClinicalExport.render({
     patient: { first_name: 'Ana', last_name: 'Prueba' },
     treatments: [
-      { id: 1, title: 'Tratamiento incluido', final_price: 100000 },
+      { id: 1, title: 'Tratamiento incluido', final_price: 100000, procedure_items_json: JSON.stringify([
+        { name: 'Endodoncia', tooth_code: '4', price: 80000, discount_type: 'amount', discount_value: 0 },
+        { name: 'Resina', tooth_code: '5', price: 25000, discount_type: 'amount', discount_value: 0 }
+      ]), total_discount_type: 'amount', total_discount_value: 5000 },
       { id: 2, title: 'Tratamiento excluido', final_price: 900000 }
     ],
     payments: [
@@ -80,6 +83,9 @@ test('la ficha resume solo los tratamientos elegidos y rotula el saldo pendiente
   expect(section).toMatch(/Abonos:<\/strong> \$30\.000/);
   expect(section).toMatch(/Saldo pendiente:<\/strong> \$70\.000/);
   expect(section).toContain('Tratamiento incluido');
+  expect(section).toContain('Endodoncia');
+  expect(section).toContain('Piezas 4');
+  expect(section).toContain('Descuento al total: $5.000');
   expect(section).not.toContain('Tratamiento excluido');
   expect(section).not.toContain('Saldo:</strong>');
 });
