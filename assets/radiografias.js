@@ -14,6 +14,7 @@ let treatments = [];
 let sessions = [];
 let attachments = [];
 let activeAttachmentId = null;
+let attachmentGuard = null;
 
 function typeLabel(type) {
   const labels = {
@@ -167,6 +168,8 @@ async function loadRadiografias() {
   ]);
   renderFilters();
   renderAll();
+  if (!attachmentGuard) attachmentGuard = window.UnsavedEdits.trackForm(attachmentForm);
+  else attachmentGuard.markClean();
 }
 
 focusAttachmentForm.addEventListener("click", () => {
@@ -192,16 +195,14 @@ attachmentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const formData = new FormData(attachmentForm);
   const submitButton = attachmentForm.querySelector("button[type='submit']");
+  if (submitButton.disabled) return;
+  attachmentGuard.setBusy(true);
   attachmentStatus.textContent = "Guardando adjunto...";
   submitButton.disabled = true;
 
   try {
-    const response = await fetch("/api/attachments", {
-      method: "POST",
-      body: formData
-    });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "No se pudo guardar el adjunto.");
+    const payload = await DentalAPI.upload("/api/attachments", formData);
+    attachmentGuard.markClean();
     attachmentStatus.textContent = "Adjunto guardado.";
     activeAttachmentId = payload.id;
     attachmentForm.reset();
@@ -210,7 +211,7 @@ attachmentForm.addEventListener("submit", async (event) => {
   } catch (error) {
     attachmentStatus.textContent = error.message;
     submitButton.disabled = false;
-  }
+  } finally { attachmentGuard.setBusy(false); }
 });
 
 attachmentsList.addEventListener("click", async (event) => {
@@ -224,6 +225,7 @@ attachmentsList.addEventListener("click", async (event) => {
 
   const deleteButton = event.target.closest("[data-delete-attachment]");
   if (!deleteButton) return;
+  if (!attachmentGuard.confirmDiscard()) return;
   if (!window.confirm("Eliminar este registro de adjunto? El archivo local puede permanecer en la carpeta media.")) return;
 
   deleteButton.disabled = true;

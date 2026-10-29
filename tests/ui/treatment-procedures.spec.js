@@ -23,7 +23,7 @@ test('completa el presupuesto de un tratamiento existente sin crear otra cita', 
   });
   await page.goto('/tratamientos.html');
   await page.locator('#treatmentFilter').selectOption('all');
-  await page.getByRole('button', { name: 'Ingresar procedimientos' }).click();
+  await page.getByRole('button', { name: 'Editar tratamiento', exact: true }).click();
   const dialog = page.locator('#treatmentProceduresDialog');
   await expect(dialog).toBeVisible();
   await dialog.locator('#treatmentProcedureCatalog').selectOption('2');
@@ -39,7 +39,7 @@ test('completa el presupuesto de un tratamiento existente sin crear otra cita', 
   await dialog.locator('[name="total_discount_type"]').selectOption('percent');
   await dialog.locator('[name="total_discount_value"]').fill('5');
   await expect(dialog.locator('#treatmentProceduresTotal')).toHaveText('Total: $296.400');
-  await dialog.getByRole('button', { name: 'Guardar presupuesto' }).click();
+  await dialog.getByRole('button', { name: 'Guardar tratamiento', exact: true }).click();
   await expect(dialog).toBeHidden();
   expect(saved.procedures.map(item => [item.name, item.tooth_code, item.price, item.discount_type, item.discount_value]))
     .toEqual([['Limpieza', '3,4', 65000, 'amount', 5000], ['Endodoncia', '5', 280000, 'percent', 10]]);

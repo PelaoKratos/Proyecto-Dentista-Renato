@@ -150,6 +150,8 @@ def parse_tooth_codes(value: Any, dentition_type: str = "adult") -> list[str]:
 
 def validate_patient_treatment(data: dict[str, Any], partial: bool = False) -> dict[str, Any]:
     data = clean_payload(data)
+    if "title" in data and not data["title"]:
+        raise ValueError("El tratamiento necesita un nombre.")
     if not partial:
         require(data, "patient_id", "title")
     validate_positive_id(data, "patient_id", required=not partial)
@@ -204,6 +206,8 @@ def validate_appointment(data: dict[str, Any], partial: bool = False) -> dict[st
 
 def validate_payment(data: dict[str, Any], partial: bool = False) -> dict[str, Any]:
     data = clean_payload(data)
+    if "procedure_allocations_json" in data:
+        raise ValueError("Envía las asignaciones como una lista de procedimientos.")
     if not partial:
         require(data, "patient_id", "payment_date", "amount")
     validate_positive_id(data, "patient_id", required=not partial)

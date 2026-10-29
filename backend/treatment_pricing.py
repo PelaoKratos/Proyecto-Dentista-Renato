@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from backend.validation import parse_tooth_codes
@@ -31,12 +32,20 @@ def _discount(price, discount_type, discount_value, label):
     return value, deduction
 
 
-def price_treatment(data, dentition_type):
+def price_treatment(data, dentition_type, previous=None):
     """Return validated columns; never accept a client-computed final total."""
     raw_items = data.get("procedures")
     if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 30:
         raise ValueError("Agrega entre 1 y 30 procedimientos al tratamiento.")
     items = []
+    try:
+        previous_items = json.loads(previous["procedure_items_json"] or "[]") if previous else []
+    except (ValueError, TypeError):
+        previous_items = []
+    if not isinstance(previous_items, list):
+        previous_items = []
+    available = {item.get("line_id"): item for item in previous_items if isinstance(item, dict) and isinstance(item.get("line_id"), str)}
+    used_ids = set()
     all_teeth = set()
     base_total = 0
     after_lines = 0
@@ -60,7 +69,19 @@ def price_treatment(data, dentition_type):
             raise ValueError("El descuento por valor debe ser un monto entero en pesos.")
         base_total += int(price)
         after_lines += int(price) - deduction
+        line_id = raw.get("line_id")
+        if line_id is not None and not isinstance(line_id, str):
+            raise ValueError("El identificador del procedimiento no es válido.")
+        if line_id and (line_id not in available or line_id in used_ids):
+            raise ValueError("El identificador de un procedimiento no pertenece al tratamiento o está repetido.")
+        if not line_id:
+            match = next((old for key, old in available.items() if key not in used_ids and
+                          old.get("name") == name and old.get("tooth_code", "") == ",".join(teeth) and
+                          old.get("catalog_treatment_id") == (int(catalog_id) if catalog_id else None)), None)
+            line_id = match["line_id"] if match else uuid.uuid4().hex
+        used_ids.add(line_id)
         items.append({
+            "line_id": line_id,
             "name": name, "catalog_treatment_id": int(catalog_id) if catalog_id else None,
             "tooth_code": ",".join(teeth), "price": int(price),
             "discount_type": discount_type, "discount_value": float(discount_value),

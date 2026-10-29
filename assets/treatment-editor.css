@@ -1,0 +1,38 @@
+.shared-treatment-dialog { width: min(1040px, calc(100vw - 40px)); max-width: calc(100vw - 40px); max-height: 90vh; padding: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); overflow: hidden; }
+.shared-treatment-dialog::backdrop { background: rgba(22,35,33,.5); }
+.shared-treatment-dialog form { display: flex; flex-direction: column; max-height: 89vh; min-width: 0; }
+.shared-treatment-heading, .shared-treatment-footer { flex: 0 0 auto; padding: 16px 20px; background: var(--surface); }
+.shared-treatment-heading { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
+.shared-treatment-heading h2 { margin: 0; font-size: 1.3rem; }
+.shared-treatment-heading p { margin: 4px 0 0; color: var(--muted); }
+.shared-treatment-body { display: grid; gap: 16px; padding: 16px 20px; min-height: 0; overflow-y: auto; }
+.shared-treatment-dialog label { display: grid; gap: 5px; min-width: 0; color: var(--muted); font-size: .82rem; font-weight: 700; }
+.shared-treatment-dialog input, .shared-treatment-dialog select, .shared-treatment-dialog textarea { width: 100%; min-width: 0; max-width: 100%; padding: 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
+.shared-treatment-dialog textarea { min-height: 80px; resize: vertical; }
+.shared-treatment-fields, .shared-treatment-add { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: end; }
+.shared-treatment-notes summary { cursor: pointer; font-weight: 600; }
+.shared-treatment-notes[open] .shared-treatment-fields { margin-top: 12px; }
+.shared-treatment-procedures, #treatmentProceduresList { display: grid; gap: 12px; min-width: 0; }
+.shared-treatment-procedures h3 { margin: 0; font-size: 1rem; }
+.shared-treatment-dialog .treatment-procedure-editor { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-strong); min-width: 0; }
+.shared-treatment-dialog .procedure-name { grid-column: span 3; }
+.shared-treatment-dialog .treatment-procedure-editor > button { align-self: end; justify-self: start; }
+.shared-treatment-footer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); }
+.shared-treatment-footer .form-status { flex: 1 1 160px; margin: 0; }
+.shared-treatment-footer strong { font-size: 1.1rem; }
+.shared-treatment-dialog [hidden] { display: none !important; }
+.treatment-card-summary { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: .85rem; }
+.treatment-card-summary strong { color: var(--ink); }
+.treatment-card-details > summary { cursor: pointer; color: var(--teal-dark); font-size: .85rem; }
+.treatment-card-details .patient-procedure-breakdown { margin-top: 8px; }
+.patient-page [data-patient-treatment-card] { display: grid; gap: 9px; min-width: 0; padding: 12px; }
+.patient-page [data-patient-treatment-card] p { margin: 0; }
+.patient-page [data-patient-treatment-card] .inline-actions { flex-wrap: wrap; }
+.patient-page [data-patient-treatment-card] .success-action { background: #137c45; color: white; }
+.patient-treatment-block { display: grid; gap: 8px; min-width: 0; }
+.patient-page .standalone-treatment { margin: 10px 0; }
+.patient-page #treatments { grid-template-columns: minmax(0,1fr); }
+.patient-treatment-summary { padding: 10px 12px; background: var(--surface-strong); border-radius: 8px; }
+.treatment-more-actions summary { cursor: pointer; font-size: .85rem; color: var(--muted); }
+.treatment-more-actions[open] { flex-basis: 100%; }
+.treatment-page .treatment-catalog-panel .catalog-list { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 8px; }

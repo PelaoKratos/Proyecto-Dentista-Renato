@@ -18,6 +18,8 @@ test('la ficha guarda el odontograma adulto o infantil y muestra las piezas corr
       Object.assign(summary.patient, data);
       return route.fulfill({ json: summary.patient });
     }
+    if (path === '/api/patients') return route.fulfill({ json: [summary.patient] });
+    if (path === '/api/patient-treatments') return route.fulfill({ json: summary.treatments });
     if (path.endsWith('/summary')) return route.fulfill({ json: summary });
     return route.fulfill({ json: [] });
   });
@@ -42,8 +44,8 @@ test('la ficha guarda el odontograma adulto o infantil y muestra las piezas corr
   await expect(page.locator('.odontogram [data-tooth="19"] svg circle')).toHaveCount(0);
   await expect(page.locator('[data-dentition-type="child"]')).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.patient-agenda').getByRole('button', { name: 'Agendar cita', exact: true }).click();
-  await expect(page.getByLabel('1. Piezas dentales')).toHaveAttribute('placeholder', /hasta 20/);
-  await page.locator('#actionDrawer [data-action-close]').first().click();
+  await expect(page.getByLabel('Piezas dentales', { exact: true })).toHaveAttribute('placeholder', /hasta 20/);
+  await page.locator('#calendarBookingForm [data-booking-close]').first().click();
   await page.locator('[data-dentition-type="adult"]').click();
   await expect(page.locator('.odontogram [data-tooth]')).toHaveCount(32);
   await expect(page.locator('.odontogram [data-tooth="19"] svg circle')).toHaveCount(1);

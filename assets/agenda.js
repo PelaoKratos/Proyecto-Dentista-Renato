@@ -10,6 +10,7 @@ let patients = [];
 let appointments = [];
 let selectedDate = localDateString();
 let selectedStatus = "";
+let agendaLoadVersion = 0;
 
 function localDateString(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -88,25 +89,33 @@ function renderAppointments() {
   }).join("") || `<div class="empty-state agenda-empty"><strong>Sin citas para este día</strong><span>Cambia la fecha o el estado para revisar otras citas.</span><a class="text-button link-button" href="./pacientes.html">Buscar paciente</a></div>`;
 }
 
-async function loadAgenda() {
-  [patients, appointments] = await Promise.all([DentalAPI.get("/api/patients"), DentalAPI.get("/api/appointments")]);
-  renderCalendar();
-  renderAppointments();
+async function loadAgendaPeriod() {
+  const version = ++agendaLoadVersion;
+  const start = new Date(`${selectedDate}T12:00:00`), end = new Date(start);
+  start.setDate(start.getDate() - 3); end.setDate(end.getDate() + 3);
+  dayTimeline.setAttribute("aria-busy", "true");
+  dayTimeline.innerHTML = '<p class="empty-state">Cargando jornada…</p>';
+  try {
+    const rows = await DentalAPI.get(`/api/appointments?${new URLSearchParams({ date_from: localDateString(start), date_to: localDateString(end) })}`);
+    if (version !== agendaLoadVersion) return;
+    appointments = rows; renderCalendar(); renderAppointments();
+  } catch (error) {
+    if (version === agendaLoadVersion) dayTimeline.innerHTML = `<p class="empty-state">No se pudo cargar esta jornada: ${DentalAPI.escapeHtml(error.message)}</p>`;
+    throw error;
+  } finally { if (version === agendaLoadVersion) dayTimeline.setAttribute("aria-busy", "false"); }
 }
-
-miniCalendar.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-date]");
-  if (!button) return;
-  selectedDate = button.dataset.date;
-  renderCalendar();
-  renderAppointments();
-});
-
+async function loadAgenda() {
+  patients = await DentalAPI.get("/api/patients");
+  await loadAgendaPeriod();
+}
 function selectDate(value) {
   selectedDate = value;
-  renderCalendar();
-  renderAppointments();
+  loadAgendaPeriod().catch(error => { agendaFeedback.textContent = error.message; });
 }
+miniCalendar.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-date]");
+  if (button) selectDate(button.dataset.date);
+});
 document.querySelector("#agendaDatePicker").addEventListener("change", (event) => {
   if (event.target.value) selectDate(event.target.value);
 });
@@ -119,9 +128,7 @@ document.querySelector("#agendaDatePicker").addEventListener("change", (event) =
 });
 
 goTodayBtn.addEventListener("click", () => {
-  selectedDate = localDateString();
-  renderCalendar();
-  renderAppointments();
+  selectDate(localDateString());
 });
 
 agendaStatusFilter.addEventListener("change", () => {

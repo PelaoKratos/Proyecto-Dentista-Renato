@@ -132,16 +132,61 @@ if (navigationRoot) {
 }
 
 const unsavedEditSources = new Map();
+function editSources({ only, except } = {}) {
+  const keys = only == null ? null : Array.isArray(only) ? only : [only];
+  return [...unsavedEditSources].filter(([key, source]) => {
+    if (source.connected && !source.connected()) { unsavedEditSources.delete(key); return false; }
+    return (!keys || keys.includes(key)) && key !== except;
+  }).map(([, source]) => source);
+}
 window.UnsavedEdits = Object.freeze({
-  register(key, source) { unsavedEditSources.set(key, source); },
-  hasChanges() { return [...unsavedEditSources.values()].some((source) => source.isDirty()); },
-  confirmDiscard() {
-    if (!this.hasChanges()) return true;
+  register(key, source) { editSources(); unsavedEditSources.set(key, source); },
+  hasChanges(options) { return editSources(options).some((source) => source.isDirty()); },
+  confirmDiscard(options) {
+    const dirty = editSources(options).filter((source) => source.isDirty());
+    if (dirty.some((source) => source.canDiscard && !source.canDiscard())) return false;
+    if (!dirty.length) return true;
     if (!window.confirm("Hay cambios sin guardar. ¿Quieres descartarlos?")) return false;
-    unsavedEditSources.forEach((source) => { if (source.isDirty()) source.discard(); });
+    dirty.forEach((source) => source.discard());
     return true;
+  },
+  trackForm(form, { key = form, extra = () => null, active = () => true, discard } = {}) {
+    let busy = false;
+    const snapshot = () => JSON.stringify({ controls: [...form.elements].filter((control) =>
+      control.matches("input,select,textarea") && !["button", "submit", "reset"].includes(control.type)).map((control) => {
+      if (control.type === "file") return [...control.files].map((file) => [file.name, file.size, file.lastModified, file.type]);
+      if (["checkbox", "radio"].includes(control.type)) return [control.value, control.checked];
+      if (control.multiple) return [...control.selectedOptions].map((option) => option.value);
+      return control.value;
+    }), extra: extra() });
+    let original = snapshot();
+    const source = {
+      connected: () => form.isConnected,
+      isDirty: () => form.isConnected && active() && (busy || snapshot() !== original),
+      canDiscard: () => !busy,
+      discard: () => { if (discard) discard(); else form.reset(); original = snapshot(); }
+    };
+    this.register(key, source);
+    const guard = Object.freeze({
+      markClean() { original = snapshot(); },
+      setBusy(value) { busy = value; },
+      isDirty: source.isDirty,
+      confirmDiscard: () => this.confirmDiscard({ only: [key] }),
+      dispose: () => { if (unsavedEditSources.get(key) === source) unsavedEditSources.delete(key); }
+    });
+    form.addEventListener("reset", () => queueMicrotask(guard.markClean));
+    form.unsavedGuard = guard;
+    return guard;
   }
 });
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+  const destination = new URL(link.href, location.href);
+  if (destination.protocol !== "http:" && destination.protocol !== "https:") return;
+  if (destination.origin === location.origin && destination.pathname === location.pathname && destination.search === location.search) return;
+  if (!window.UnsavedEdits.confirmDiscard()) { event.preventDefault(); event.stopImmediatePropagation(); }
+}, true);
 window.addEventListener("beforeunload", (event) => {
   if (!window.UnsavedEdits.hasChanges()) return;
   event.preventDefault();

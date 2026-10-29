@@ -7,6 +7,9 @@
     const singleFields = [...form.querySelectorAll("[data-payment-single]")];
     const singleSelect = form.elements.patient_treatment_id;
     const amountInput = form.elements.amount;
+    const procedureSingle = document.createElement("div");
+    procedureSingle.className = "payment-procedures-single";
+    singleFields[singleFields.length - 1].after(procedureSingle);
     let mode = "single";
 
     function pending(treatment) {
@@ -36,7 +39,8 @@
         if (!Number.isFinite(amount) || amount <= 0 || amount > due) {
           throw new Error(`El abono de ${row.dataset.title} debe ser mayor que cero y no superar su saldo de ${DentalAPI.money(due)}.`);
         }
-        return { patient_treatment_id: Number(row.dataset.treatmentId), amount };
+        const parts = ProcedurePayments.read(row, amount);
+        return { patient_treatment_id: Number(row.dataset.treatmentId), amount, ...(parts.length ? { procedure_allocations: parts } : {}) };
       });
     }
 
@@ -60,8 +64,11 @@
       amountInput.disabled = !single;
       list.hidden = single;
       summary.hidden = single;
+      procedureSingle.hidden = !single;
+      procedureSingle.querySelectorAll("input").forEach((input) => { input.disabled = !single; });
       if (single) {
         list.innerHTML = "";
+        refreshSingle();
         onChange();
         return;
       }
@@ -74,16 +81,22 @@
         const due = pending(treatment);
         const old = previous.get(Number(treatment.id));
         const checked = mode === "all" || Boolean(old?.checked);
-        const amount = mode === "all" ? due : old?.amount || due;
+        const amount = mode === "all" ? due : old?.amount || "";
         return `<div class="payment-allocation-row" data-payment-allocation-row data-treatment-id="${treatment.id}" data-title="${DentalAPI.escapeHtml(treatment.title)}" data-due="${due}">
           <label><input type="checkbox" data-payment-include ${checked ? "checked" : ""} ${mode === "all" ? "disabled" : ""} /><span><strong>${DentalAPI.escapeHtml(treatment.title)}</strong><small>Saldo ${DentalAPI.money(due)}</small></span></label>
           <label>Abono<input type="number" data-payment-part min="1" max="${due}" step="1" value="${amount}" ${checked && mode !== "all" ? "" : "readonly"} /></label>
+          ${ProcedurePayments.render(treatment, getPayments())}
         </div>`;
       }).join("") || '<p class="form-helper">No hay tratamientos con saldo pendiente.</p>';
+      list.querySelectorAll("[data-payment-allocation-row]").forEach((row) => {
+        row.querySelectorAll("[data-procedure-part]").forEach((input) => { input.disabled = !row.querySelector("[data-payment-include]").checked; });
+      });
       update();
     }
 
     function update() {
+      if (mode === "single") ProcedurePayments.update(procedureSingle, Number(amountInput.value || 0));
+      selectedRows().forEach((row) => ProcedurePayments.update(row, Number(row.querySelector("[data-payment-part]").value || 0)));
       if (mode !== "single") {
         summary.textContent = `${selectedRows().length} tratamientos · Total a registrar: ${DentalAPI.money(total())}`;
       }
@@ -99,12 +112,20 @@
       if (event.target.matches("[data-payment-include]")) {
         const row = event.target.closest("[data-payment-allocation-row]");
         row.querySelector("[data-payment-part]").readOnly = !event.target.checked;
+        row.querySelectorAll("[data-procedure-part]").forEach((input) => { input.disabled = !event.target.checked; });
       }
       update();
     });
     list.addEventListener("input", update);
+    function refreshSingle() {
+      const treatment = getTreatments().find((item) => Number(item.id) === Number(singleSelect.value) && Number(item.patient_id) === Number(getPatientId()));
+      procedureSingle.innerHTML = treatment ? ProcedurePayments.render(treatment, getPayments()) : "";
+    }
+    singleSelect.addEventListener("change", refreshSingle);
+    form.addEventListener("input", () => { if (mode === "single") ProcedurePayments.update(procedureSingle, Number(amountInput.value || 0)); });
     return Object.freeze({
       refresh,
+      singleParts: () => ProcedurePayments.read(procedureSingle, Number(amountInput.value || 0)),
       setMode(next) { mode = next; list.innerHTML = ""; refresh(); },
       getMode: () => mode, allocations, total, selectedDue,
       selectedCount: () => selectedRows().length

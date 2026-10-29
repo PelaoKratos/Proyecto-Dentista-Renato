@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { sharedBookingRoutes } = require('./booking-helpers');
 
 test('continuar tratamiento conserva presupuesto y muestra historial', async ({ page }) => {
   const summary = {
@@ -24,6 +25,7 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
     }
     if (path.endsWith('/summary')) return route.fulfill({ json: summary });
     if (path === '/api/treatment-catalog') return route.fulfill({ json: [{ id: 3, name: 'Endodoncia', default_price: 100 }] });
+    if (await sharedBookingRoutes(route, path, summary)) return;
     return route.fulfill({ json: [] });
   });
   await page.goto('/paciente.html?id=1');
@@ -33,23 +35,24 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
   await expect(history).toContainText('1 citas registradas');
   await expect(page.getByRole('heading', { name: 'Ultimas evoluciones' })).toHaveCount(0);
   await history.getByRole('button', { name: 'Agendar continuacion' }).click();
-  await expect(page.locator('[data-existing-treatment]')).toHaveValue('7');
-  await expect(page.locator('[data-appointment-cost]')).toBeHidden();
-  await page.locator('#actionDrawer').getByRole('button', { name: 'Agendar cita', exact: true }).click();
+  await expect(page.locator('#calendarBookingForm [name="treatment_choice"]')).toHaveValue('7');
+  await expect(page.locator('#calendarBookingForm [name="procedure_price"]')).toHaveValue('');
+  await page.locator('#calendarBookingForm').getByRole('button', { name: 'Agendar cita', exact: true }).click();
   await expect(history).toContainText('2 citas registradas');
   await expect(history).toContainText('1 atendidas');
   expect(booking.patient_treatment_id).toBe(7);
   expect(booking.new_treatment).toBeUndefined();
   await expect(history).toContainText('Pagado');
   await expect(history).toContainText('Cita pendiente:');
-  await expect(history.getByRole('button', { name: 'Agendar continuacion' })).toHaveCount(0);
+  await expect(history.getByRole('button', { name: 'Agendar otra cita' })).toBeVisible();
   await page.getByRole('tab', { name: 'Agenda y piezas', exact: true }).click();
   await page.locator('[data-tooth="19"]').click();
   await page.locator('#toothNote').getByRole('button', { name: 'Agendar tratamiento para esta pieza' }).click();
   await expect(page.locator('[data-duplicate-message]')).toBeHidden();
-  await page.locator('#actionDrawer input[name="appointment_date"]').fill('2026-11-10');
-  await expect(page.locator('#actionDrawer').getByRole('button', { name: 'Agendar cita', exact: true })).toBeEnabled();
-  await page.locator('#actionDrawer [data-action-close]').first().click();
+  await page.locator('#calendarBookingForm input[name="booking_date"]').fill('2026-11-10');
+  await expect(page.locator('#calendarBookingForm').getByRole('button', { name: 'Agendar cita', exact: true })).toBeEnabled();
+  page.once('dialog', dialog => dialog.accept());
+  await page.locator('#calendarBookingForm [data-booking-close]').first().click();
   page.on('dialog', dialog => dialog.accept());
   await page.locator('[data-patient-appointment="2"]').getByRole('button', { name: 'Cancelar cita', exact: true }).click();
   await page.getByRole('tab', { name: 'Historial', exact: true }).click();
@@ -57,6 +60,6 @@ test('continuar tratamiento conserva presupuesto y muestra historial', async ({ 
   await expect(history).not.toContainText('Pendiente');
   await expect(history).toContainText('Abonos registrados');
   await history.getByRole('button', { name: 'Reagendar tratamiento' }).click();
-  await expect(page.locator('#actionDrawer').getByRole('button', { name: 'Agendar cita', exact: true })).toBeEnabled();
-  await expect(page.locator('[data-existing-treatment]')).toHaveValue('7');
+  await expect(page.locator('#calendarBookingForm').getByRole('button', { name: 'Agendar cita', exact: true })).toBeEnabled();
+  await expect(page.locator('#calendarBookingForm [name="treatment_choice"]')).toHaveValue('new');
 });

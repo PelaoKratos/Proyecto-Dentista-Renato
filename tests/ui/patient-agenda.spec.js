@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { sharedBookingRoutes } = require('./booking-helpers');
 test('gestionar citas y filtrar historial desde la ficha', async ({ page }, testInfo) => {
   const summary = {
     patient: {id:1, first_name:'Ana', last_name:'Prueba'},
@@ -16,6 +17,7 @@ test('gestionar citas y filtrar historial desde la ficha', async ({ page }, test
       return route.fulfill({json:data});
     }
     if (path.endsWith('/summary')) return route.fulfill({json:summary});
+    if (await sharedBookingRoutes(route, path, summary, [{ id: 3, name: 'Resina', default_price: 30000 }])) return;
     return route.fulfill({json:[]});
   });
   await page.goto('/paciente.html?id=1');
@@ -42,9 +44,9 @@ test('gestionar citas y filtrar historial desde la ficha', async ({ page }, test
   await page.screenshot({path:testInfo.outputPath('historial.png'),fullPage:true});
   await page.getByRole('tab',{name:'Agenda y piezas',exact:true}).click();
   await page.locator('.patient-agenda').getByRole('button',{name:'Agendar cita',exact:true}).click();
-  await page.getByLabel('1. Piezas dentales').fill('31,32');
-  await expect(page.locator('input[name="tooth_code"]')).toHaveValue('31,32');
-  await expect(page.locator('[data-appointment-catalog]')).toHaveAttribute('required','');
+  await page.getByLabel('Piezas dentales', { exact: true }).fill('31,32');
+  await expect(page.locator('#calendarBookingForm [name="procedure_teeth"]')).toHaveValue('31,32');
+  await expect(page.locator('#calendarBookingForm [name="catalog_id"]')).toBeVisible();
   await page.screenshot({path:testInfo.outputPath('agendar.png'),fullPage:true});
 });
 
@@ -62,20 +64,22 @@ test('muestra horas ocupadas y bloquea agendar o reprogramar en ellas', async ({
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/summary')) return route.fulfill({ json: summary });
     if (path === '/api/appointments') return route.fulfill({ json: appointments });
+    if (await sharedBookingRoutes(route, path, summary)) return;
     return route.fulfill({ json: [] });
   });
   await page.goto('/paciente.html?id=1');
   await page.locator('.patient-agenda').getByRole('button', { name: 'Agendar cita', exact: true }).click();
-  const form = page.locator('form[data-form="appointment"]');
-  await form.locator('input[name="appointment_date"]').fill('2026-10-15');
+  const form = page.locator('#calendarBookingForm');
+  await form.locator('input[name="booking_date"]').fill('2026-10-15');
   await expect(form.locator('option[value="10:00"]')).toHaveText('10:00 · Ocupada');
   await expect(form.locator('option[value="11:00"]')).toHaveText('11:00 · Disponible');
-  await form.locator('select[name="appointment_time"]').selectOption('10:30');
-  await expect(form.locator('[data-time-availability]')).toContainText('ya está ocupada');
+  await form.locator('select[name="booking_time"]').selectOption('10:30');
+  await expect(form.locator('[data-booking-status]')).toContainText('ya está ocupada');
   await expect(form.getByRole('button', { name: 'Agendar cita' })).toBeDisabled();
-  await form.locator('select[name="appointment_time"]').selectOption('11:00');
-  await expect(form.locator('[data-time-availability]')).toContainText('disponible');
+  await form.locator('select[name="booking_time"]').selectOption('11:00');
+  await expect(form.locator('[name="booking_time"] option:checked')).toHaveText('11:00 · Disponible');
   await expect(form.getByRole('button', { name: 'Agendar cita' })).toBeEnabled();
+  page.once('dialog', dialog => dialog.accept());
   await form.getByRole('button', { name: 'Cancelar' }).click();
   await page.locator('[data-patient-appointment="1"]').getByRole('button', { name: 'Cambiar fecha' }).click();
   const reschedule = page.locator('form[data-form="reschedule"]');
@@ -105,18 +109,20 @@ test('agenda cuatro martes para un mismo tratamiento en una sola acción', async
     if (path.endsWith('/summary')) return route.fulfill({ json: summary });
     if (path === '/api/appointments') return route.fulfill({ json: summary.appointments });
     if (path === '/api/treatment-catalog') return route.fulfill({ json: [] });
+    if (await sharedBookingRoutes(route, path, summary)) return;
     return route.fulfill({ json: [] });
   });
   await page.goto('/paciente.html?id=1');
   await page.getByRole('tab', { name: 'Historial', exact: true }).click();
   await page.locator('[data-treatment-history="7"]').getByRole('button', { name: 'Agendar continuacion' }).click();
-  const form = page.locator('form[data-form="appointment"]');
-  await form.locator('input[name="appointment_date"]').fill('2026-10-20');
-  await form.locator('select[name="appointment_time"]').selectOption('10:00');
+  const form = page.locator('#calendarBookingForm');
+  await form.locator('input[name="booking_date"]').fill('2026-10-20');
+  await form.locator('select[name="booking_time"]').selectOption('10:00');
   await form.locator('select[name="schedule_mode"]').selectOption('weekly');
   await form.locator('select[name="weekly_count"]').selectOption('4');
-  await expect(form.locator('[data-time-availability]')).toContainText('4 citas disponibles');
+  await expect(form.locator('[data-booking-status]')).toContainText('4 citas disponibles');
   await form.getByRole('button', { name: 'Agendar cita', exact: true }).click();
+  await expect.poll(() => batch).toBeTruthy();
   expect(batch.starts_at).toEqual([
     '2026-10-20 10:00', '2026-10-27 10:00', '2026-11-03 10:00', '2026-11-10 10:00'
   ]);
@@ -135,23 +141,24 @@ test('bloquea el grupo semanal si una fecha posterior ya está ocupada', async (
     treatments: [{ id: 7, patient_id: 1, title: 'Endodoncia', tooth_code: '19', status: 'in_progress', final_price: 100000 }],
     appointments: [], payments: [], sessions: [], attachments: []
   };
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/summary')) return route.fulfill({ json: summary });
     if (path === '/api/appointments') return route.fulfill({ json: [{
       id: 8, patient_id: 2, starts_at: '2026-10-27 10:00', status: 'scheduled'
     }] });
+    if (await sharedBookingRoutes(route, path, summary)) return;
     return route.fulfill({ json: [] });
   });
   await page.goto('/paciente.html?id=1');
   await page.getByRole('tab', { name: 'Historial', exact: true }).click();
   await page.locator('[data-treatment-history="7"]').getByRole('button', { name: 'Agendar continuacion' }).click();
-  const form = page.locator('form[data-form="appointment"]');
-  await form.locator('input[name="appointment_date"]').fill('2026-10-20');
-  await form.locator('select[name="appointment_time"]').selectOption('10:00');
+  const form = page.locator('#calendarBookingForm');
+  await form.locator('input[name="booking_date"]').fill('2026-10-20');
+  await form.locator('select[name="booking_time"]').selectOption('10:00');
   await form.locator('select[name="schedule_mode"]').selectOption('weekly');
   await form.locator('select[name="weekly_count"]').selectOption('4');
-  await expect(form.locator('[data-time-availability]')).toContainText('27-10-2026');
+  await expect(form.locator('[data-booking-status]')).toContainText('27-10-2026');
   await expect(form.getByRole('button', { name: 'Agendar cita', exact: true })).toBeDisabled();
 });
 
@@ -162,26 +169,29 @@ test('agenda fechas y horas distintas para un tratamiento sin crear otro cobro',
     appointments: [], payments: [], sessions: [], attachments: []
   };
   let batch;
-  await page.route('**/api/**', route => {
+  await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/appointments/batch' && route.request().method() === 'POST') {
       batch = route.request().postDataJSON();
       return route.fulfill({ json: batch.starts_at.map((starts_at, index) => ({ id: index + 1, patient_id: 1, patient_treatment_id: 7, starts_at, status: 'scheduled' })) });
     }
     if (path.endsWith('/summary')) return route.fulfill({ json: summary });
+    if (await sharedBookingRoutes(route, path, summary)) return;
     return route.fulfill({ json: [] });
   });
   await page.goto('/paciente.html?id=1');
   await page.getByRole('tab', { name: 'Historial', exact: true }).click();
   await page.locator('[data-treatment-history="7"]').getByRole('button', { name: 'Agendar continuacion' }).click();
-  const form = page.locator('form[data-form="appointment"]');
-  await form.locator('input[name="appointment_date"]').fill('2026-10-20');
-  await form.locator('select[name="appointment_time"]').selectOption('09:00');
+  const form = page.locator('#calendarBookingForm');
+  await form.locator('input[name="booking_date"]').fill('2026-10-20');
+  await form.locator('select[name="booking_time"]').selectOption('09:00');
   await form.locator('select[name="schedule_mode"]').selectOption('custom');
-  await form.locator('[data-custom-row] input[type="date"]').fill('2026-10-22');
-  await form.locator('[data-custom-row] select').selectOption('11:30');
-  await expect(form.locator('[data-time-availability]')).toContainText('2 citas disponibles');
+  await form.getByRole('button', { name: '+ Agregar otra cita' }).click();
+  await form.locator('[data-booking-extra-date] input[type="date"]').fill('2026-10-22');
+  await form.locator('[data-booking-extra-date] select').selectOption('11:30');
+  await expect(form.locator('[data-booking-status]')).toContainText('2 citas disponibles');
   await form.getByRole('button', { name: 'Agendar cita', exact: true }).click();
+  await expect.poll(() => batch).toBeTruthy();
   expect(batch.starts_at).toEqual(['2026-10-20 09:00', '2026-10-22 11:30']);
   expect(batch.patient_treatment_id).toBe(7);
   expect(batch.new_treatment).toBeUndefined();

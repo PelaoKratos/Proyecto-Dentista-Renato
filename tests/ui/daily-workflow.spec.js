@@ -60,16 +60,18 @@ test('avisa antes de descartar cambios del presupuesto en la ficha', async ({ pa
   await page.goto('/paciente.html?id=1');
   await page.getByRole('tab', { name: 'Plan y presupuesto' }).click();
   const card = page.locator('[data-patient-treatment-card="7"]');
-  await card.locator('details > summary').click();
-  await card.locator('[data-treatment-final]').fill('120000');
-  await expect(card).toHaveAttribute('data-unsaved-treatment', 'true');
+  await card.getByRole('button', { name: 'Editar tratamiento', exact: true }).click();
+  const editor = page.locator('#treatmentProceduresDialog');
+  await editor.getByLabel('Valor final $', { exact: true }).fill('120000');
   page.once('dialog', dialog => dialog.dismiss());
-  await page.getByRole('tab', { name: 'Historial' }).click();
-  await expect(page.getByRole('tab', { name: 'Plan y presupuesto' })).toHaveAttribute('aria-selected', 'true');
+  await editor.getByRole('button', { name: 'Cerrar editor de tratamiento' }).click();
+  await expect(editor).toBeVisible();
+  await expect(editor.getByLabel('Valor final $', { exact: true })).toHaveValue('120000');
   page.once('dialog', dialog => dialog.accept());
-  await page.getByRole('tab', { name: 'Historial' }).click();
-  await expect(page.getByRole('tab', { name: 'Historial' })).toHaveAttribute('aria-selected', 'true');
-  await expect(card.locator('[data-treatment-final]')).toHaveValue('100000');
+  await editor.press('Escape');
+  await expect(editor).toBeHidden();
+  await card.getByRole('button', { name: 'Editar tratamiento', exact: true }).click();
+  await expect(editor.getByLabel('Valor final $', { exact: true })).toHaveValue('100000');
 });
 
 test('avisa antes de cancelar la edición de un pago', async ({ page }) => {

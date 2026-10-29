@@ -27,6 +27,10 @@ test('el formulario de pago muestra saldos y guarda notas opcionales', async ({ 
   });
 
   await page.goto('/pagos.html', { waitUntil: 'networkidle' });
+  await expect(page.locator('#paymentPatient')).toHaveValue('');
+  await page.locator('#paymentPatient').selectOption('7');
+  await expect(page.locator('#paymentForm input[name="amount"]')).toHaveValue('');
+  await page.getByRole('button', {name:'Pagar saldo del tratamiento'}).click();
   await expect(page.locator('#paymentTreatmentBalance')).toContainText('80.000');
   await expect(page.locator('#paymentPatientBalance')).toContainText('120.000');
   await expect(page.locator('.payment-notes-details')).not.toHaveAttribute('open', '');
@@ -58,6 +62,7 @@ test('permite abonar varios tratamientos o pagar todos los saldos', async ({ pag
     return route.fulfill({ json: [] });
   });
   await page.goto('/pagos.html', { waitUntil: 'networkidle' });
+  await page.locator('#paymentPatient').selectOption('7');
   await page.getByRole('button', { name: 'Varios tratamientos' }).click();
   const rows = page.locator('#paymentForm [data-payment-allocation-row]');
   await expect(rows).toHaveCount(2);
@@ -71,6 +76,7 @@ test('permite abonar varios tratamientos o pagar todos los saldos', async ({ pag
   expect(batches[0].allocations).toEqual([
     { patient_treatment_id: 11, amount: 30000 }, { patient_treatment_id: 12, amount: 10000 }
   ]);
+  await page.locator('#paymentPatient').selectOption('7');
   await page.getByRole('button', { name: 'Pagar todos' }).click();
   await expect(page.locator('#paymentForm [data-payment-allocation-summary]')).toContainText('120.000');
   await page.getByRole('button', { name: 'Guardar pago' }).click();

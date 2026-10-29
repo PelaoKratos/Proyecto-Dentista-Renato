@@ -2,6 +2,7 @@ const documentForm = document.querySelector("#documentForm");
 const documentPatientSelect = document.querySelector("#documentPatientSelect");
 const documentTypeSelect = document.querySelector("#documentTypeSelect");
 const documentNote = document.querySelector("#documentNote");
+window.UnsavedEdits.trackForm(documentForm, { active: () => Boolean(documentNote.value.trim()) });
 const documentStatus = document.querySelector("#documentStatus");
 const documentPreview = document.querySelector("#documentPreview");
 const documentPreviewTitle = document.querySelector("#documentPreviewTitle");

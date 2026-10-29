@@ -59,7 +59,7 @@
         </section>
 
         <section class="today-followups" aria-labelledby="todayFollowupsTitle">
-          <div class="section-heading"><div><span class="eyebrow">Seguimiento diario</span><h2 id="todayFollowupsTitle">Por resolver hoy <span id="todayFollowupsCount" class="pill">0</span></h2></div><a class="text-button link-button" href="./agenda.html">Ver agenda</a></div>
+          <div class="section-heading"><div><span class="eyebrow">Seguimiento diario</span><h2 id="todayFollowupsTitle">Atenciones por cerrar <span id="todayFollowupsCount" class="pill">0</span></h2></div><a class="text-button link-button" href="./agenda.html">Ver agenda</a></div>
           <div id="todayFollowupsList" class="today-followups-list" aria-live="polite"><p>Cargando citas...</p></div>
         </section>
 
@@ -69,64 +69,6 @@
           <p>Revisa las modificaciones de citas, tratamientos y pagos. Las notas clínicas no se copian en este historial.</p>
           <ol id="auditActivityList" aria-live="polite"><li>Cargando cambios...</li></ol>
         </details>
-        <dialog id="calendarBookingDialog" class="calendar-booking-dialog" aria-labelledby="calendarBookingTitle">
-          <form id="calendarBookingForm" class="calendar-booking-form">
-            <header><div><span class="eyebrow">Nueva cita</span><h2 id="calendarBookingTitle">Agendar desde el calendario</h2></div><button type="button" class="calendar-booking-close" data-booking-close aria-label="Cerrar">×</button></header>
-            <div class="calendar-booking-fields">
-              <div class="booking-patient-picker">
-                <label>Buscar paciente por nombre o RUT<input name="patient_search" type="search" placeholder="Nombre o RUT, con o sin puntos" autocomplete="off" /></label>
-                <label>Paciente<select name="patient_id" required><option value="">Seleccionar paciente...</option></select></label>
-                <p data-booking-no-patients hidden>No hay pacientes que coincidan. Puedes crear uno aquí.</p>
-                <button type="button" class="text-button" data-booking-create-toggle>+ Crear paciente nuevo</button>
-              </div>
-              <section class="booking-patient-create" data-booking-patient-create hidden aria-label="Nuevo paciente">
-                <h3>Nuevo paciente</h3>
-                <div class="booking-patient-create-fields">
-                  <label>Nombres<input name="new_first_name" type="text" autocomplete="given-name" /></label>
-                  <label>Apellidos<input name="new_last_name" type="text" autocomplete="family-name" /></label>
-                  <label>RUT<input name="new_rut" type="text" placeholder="12.345.678-9" autocomplete="off" autocapitalize="characters" spellcheck="false" /></label>
-                  <label>Teléfono<span class="patient-phone-entry"><span class="patient-phone-prefix" aria-hidden="true">+56</span><input name="new_phone" type="tel" autocomplete="tel-national" placeholder="9 1234 5678" aria-label="Número de teléfono después de +56" /></span></label>
-                  <label>Correo<input name="new_email" type="email" autocomplete="email" placeholder="correo@ejemplo.cl" /></label>
-                  <label>Odontograma<select name="new_dentition"><option value="adult">Adulto · 32 piezas</option><option value="child">Infantil · 20 piezas</option></select></label>
-                </div>
-                <details><summary>Alerta clínica (opcional)</summary><label>Condiciones, alergias o medicamentos relevantes<textarea name="new_active_alert" rows="2"></textarea></label></details>
-                <div class="booking-patient-create-actions"><button type="button" class="text-button" data-booking-create-cancel>Volver</button><button type="button" class="text-button primary-action" data-booking-create-save>Guardar paciente y continuar</button></div>
-                <p data-booking-create-status role="status" aria-live="polite"></p>
-              </section>
-              <label>Tipo de cita<select name="booking_type"><option value="treatment">Tratamiento</option><option value="observation">Observación y evaluación</option></select></label>
-              <label>Fecha<input name="booking_date" type="date" required /></label>
-              <label>Hora<select name="booking_time" required></select></label>
-              <p class="calendar-booking-followup-note" data-booking-followup-note hidden>Al guardar la próxima cita, la cita anterior quedará marcada como atendida.</p>
-              <div class="calendar-booking-treatment" data-booking-treatment>
-                <label>Tratamiento<select name="treatment_choice"><option value="new">Nuevo tratamiento</option></select></label>
-                <label>Nombre del tratamiento<input name="title" maxlength="160" placeholder="Ej. Rehabilitación superior" /></label>
-                <section class="booking-procedure-picker" aria-label="Agregar procedimiento">
-                  <div class="booking-procedure-picker-fields">
-                    <label>Procedimiento<select name="catalog_id"><option value="">Seleccionar procedimiento...</option></select></label>
-                    <label>Piezas dentales<input name="procedure_teeth" placeholder="Ej. 3, 4 (opcional)" inputmode="numeric" /></label>
-                    <label>Valor<input name="procedure_price" type="number" min="0" step="1" placeholder="Monto en pesos" /></label>
-                    <button type="button" class="text-button primary-action" data-add-procedure aria-label="Agregar procedimiento al tratamiento">+ Agregar</button>
-                  </div>
-                  <p data-booking-picker-error role="status" aria-live="polite"></p>
-                </section>
-                <div class="booking-procedure-list" data-booking-procedure-list aria-live="polite"><p>Agrega el primer procedimiento.</p></div>
-                <div class="booking-treatment-totals">
-                  <div><span>Subtotal de procedimientos</span><strong data-booking-subtotal>$0</strong></div>
-                  <div><span>Descuentos por procedimiento</span><strong data-booking-line-discounts>$0</strong></div>
-                  <label>Descuento al total<select name="total_discount_type"><option value="amount">Valor $</option><option value="percent">Porcentaje %</option></select><input name="total_discount_value" type="number" min="0" step="any" placeholder="Sin descuento" /></label>
-                  <div class="booking-total-final"><span>Total del tratamiento</span><strong data-booking-total>$0</strong></div>
-                  <p data-booking-pricing-error role="status" aria-live="polite"></p>
-                </div>
-              </div>
-              <div class="calendar-booking-observation" data-booking-observation hidden>
-                <p>El costo quedará como saldo pendiente del paciente y podrás abonarlo desde Pagos. Si la evaluación no tiene costo, deja $0.</p>
-                <label>Costo de la observación<input name="observation_cost" type="number" min="0" step="1" value="0" /></label>
-              </div>
-              <p class="calendar-booking-status" data-booking-status role="status" aria-live="polite"></p>
-            </div>
-            <footer><strong class="booking-footer-total" data-booking-footer-total>Total: $0</strong><button type="button" class="text-button" data-booking-close>Cancelar</button><button type="submit" class="text-button primary-action">Agendar cita</button></footer>
-          </form>
-        </dialog>
         <dialog id="calendarAppointmentDialog" class="calendar-appointment-dialog" aria-label="Acciones de la cita">
           <div id="calendarAppointmentMenu"></div>
         </dialog>
@@ -135,6 +77,8 @@
 
     <script src="./assets/navigation.js"></script>
     <script src="./assets/api.js"></script>
+    <script src="./assets/appointment-booking.js"></script>
+    <script src="./assets/procedure-payments.js"></script>
     <script src="./assets/dashboard-calendar.js"></script>
   </body>
 </html>

@@ -151,6 +151,7 @@ Los reportes y capturas se generan en `test-results/` y `playwright-report/`, ca
 - `docs/backend-local.md`
 - `docs/flujo-funcional.md`
 - `docs/datos-demo.md`
+- `docs/mejoras-usabilidad.md`
 
 ## Entrega limpia para el cliente
 

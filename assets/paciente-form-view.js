@@ -7,6 +7,7 @@
       toothDescription, bindActionForm } = dependencies;
 
     function renderActionForm(action, entityId = null) {
+      if (!window.UnsavedEdits.confirmDiscard({ only: "patient-action-form" })) return;
       const currentSummary = getSummary();
       const currentCatalog = getCatalog();
       const selectedToothForAppointment = getSelectedTooth();
@@ -14,6 +15,10 @@
       const patient = currentSummary.patient;
       const treatment = activeTreatment(currentSummary);
       const toothTreatment = selectedToothForAppointment ? currentSummary.treatments.find((item) => (item.dentition_type || "adult") === (patient.dentition_type || "adult") && String(item.tooth_code || "").split(",").includes(String(selectedToothForAppointment)) && ["planned", "in_progress"].includes(item.status)) : null;
+      if (action === "appointment" || action === "treatment") {
+        return AppointmentBooking.open({ patientId: patient.id, treatmentId: action === "appointment" ? entityId || toothTreatment?.id : null,
+          toothCode: selectedToothForAppointment, treatmentOnly: action === "treatment" });
+      }
       const appointment = action === "reschedule" ? currentSummary.appointments.find(item => item.id === Number(entityId)) : selectedAppointment();
       const session = currentSummary.sessions.find((item) => item.id === Number(entityId));
       const attachmentSessionTarget = action === "attachment" ? session : null;
@@ -195,7 +200,7 @@
                 <small>Saldo combinado de sus tratamientos</small>
               </div>
             </div>
-            <label data-payment-single>Monto<input name="amount" type="number" min="1" step="1" value="${suggestedPayment || ""}" placeholder="0" required /></label>
+            <div class="payment-single-amount" data-payment-single><label>Monto a abonar<input name="amount" type="number" min="1" step="1" placeholder="Monto recibido" required /></label><button class="text-button" type="button" data-pay-full>Pagar saldo del tratamiento</button></div>
             <label>Metodo<select name="method"><option>Transferencia</option><option>Tarjeta</option><option>Efectivo</option><option>Otro</option></select></label>
             <details class="patient-payment-notes">
               <summary>Agregar nota (opcional)</summary>

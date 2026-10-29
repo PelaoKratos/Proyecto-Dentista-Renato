@@ -91,3 +91,16 @@ media/pacientes/000002/radiografias/
 ```
 
 Y registra los metadatos en la tabla `attachments`.
+
+## Consultas acotadas de agenda y pagos
+
+Las fechas se interpretan en hora local de la consulta. Los filtros inválidos devuelven HTTP 400.
+
+- `GET /api/appointments?date_from=2026-10-26&date_to=2026-11-01`: ambos días incluidos, orden por inicio e identificador. Admite `status`, `patient_id` y `patient_treatment_id`.
+- `GET /api/appointments?overdue_before=2026-10-29T12:00:00`: citas confirmadas anteriores al límite, incluidas las de días pasados. Se consulta independientemente del calendario visible.
+- `GET /api/payments?page=1&page_size=20`: objeto con `items`, `total`, `page`, `page_size` y `total_pages`. Máximo 20 registros; una página fuera de rango se ajusta a la última disponible. Una consulta vacía conserva página 1.
+- Pagos paginados admite `view=payments|balances`, `state=pending|partial|paid|unlinked`, `date_from`, `date_to`, `patient_id` y `patient_treatment_id` (identificador o `none`). En `balances`, la fecha corresponde al inicio del tratamiento; en `payments`, a la fecha del abono. El estado se calcula con todos los pagos del tratamiento.
+- `GET /api/payments?summary=1&date=2026-10-29`: indicadores del día/mes y un resumen de montos y asignaciones por paciente/tratamiento. No contiene los movimientos ni notas individuales.
+- `GET /api/payments?patient_treatment_id=7`: movimientos de un tratamiento para corregir una asignación. La consulta previa sin `page` ni `summary` conserva la respuesta en arreglo para los consumidores existentes.
+
+Los filtros usan parámetros SQL. Los índices se crean al iniciar; no se requiere copiar ni reemplazar la base. Total y registros de cada página se leen en la misma transacción. Reiniciar la aplicación activa estas consultas si el servidor seguía abierto con una versión anterior.

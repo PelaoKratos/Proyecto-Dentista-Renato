@@ -45,8 +45,8 @@ test('crear y editar procedimientos actualiza el catalogo compartido', async ({ 
   await page.getByRole('link', { name: 'Tratamientos', exact: true }).click();
   await expect(page.locator('#treatmentResultCount')).toContainText('tratamientos');
   await page.getByRole('button', { name: 'Crear tratamiento' }).click();
-  await expect(page.locator('#treatmentCreateDetails')).toHaveAttribute('open', '');
-  await page.locator('#newTreatmentCatalog').selectOption('2');
-  await expect(page.locator('#newTreatmentTitle')).toHaveValue('Restauracion de resina');
-  await expect(page.locator('#newTreatmentPrice')).toHaveValue('0');
+  const booking = page.locator('#calendarBookingDialog');
+  await expect(booking).toBeVisible();
+  await booking.getByRole('combobox', { name: 'Procedimiento', exact: true }).selectOption('2');
+  await expect(booking.locator('[name="procedure_price"]')).toHaveValue('0');
 });

@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="./assets/ui-polish-patient.css" />
     <link rel="stylesheet" href="./assets/ui-polish-layout.css" />
     <link rel="stylesheet" href="./assets/ui-polish-treatments.css" />
+    <link rel="stylesheet" href="./assets/dashboard-booking.css" />
+    <link rel="stylesheet" href="./assets/treatment-editor.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -29,6 +31,7 @@
             <div class="section-heading">
               <div><span class="eyebrow">Seguimiento</span><h2 id="treatmentListTitle">Tratamientos de pacientes</h2></div>
             </div>
+            <details class="treatment-catalog-details treatment-catalog-panel"><summary>Procedimientos base y accesos rápidos</summary><a class="text-button link-button" href="./procedimientos.html">Administrar procedimientos</a><div class="catalog-list" id="catalogList"></div></details>
             <div class="treatment-toolbar">
               <label class="treatment-search"><span>Buscar</span><input id="treatmentSearch" type="search" placeholder="Paciente, tratamiento o pieza" autocomplete="off" /></label>
               <label class="treatment-filter"><span>Mostrar</span><select id="treatmentFilter"><option value="active">Activos</option><option value="all">Todos</option><option value="completed">Finalizados</option><option value="cancelled">Cancelados</option></select></label>
@@ -37,63 +40,15 @@
             <div class="treatment-list" id="treatmentsGrid" aria-live="polite"><p class="empty-state">Cargando tratamientos…</p></div>
           </section>
 
-          <aside class="detail-card treatment-sidebar" aria-label="Acciones de tratamientos">
-            <details class="treatment-create-details" id="treatmentCreateDetails">
-              <summary><span><strong>Asignar tratamiento</strong><small>Registrar un plan para un paciente</small></span></summary>
-              <form class="compact-form treatment-form" id="newTreatmentForm">
-                <label>Paciente<select name="patient_id" id="newTreatmentPatient" required></select></label>
-                <label>Procedimiento base<select name="catalog_treatment_id" id="newTreatmentCatalog"><option value="">Personalizado</option></select></label>
-                <label class="treatment-form-wide">Nombre del tratamiento<input name="title" id="newTreatmentTitle" placeholder="Ej. Restauración molar" required /></label>
-                <details class="treatment-extra-fields">
-                  <summary>Datos opcionales</summary>
-                  <div class="treatment-extra-grid">
-                    <label>Piezas dentales<input name="tooth_code" placeholder="Ej. 1, 2, 3" /></label>
-                    <label>Presupuesto<input name="estimated_price" id="newTreatmentPrice" type="number" min="0" placeholder="0" /></label>
-                    <label class="treatment-form-wide">Estado inicial<select name="status"><option value="planned">Planificado</option><option value="in_progress">En curso</option><option value="completed">Completado</option><option value="cancelled">Cancelado</option></select></label>
-                    <label class="treatment-form-wide">Plan clínico<textarea name="plan_notes" placeholder="Agrega una nota solo si es necesaria"></textarea></label>
-                  </div>
-                </details>
-                <button class="text-button primary-action" type="submit">Guardar tratamiento</button>
-                <p class="form-status" id="newTreatmentStatus" aria-live="polite"></p>
-              </form>
-            </details>
 
-            <section class="treatment-catalog-panel" aria-labelledby="treatmentCatalogTitle">
-              <div class="section-heading">
-                <div><span class="eyebrow">Catálogo</span><h2 id="treatmentCatalogTitle">Procedimientos base</h2></div>
-                <a class="text-button link-button" href="./procedimientos.html">Administrar</a>
-              </div>
-              <details class="treatment-catalog-details">
-                <summary>Ver procedimientos disponibles</summary>
-                <div class="catalog-list" id="catalogList"><p class="empty-state">Cargando procedimientos…</p></div>
-              </details>
-            </section>
-          </aside>
         </section>
       </main>
     </div>
-    <dialog class="treatment-procedures-dialog" id="treatmentProceduresDialog" aria-labelledby="treatmentProceduresTitle">
-      <form id="treatmentProceduresForm">
-        <div class="treatment-procedures-heading">
-          <div><span class="eyebrow">Presupuesto</span><h2 id="treatmentProceduresTitle">Procedimientos del tratamiento</h2><p id="treatmentProceduresPatient"></p></div>
-          <button class="text-button" type="button" data-close-procedures aria-label="Cerrar">Cerrar</button>
-        </div>
-        <div class="treatment-procedures-list" id="treatmentProceduresList"></div>
-        <div class="treatment-procedures-add">
-          <label>Procedimiento base<select id="treatmentProcedureCatalog"><option value="">Personalizado</option></select></label>
-          <button class="text-button" type="button" id="addTreatmentProcedure">Agregar procedimiento</button>
-        </div>
-        <div class="treatment-procedures-summary">
-          <label>Descuento total<select name="total_discount_type"><option value="amount">Valor $</option><option value="percent">Porcentaje %</option></select></label>
-          <label>Valor del descuento<input name="total_discount_value" type="number" min="0" step="any" placeholder="0" /></label>
-          <strong id="treatmentProceduresTotal">Total: $0</strong>
-        </div>
-        <p class="form-status" id="treatmentProceduresStatus" role="status" aria-live="polite"></p>
-        <div class="inline-actions"><button class="text-button primary-action" type="submit">Guardar presupuesto</button></div>
-      </form>
-    </dialog>
+
     <script src="./assets/navigation.js"></script>
     <script src="./assets/api.js"></script>
+    <script src="./assets/appointment-booking.js"></script>
+    <script src="./assets/treatment-editor.js"></script>
     <script src="./assets/tratamientos.js"></script>
   </body>
 </html>

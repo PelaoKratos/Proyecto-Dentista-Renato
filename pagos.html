@@ -29,8 +29,13 @@
         <section class="module-layout">
           <section class="detail-card wide-card">
             <div class="section-heading">
-              <div><span class="eyebrow">Historial</span><h2>Ultimos movimientos</h2></div>
+              <div><span class="eyebrow">Historial</span><h2 id="paymentHistoryTitle">Abonos registrados</h2></div>
             </div>
+            <div class="payment-history-tools">
+              <div class="segment-control" role="group" aria-label="Vista de pagos"><button type="button" data-payment-view="payments" class="active" aria-pressed="true">Abonos registrados</button><button type="button" data-payment-view="balances" aria-pressed="false">Saldos pendientes</button></div>
+              <div class="inline-actions" role="group" aria-label="Fechas rápidas"><button class="text-button" type="button" data-payment-dates="today">Hoy</button><button class="text-button" type="button" data-payment-dates="month">Este mes</button><button class="text-button" type="button" data-payment-dates="clear">Limpiar filtros</button></div>
+            </div>
+            <p id="paymentViewHelp" class="form-helper">Cada fila corresponde a un abono recibido. El saldo mostrado es el saldo actual del tratamiento.</p>
             <div class="payment-history-filters" aria-label="Filtros del historial de pagos">
               <label>Estado<select id="paymentStateFilter" aria-label="Filtrar por estado financiero">
                 <option value="">Todos</option>
@@ -60,7 +65,7 @@
             <div class="section-heading"><div><span class="eyebrow">Abono</span><h2>Registrar pago</h2></div></div>
             <p class="form-helper">Revisa el saldo del tratamiento y el total pendiente del paciente antes de registrar el abono.</p>
             <form class="compact-form" id="paymentForm">
-              <label>Paciente<select name="patient_id" id="paymentPatient"></select></label>
+              <label>Paciente<select name="patient_id" id="paymentPatient" required><option value="">Seleccionar paciente...</option></select></label>
               <div class="payment-modes" role="group" aria-label="Aplicar pago a tratamientos">
                 <button type="button" data-payment-mode="single" aria-pressed="true">Un tratamiento</button>
                 <button type="button" data-payment-mode="multiple" aria-pressed="false">Varios tratamientos</button>
@@ -81,7 +86,7 @@
                   <small>Saldo combinado de sus tratamientos</small>
                 </article>
               </section>
-              <label data-payment-single>Monto<input name="amount" type="number" min="1" step="1" placeholder="0" required /></label>
+              <div class="payment-single-amount" data-payment-single><label>Monto a abonar<input name="amount" type="number" min="1" step="1" placeholder="Monto recibido" required /></label><button class="text-button" type="button" id="payTreatmentBalance">Pagar saldo del tratamiento</button></div>
               <label>Metodo<select name="method"><option>Transferencia</option><option>Tarjeta</option><option>Efectivo</option></select></label>
               <details class="payment-notes-details">
                 <summary>Agregar nota (opcional)</summary>
@@ -96,6 +101,7 @@
     </div>
     <script src="./assets/navigation.js"></script>
     <script src="./assets/api.js"></script>
+    <script src="./assets/procedure-payments.js"></script>
     <script src="./assets/payment-allocation.js"></script>
     <script src="./assets/pagos.js"></script>
   </body>

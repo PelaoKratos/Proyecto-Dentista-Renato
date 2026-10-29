@@ -8,6 +8,7 @@ const retryProcedures = document.querySelector("#retryProcedures");
 let procedures = [];
 let editingProcedureId = null;
 let savingProcedure = false;
+const procedureGuard = window.UnsavedEdits.trackForm(procedureForm);
 
 function normalizeProcedure(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -26,6 +27,7 @@ function renderProcedures() {
 
 function openProcedureForm(item = null) {
   if (savingProcedure) return;
+  if (!procedureGuard.confirmDiscard()) return;
   editingProcedureId = item?.id ?? null;
   procedureForm.reset();
   procedureForm.elements.name.value = item?.name || "";
@@ -35,6 +37,7 @@ function openProcedureForm(item = null) {
   procedureForm.querySelector("button[type='submit']").textContent = item ? "Guardar cambios" : "Crear procedimiento";
   cancelProcedureEdit.hidden = !item;
   procedureStatus.textContent = "";
+  procedureGuard.markClean();
   procedureForm.scrollIntoView({ behavior: "smooth", block: "center" });
   procedureForm.elements.name.focus({ preventScroll: true });
 }
@@ -71,6 +74,7 @@ procedureForm.addEventListener("submit", async event => {
   const id = editingProcedureId;
   const payload = { name, description: procedureForm.elements.description.value.trim() || null, default_price: price };
   savingProcedure = true;
+  procedureGuard.setBusy(true);
   [...procedureForm.elements, newProcedure].forEach(control => { control.disabled = true; });
   renderProcedures();
   procedureStatus.textContent = "Guardando procedimiento...";
@@ -83,10 +87,12 @@ procedureForm.addEventListener("submit", async event => {
     cancelProcedureEdit.hidden = false;
     procedureSearch.value = "";
     procedureStatus.textContent = id ? "Procedimiento actualizado." : "Procedimiento creado. Ya esta disponible para nuevos tratamientos y citas.";
+    procedureGuard.markClean();
   } catch (error) {
     procedureStatus.textContent = error.message;
   } finally {
     savingProcedure = false;
+    procedureGuard.setBusy(false);
     [...procedureForm.elements, newProcedure].forEach(control => { control.disabled = false; });
     renderProcedures();
   }

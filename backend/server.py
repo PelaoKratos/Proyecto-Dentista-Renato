@@ -27,6 +27,7 @@ from backend.database import (  # noqa: E402
     DATA_DIR,
     DB_PATH,
     create_treatment_appointment,
+    create_itemized_patient_treatment,
     create_treatment_appointments,
     create_patient_treatment_plan,
     create_payment_batch,
@@ -173,6 +174,8 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                 self._handle_api_get(path, query)
                 return
             self._serve_static(path)
+        except ValueError as exc:
+            self._send_json({"error": str(exc)}, 400)
         except Exception as exc:
             self._send_request_error(exc)
 
@@ -244,6 +247,9 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             elif path == "/api/patient-treatment-plans":
                 self._send_json(create_patient_treatment_plan(data, PATIENT_TREATMENT_FIELDS), 201)
             elif path == "/api/patient-treatments":
+                if "procedures" in data:
+                    self._send_json(create_itemized_patient_treatment(data, PATIENT_TREATMENT_FIELDS), 201)
+                    return
                 if {"procedures", "procedure_items_json", "total_discount_type", "total_discount_value"} & data.keys():
                     raise ValueError("Los tratamientos con varios procedimientos se guardan desde el calendario.")
                 self._send_json(insert_record("patient_treatments", validate_patient_treatment(data), PATIENT_TREATMENT_FIELDS), 201)
@@ -284,7 +290,7 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
                 return
             table, allowed_fields, validator, record_id = self._resolve_update_route(path)
             if table == "patient_treatments" and {"procedures", "procedure_items_json", "total_discount_type", "total_discount_value"} & data.keys():
-                raise ValueError("Modifica los procedimientos desde «Editar procedimientos» en Tratamientos.")
+                raise ValueError("Modifica los procedimientos desde «Editar tratamiento» en la ficha o en Tratamientos.")
             updated = update_record(table, record_id, validator(data, partial=True), allowed_fields)
             if updated is None:
                 self._send_json({"error": "Registro no encontrado."}, 404)
@@ -416,7 +422,8 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/appointments":
-            self._send_json(fetch_all("SELECT * FROM appointments ORDER BY starts_at ASC, id ASC"))
+            from backend.queries import appointment_list
+            self._send_json(appointment_list(query))
             return
 
         if path == "/api/audit-log":
@@ -429,6 +436,18 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             return
 
         if path == "/api/payments":
+            from backend.queries import payment_page, payment_summary
+            if query.get("summary") == ["1"]:
+                self._send_json(payment_summary(query))
+                return
+            if "page" in query:
+                self._send_json(payment_page(query))
+                return
+            if "patient_treatment_id" in query:
+                from backend.queries import one, positive
+                treatment_id = positive(one(query, "patient_treatment_id"), "patient_treatment_id")
+                self._send_json(fetch_all("SELECT * FROM payments WHERE patient_treatment_id = ? ORDER BY payment_date DESC, id DESC", (treatment_id,)))
+                return
             self._send_json(self._filtered_by_patient("payments", "payment_date", query))
             return
 
@@ -601,7 +620,7 @@ class DentalRequestHandler(BaseHTTPRequestHandler):
             "SELECT COUNT(*) AS total FROM appointments WHERE date(starts_at) = date(?)",
             (date_filter,),
         )["total"]
-        scheduled_appointments = fetch_one("SELECT COUNT(*) AS total FROM appointments WHERE status = 'scheduled'")["total"]
+        scheduled_appointments = fetch_one("SELECT COUNT(*) AS total FROM appointments WHERE status = 'scheduled' AND date(starts_at) = date(?)", (date_filter,))["total"]
         active_treatments = fetch_one(
             "SELECT COUNT(*) AS total FROM patient_treatments WHERE status NOT IN ('completed', 'cancelled')"
         )["total"]

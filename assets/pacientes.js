@@ -121,6 +121,7 @@ function nationalPhoneDigits(value) {
 }
 
 const rutInput = patientForm.elements.rut;
+const patientGuard = window.UnsavedEdits.trackForm(patientForm);
 const phoneInput = patientForm.elements.phone;
 rutInput.addEventListener("input", () => {
   const tokenCount = (rutInput.value.slice(0, rutInput.selectionStart).match(/[0-9kK]/g) || []).length;
@@ -146,6 +147,8 @@ patientForm.addEventListener("submit", async (event) => {
   const phoneDigits = nationalPhoneDigits(phoneInput.value);
   data.phone = phoneDigits ? `+56 ${phoneDigits}` : "";
   const submitButton = patientForm.querySelector("button[type='submit']");
+  if (submitButton.disabled) return;
+  patientGuard.setBusy(true);
 
   patientFormStatus.textContent = "Guardando paciente...";
   submitButton.disabled = true;
@@ -156,11 +159,12 @@ patientForm.addEventListener("submit", async (event) => {
       is_active: 1
     });
     patientFormStatus.textContent = "Paciente guardado. Abriendo su ficha para agendar la primera cita...";
+    patientGuard.setBusy(false); patientGuard.markClean();
     window.location.assign(`./paciente.html?id=${encodeURIComponent(created.id)}&agendar=1`);
   } catch (error) {
     patientFormStatus.textContent = error.message;
     submitButton.disabled = false;
-  }
+  } finally { patientGuard.setBusy(false); }
 });
 
 loadPatientsPage().catch((error) => {

@@ -11,9 +11,9 @@ test('la ficha y el listado muestran el desglose sin permitir alterar el total c
   let saved;
   await page.route('**/api/**', route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/patient-treatments/7' && route.request().method() === 'PUT') {
+    if (path === '/api/patient-treatments/7/procedures' && route.request().method() === 'PUT') {
       saved = route.request().postDataJSON();
-      Object.assign(treatment, saved);
+      Object.assign(treatment, { title: saved.title, procedure_items_json: JSON.stringify(saved.procedures) });
       return route.fulfill({ json: treatment });
     }
     if (path === '/api/patients/1/summary') return route.fulfill({ json: { patient, treatments: [treatment], appointments: [], payments: [], sessions: [], attachments: [] } });
@@ -26,17 +26,21 @@ test('la ficha y el listado muestran el desglose sin permitir alterar el total c
   const card = page.locator('[data-patient-treatment-card="7"]');
   await expect(card).toContainText('Endodoncia');
   await expect(card).toContainText('Resina');
-  await card.locator('summary').click();
-  await expect(card.locator('[data-treatment-final]')).toBeDisabled();
-  await card.locator('[data-treatment-title]').fill('Plan integral actualizado');
-  await card.getByRole('button', { name: 'Guardar tratamiento' }).click();
+  await card.getByRole('button', { name: 'Editar tratamiento', exact: true }).click();
+  const editor = page.locator('#treatmentProceduresDialog');
+  await expect(editor.locator('[name="final_price"]')).toBeHidden();
+  await editor.getByLabel('Nombre del tratamiento', { exact: true }).fill('Plan integral actualizado');
+  await editor.getByRole('button', { name: 'Guardar tratamiento', exact: true }).click();
+  await expect(editor).toBeHidden();
   expect(saved.title).toBe('Plan integral actualizado');
   expect(saved).not.toHaveProperty('final_price');
   expect(saved).not.toHaveProperty('tooth_code');
+  expect(saved.procedures).toHaveLength(2);
   await page.goto('/tratamientos.html');
   const listing = page.locator('[data-treatment-card="7"]');
   await expect(listing).toContainText('2 procedimientos');
   await expect(listing).toContainText('Resina');
-  await listing.locator('summary').click();
-  await expect(listing.locator('[data-treatment-final]')).toBeDisabled();
+  await listing.getByRole('button', { name: 'Editar tratamiento', exact: true }).click();
+  await expect(editor.locator('[name="final_price"]')).toBeHidden();
+  await expect(editor.locator('#treatmentProceduresTotal')).toContainText('95.000');
 });

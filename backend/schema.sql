@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS payments (
   method TEXT,
   notes TEXT,
   payment_batch_id TEXT,
+  procedure_allocations_json TEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (patient_id) REFERENCES patients(id),
   FOREIGN KEY (patient_treatment_id) REFERENCES patient_treatments(id)
@@ -144,6 +145,8 @@ CREATE INDEX IF NOT EXISTS idx_clinical_sessions_patient_date ON clinical_sessio
 CREATE INDEX IF NOT EXISTS idx_attachments_patient ON attachments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_starts_at ON appointments(starts_at);
 CREATE INDEX IF NOT EXISTS idx_payments_patient_date ON payments(patient_id, payment_date);
+CREATE INDEX IF NOT EXISTS idx_payments_date_id ON payments(payment_date DESC,id DESC);
+CREATE INDEX IF NOT EXISTS idx_payments_treatment ON payments(patient_treatment_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at DESC, id DESC);
 
 CREATE TRIGGER IF NOT EXISTS trg_patients_updated_at

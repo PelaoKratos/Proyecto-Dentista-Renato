@@ -39,17 +39,19 @@ test('el clic en una cita abre acciones y permite atender, finalizar y abonar si
   await dialog.getByRole('button', { name: 'Finalizar tratamiento' }).click();
   await expect(dialog).toContainText('Tratamiento finalizado');
   await dialog.getByRole('button', { name: 'Abonar' }).click();
-  await dialog.getByLabel('Monto').fill('20000');
-  await dialog.getByRole('button', { name: 'Guardar abono' }).click();
+  await dialog.getByLabel('Abono', { exact: true }).fill('20000');
+  await dialog.getByRole('button', { name: 'Guardar abonos', exact: true }).click();
   await expect(dialog).toContainText('Abono registrado correctamente');
   expect(writes).toEqual([
     { path: '/api/appointments/3', data: { status: 'attended' } },
     { path: '/api/patient-treatments/7', data: { status: 'completed', end_date: today() } },
-    { path: '/api/payments', data: { patient_id: 1, patient_treatment_id: 7,
-      payment_date: today(), amount: 20000, method: 'Transferencia' } }
+    { path: '/api/payments/batch', data: { patient_id: 1,
+      payment_date: today(), method: 'Transferencia', notes: 'Abono registrado desde la agenda',
+      allocations: [{ patient_treatment_id: 7, amount: 20000, procedure_allocations: [] }] } }
   ]);
   await dialog.getByRole('button', { name: 'Agendar próxima cita' }).click();
-  await expect(page.locator('#calendarBookingDialog [name="booking_type"]')).toHaveValue('observation');
+  await expect(page.locator('#calendarBookingDialog [name="patient_id"]')).toHaveValue('1');
+  await expect(page.locator('#calendarBookingDialog [name="treatment_choice"]')).toHaveValue('new');
 });
 
 test('cambia la fecha de una cita y abre el agendamiento siguiente con el tratamiento seleccionado', async ({ page }) => {

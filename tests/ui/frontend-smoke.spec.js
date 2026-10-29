@@ -108,7 +108,8 @@ test('botones principales enfocan los formularios de trabajo', async ({ page }) 
 
   await page.goto('/tratamientos.html', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Crear tratamiento' }).click();
-  await expect(page.locator('#newTreatmentForm')).toBeInViewport();
+  await expect(page.locator('#calendarBookingDialog')).toBeInViewport();
+  await page.keyboard.press('Escape');
 
   await page.goto('/radiografias.html', { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Adjuntar archivo' }).click();

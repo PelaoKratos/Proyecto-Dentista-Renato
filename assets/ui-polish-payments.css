@@ -1,4 +1,7 @@
 /* Vista de pagos: formularios y saldos contenidos dentro de sus tarjetas. */
+.payments-page .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.payments-page .metric-card strong { white-space: nowrap; overflow-wrap: normal; font-size: clamp(1.1rem, 1.9vw, 1.72rem); }
+.payment-history-tools { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; margin-bottom: 12px; }
 .payments-page,
 .payments-page * {
   box-sizing: border-box;
@@ -37,6 +40,7 @@
 .payments-page .payment-records-row {
   min-width: 0;
   grid-template-columns:
+    minmax(86px, 0.8fr)
     minmax(90px, 1fr)
     minmax(100px, 1.2fr)
     minmax(74px, 0.8fr)

@@ -19,8 +19,11 @@ const paymentPatientBalance = document.querySelector("#paymentPatientBalance");
 let patients = [];
 let treatments = [];
 let payments = [];
+let paymentSummary = null, paymentPage = null, paymentQueryVersion = 0;
 let selectedPaymentState = "";
 let currentPaymentPage = 1;
+let paymentView = "payments";
+let paymentFormGuard = null;
 const PAYMENT_PAGE_SIZE = 20;
 const PAYMENT_PAGE_WINDOW = 5;
 window.UnsavedEdits.register("payment-editor", {
@@ -91,6 +94,16 @@ function distinctPaymentCount(items) {
 }
 
 function renderMetrics() {
+  if (paymentSummary) {
+    const metrics = paymentSummary.metrics;
+    const byName = new Map([...paymentMetrics].map(item => [item.dataset.paymentMetric, item]));
+    const update = (key, value, note) => { byName.get(key).querySelector("strong").textContent = value; byName.get(key).querySelector("small").textContent = note; };
+    update("month", DentalAPI.money(metrics.month_total), `${metrics.month_count} pagos registrados`);
+    update("pending", DentalAPI.money(metrics.pending_total), `${metrics.patients_with_balance} pacientes con saldo`);
+    update("method", `${metrics.transfer_percent}%`, "Pagos por transferencia");
+    update("today", DentalAPI.money(metrics.today_total), `${metrics.today_count} abonos recibidos`);
+    return;
+  }
   const now = new Date();
   const today = localDateString(now);
   const currentMonth = monthKey(today);
@@ -124,7 +137,6 @@ function renderTreatmentsForPatient() {
     options.map((treatment) => `<option value="${treatment.id}">${DentalAPI.escapeHtml(treatment.title)} - saldo ${DentalAPI.money(treatmentPending(treatment))}</option>`).join("") ||
     `<option value="">Sin tratamiento asociado</option>`;
   updatePaymentAmountSuggestion();
-  paymentAllocation.refresh();
 }
 
 function renderPaymentBalances() {
@@ -143,8 +155,10 @@ function renderPaymentBalances() {
 function updatePaymentAmountSuggestion() {
   const treatment = treatments.find((item) => Number(item.id) === Number(paymentTreatment.value));
   const amountInput = paymentForm.querySelector("input[name='amount']");
-  amountInput.value = treatment ? treatmentPending(treatment) || "" : "";
+  amountInput.value = "";
+  amountInput.max = String(treatment ? treatmentPending(treatment) : patientBalance(paymentPatient.value));
   renderPaymentBalances();
+  paymentAllocation.refresh();
 }
 
 const paymentAllocation = PaymentAllocation.create(paymentForm, {
@@ -187,11 +201,12 @@ function renderPaymentFilters() {
 }
 
 function filteredPayments() {
+  if (paymentSummary) return paymentPage?.items || [];
   const treatmentById = new Map(treatments.map((treatment) => [Number(treatment.id), treatment]));
   const from = paymentDateFrom.value;
   const through = paymentDateTo.value;
   const unpaidTreatments = treatments
-    .filter((treatment) => treatmentTotal(treatment) > 0 && treatmentPaid(treatment.id) === 0 && treatmentPending(treatment) > 0)
+    .filter((treatment) => treatmentPending(treatment) > 0)
     .map((treatment) => ({
       id: `pending-${treatment.id}`,
       kind: "pending",
@@ -201,10 +216,10 @@ function filteredPayments() {
       payment_date: treatment.start_date || treatment.created_at || ""
     }));
 
-  return [...payments.map((payment) => ({ ...payment, kind: "payment" })), ...unpaidTreatments]
+  return (paymentView === "balances" ? unpaidTreatments : payments.map((payment) => ({ ...payment, kind: "payment" })))
     .filter((item) => {
       const treatment = treatmentById.get(Number(item.patient_treatment_id));
-      const state = item.kind === "pending" ? "pending" : paymentState(treatment);
+      const state = paymentState(treatment);
       const date = String(item.payment_date || "").slice(0, 10);
       if (selectedPaymentState && state !== selectedPaymentState) return false;
       if (from && (!date || date < from)) return false;
@@ -236,21 +251,31 @@ function renderPagination(totalPages) {
 }
 
 function renderPayments() {
+  document.querySelectorAll("[data-payment-view]").forEach((button) => {
+    const active = button.dataset.paymentView === paymentView;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  document.querySelector("#paymentHistoryTitle").textContent = paymentView === "balances" ? "Saldos pendientes" : "Abonos registrados";
+  document.querySelector("#paymentViewHelp").textContent = paymentView === "balances"
+    ? "Una fila por tratamiento con deuda. El filtro de fecha corresponde al inicio del tratamiento."
+    : "Cada fila corresponde a un abono recibido. El saldo mostrado es el saldo actual del tratamiento.";
   const patientById = new Map(patients.map((patient) => [Number(patient.id), patient]));
   const treatmentById = new Map(treatments.map((treatment) => [Number(treatment.id), treatment]));
   const filtered = filteredPayments();
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAYMENT_PAGE_SIZE));
+  const total = paymentSummary ? paymentPage?.total || 0 : filtered.length;
+  const totalPages = paymentSummary ? paymentPage?.total_pages || 1 : Math.max(1, Math.ceil(total / PAYMENT_PAGE_SIZE));
   currentPaymentPage = Math.min(currentPaymentPage, totalPages);
   const start = (currentPaymentPage - 1) * PAYMENT_PAGE_SIZE;
-  const visiblePayments = filtered.slice(start, start + PAYMENT_PAGE_SIZE);
+  const visiblePayments = paymentSummary ? filtered : filtered.slice(start, start + PAYMENT_PAGE_SIZE);
 
-  paymentResultsCount.textContent = filtered.length
-    ? `Mostrando ${start + 1}–${Math.min(start + PAYMENT_PAGE_SIZE, filtered.length)} de ${filtered.length} movimientos · Pagina ${currentPaymentPage} de ${totalPages}`
-    : "0 movimientos para los filtros seleccionados.";
+  paymentResultsCount.textContent = total
+    ? `Mostrando ${start + 1}–${Math.min(start + PAYMENT_PAGE_SIZE, total)} de ${total} ${paymentView === "balances" ? "tratamientos" : "abonos"} · Página ${currentPaymentPage} de ${totalPages}`
+    : `0 ${paymentView === "balances" ? "tratamientos" : "abonos"} para los filtros seleccionados.`;
   renderPagination(totalPages);
 
   paymentsTable.innerHTML = `
-    <div class="records-row payment-records-row records-head"><span>Paciente</span><span>Tratamiento</span><span>Monto</span><span>Metodo</span><span>Saldo</span><span>Acciones</span></div>
+    <div class="records-row payment-records-row records-head"><span>${paymentView === "balances" ? "Inicio" : "Fecha"}</span><span>Paciente</span><span>Tratamiento</span><span>${paymentView === "balances" ? "Presupuesto" : "Abono"}</span><span>${paymentView === "balances" ? "Abonado" : "Método"}</span><span>Saldo pendiente</span><span>Acciones</span></div>
     ${
       visiblePayments
         .map((payment) => {
@@ -260,33 +285,37 @@ function renderPayments() {
           if (payment.kind === "pending") {
             return `
               <div class="records-row payment-records-row pending-payment-row" data-pending-treatment="${treatment.id}">
+                <span>${DentalAPI.date(payment.payment_date)}</span>
                 <span>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
-                <span><strong>${DentalAPI.escapeHtml(treatment.title)}</strong><small><mark class="warning">Pendiente</mark> · Sin abonos registrados</small></span>
-                <span>${DentalAPI.money(payment.amount)}</span>
-                <span>—</span>
+                <span><strong>${DentalAPI.escapeHtml(treatment.title)}</strong><small><mark class="warning">${treatmentPaid(treatment.id) > 0 ? "Parcial" : "Pendiente"}</mark></small></span>
+                <span>${DentalAPI.money(treatmentTotal(treatment))}</span>
+                <span>${DentalAPI.money(treatmentPaid(treatment.id))}</span>
                 <span>${DentalAPI.money(payment.amount)}</span>
                 <span class="inline-actions"><button class="text-button primary-action" type="button" data-register-pending="${treatment.id}">Registrar abono</button></span>
+                ${ProcedurePayments.render(treatment, payments, { editable: false })}
               </div>
             `;
           }
           return `
             <div class="records-row payment-records-row" data-payment-row="${payment.id}">
+              <span>${DentalAPI.date(payment.payment_date)}</span>
               <span>${DentalAPI.patientLink(patient?.id, patient ? DentalAPI.fullName(patient) : "Paciente")}</span>
               <span><strong>${DentalAPI.escapeHtml(treatment?.title || "Sin tratamiento")}</strong><small><mark class="${paymentStateClass(state)}">${DentalAPI.escapeHtml(paymentStateLabel(state))}</mark>${payment.payment_batch_id ? " · Pago compartido" : ""}</small></span>
-              <span>${state === "paid" ? `<span data-payment-readonly>${DentalAPI.money(payment.amount)}</span>` : ""}
-                <input class="inline-input" data-payment-amount type="number" min="1" value="${DentalAPI.escapeHtml(payment.amount || "")}" aria-label="Monto pago" ${state === "paid" ? "hidden disabled" : ""} /></span>
+              <span><span data-payment-readonly>${DentalAPI.money(payment.amount)}</span>
+                <input class="inline-input" data-payment-amount type="number" min="1" value="${DentalAPI.escapeHtml(payment.amount || "")}" aria-label="Monto pago" hidden disabled /></span>
               <span>
-                ${state === "paid" ? `<span data-payment-readonly>${DentalAPI.escapeHtml(payment.method || "—")}</span>` : ""}
-                <select class="inline-input" data-payment-method aria-label="Metodo pago" ${state === "paid" ? "hidden disabled" : ""}>
+                <span data-payment-readonly>${DentalAPI.escapeHtml(payment.method || "—")}</span>
+                <select class="inline-input" data-payment-method aria-label="Metodo pago" hidden disabled>
                   ${["Transferencia", "Tarjeta", "Efectivo", "Otro"].map((method) => `<option ${method === payment.method ? "selected" : ""}>${method}</option>`).join("")}
                 </select>
               </span>
               <span>${treatment ? DentalAPI.money(treatmentPending(treatment)) : "-"}</span>
               <span class="inline-actions">
-                ${state === "paid" ? `<button class="text-button" type="button" data-edit-payment="${payment.id}">Editar</button><button class="text-button" type="button" data-cancel-payment-edit hidden>Cancelar</button>` : ""}
-                <button class="text-button" type="button" data-save-payment="${payment.id}" ${state === "paid" ? "hidden" : ""}>Guardar</button>
+                <button class="text-button" type="button" data-edit-payment="${payment.id}">Editar</button><button class="text-button" type="button" data-cancel-payment-edit hidden>Cancelar</button>
+                <button class="text-button" type="button" data-save-payment="${payment.id}" hidden>Guardar</button>
                 <small class="form-status" data-payment-message="${payment.id}" aria-live="polite"></small>
               </span>
+              ${ProcedurePayments.paymentSummary(payment, treatment)}
             </div>
           `;
         })
@@ -301,7 +330,7 @@ function renderPayments() {
 }
 
 function acceptPaymentFilterChange(filter) {
-  if (!window.UnsavedEdits.confirmDiscard()) {
+  if (!window.UnsavedEdits.confirmDiscard({ only: "payment-editor" })) {
     filter.value = filter.dataset.appliedValue || "";
     return false;
   }
@@ -309,42 +338,104 @@ function acceptPaymentFilterChange(filter) {
   return true;
 }
 
+function historyPayments() { return paymentSummary ? paymentPage?.items || [] : payments; }
+async function refreshPaymentHistory() {
+  if (!paymentSummary) { renderPayments(); return; }
+  const version = ++paymentQueryVersion;
+  const query = new URLSearchParams({ page: currentPaymentPage, page_size: PAYMENT_PAGE_SIZE, view: paymentView });
+  if (selectedPaymentState) query.set("state", selectedPaymentState);
+  if (paymentDateFrom.value) query.set("date_from", paymentDateFrom.value);
+  if (paymentDateTo.value) query.set("date_to", paymentDateTo.value);
+  if (paymentPatientFilter.value) query.set("patient_id", paymentPatientFilter.value);
+  if (!["all", ""].includes(paymentTreatmentFilter.value)) query.set("patient_treatment_id", paymentTreatmentFilter.value);
+  paymentsTable.setAttribute("aria-busy", "true");
+  paymentsTable.querySelectorAll("button").forEach(button => { button.disabled = true; });
+  paginationContainers.forEach(container => container.querySelectorAll("button").forEach(button => { button.disabled = true; }));
+  try {
+    const result = await DentalAPI.get(`/api/payments?${query}`);
+    if (version !== paymentQueryVersion) return;
+    if (!Array.isArray(result.items)) throw new Error("Reinicia la aplicación para actualizar el servidor de pagos.");
+    paymentPage = result; currentPaymentPage = result.page; renderPayments();
+  } catch (error) {
+    if (version === paymentQueryVersion) {
+      paymentResultsCount.textContent = error.message;
+      paymentsTable.innerHTML = '<p class="empty-state">No se pudo cargar esta consulta. Cambia un filtro para reintentar.</p>';
+      paginationContainers.forEach(container => { container.hidden = true; });
+    }
+  } finally { if (version === paymentQueryVersion) paymentsTable.setAttribute("aria-busy", "false"); }
+}
+
 async function loadPagos() {
   const [loadedPatients, loadedTreatments, loadedPayments] = await Promise.all([
     DentalAPI.get("/api/patients"),
     DentalAPI.get("/api/patient-treatments"),
-    DentalAPI.get("/api/payments")
+    DentalAPI.get(`/api/payments?summary=1&date=${localDateString()}`)
   ]);
   patients = loadedPatients;
   treatments = loadedTreatments;
-  payments = loadedPayments;
-  paymentPatient.innerHTML = patients
-    .map((patient) => `<option value="${patient.id}">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}</option>`)
+  // Compatibility with a previously running server; current versions return aggregates.
+  paymentSummary = Array.isArray(loadedPayments) ? null : loadedPayments;
+  payments = paymentSummary ? paymentSummary.ledger : loadedPayments;
+  paymentPatient.innerHTML = '<option value="">Seleccionar paciente...</option>' + [...patients]
+    .sort((a,b) => DentalAPI.fullName(a).localeCompare(DentalAPI.fullName(b), "es"))
+    .map((patient) => `<option value="${patient.id}">${DentalAPI.escapeHtml(DentalAPI.fullName(patient))}${patient.rut ? ` · ${DentalAPI.escapeHtml(patient.rut)}` : ""}</option>`)
     .join("");
   renderTreatmentsForPatient();
   renderMetrics();
   renderPaymentFilters();
-  renderPayments();
+  await refreshPaymentHistory();
+  if (!paymentFormGuard) paymentFormGuard = window.UnsavedEdits.trackForm(paymentForm, {
+    extra: () => paymentAllocation.getMode(),
+    discard: () => { paymentForm.reset(); paymentAllocation.setMode("single"); renderTreatmentsForPatient(); }
+  });
+  else paymentFormGuard.markClean();
   [paymentStateFilter, paymentDateFrom, paymentDateTo, paymentPatientFilter, paymentTreatmentFilter].forEach((filter) => {
     filter.dataset.appliedValue = filter.value;
   });
 }
 
 paymentPatient.addEventListener("change", renderTreatmentsForPatient);
+document.querySelector("#payTreatmentBalance").addEventListener("click", () => {
+  const treatment = treatments.find((item) => Number(item.id) === Number(paymentTreatment.value));
+  if (!paymentPatient.value || !treatment) { paymentStatus.textContent = "Selecciona al paciente y su tratamiento."; return; }
+  paymentForm.elements.amount.value = treatmentPending(treatment) || "";
+  paymentForm.elements.amount.dispatchEvent(new Event("input", { bubbles: true }));
+});
 paymentTreatment.addEventListener("change", updatePaymentAmountSuggestion);
+document.querySelectorAll("[data-payment-view]").forEach((button) => button.addEventListener("click", () => {
+  if (!window.UnsavedEdits.confirmDiscard({ only: "payment-editor" })) return;
+  paymentView = button.dataset.paymentView;
+  selectedPaymentState = ""; paymentStateFilter.value = ""; paymentStateFilter.dataset.appliedValue = "";
+  currentPaymentPage = 1; refreshPaymentHistory();
+}));
+document.querySelectorAll("[data-payment-dates]").forEach((button) => button.addEventListener("click", () => {
+  if (!window.UnsavedEdits.confirmDiscard({ only: "payment-editor" })) return;
+  const today = localDateString();
+  const mode = button.dataset.paymentDates;
+  paymentDateFrom.value = mode === "today" ? today : mode === "month" ? today.slice(0, 7) + "-01" : "";
+  paymentDateTo.value = mode === "clear" ? "" : today;
+  if (mode === "clear") {
+    paymentStateFilter.value = ""; selectedPaymentState = "";
+    paymentPatientFilter.value = ""; paymentTreatmentFilter.value = "all";
+  }
+  [paymentDateFrom, paymentDateTo, paymentStateFilter, paymentPatientFilter, paymentTreatmentFilter].forEach((filter) => { filter.dataset.appliedValue = filter.value; });
+  currentPaymentPage = 1; refreshPaymentHistory();
+}));
 
 paymentStateFilter.addEventListener("change", () => {
   if (!acceptPaymentFilterChange(paymentStateFilter)) return;
   selectedPaymentState = paymentStateFilter.value;
+  if (selectedPaymentState === "pending") paymentView = "balances";
+  if (selectedPaymentState === "paid") paymentView = "payments";
   currentPaymentPage = 1;
-  renderPayments();
+  refreshPaymentHistory();
 });
 
 [paymentDateFrom, paymentDateTo, paymentPatientFilter, paymentTreatmentFilter].forEach((filter) => {
   filter.addEventListener("change", () => {
     if (!acceptPaymentFilterChange(filter)) return;
     currentPaymentPage = 1;
-    renderPayments();
+    refreshPaymentHistory();
   });
 });
 
@@ -352,9 +443,9 @@ paginationContainers.forEach((container) => {
   container.addEventListener("click", (event) => {
     const button = event.target.closest("[data-payment-page]");
     if (!button || button.disabled) return;
-    if (!window.UnsavedEdits.confirmDiscard()) return;
+    if (!window.UnsavedEdits.confirmDiscard({ only: "payment-editor" })) return;
     currentPaymentPage = Number(button.dataset.paymentPage);
-    renderPayments();
+    refreshPaymentHistory();
   });
 });
 
@@ -365,7 +456,9 @@ focusPaymentForm.addEventListener("click", () => {
 
 paymentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!window.UnsavedEdits.confirmDiscard()) return;
+  if (!window.UnsavedEdits.confirmDiscard({ only: "payment-editor" })) return;
+  if (paymentForm.querySelector("button[type='submit']").disabled) return;
+  paymentFormGuard.setBusy(true);
   const formData = new FormData(paymentForm);
   const submitButton = paymentForm.querySelector("button[type='submit']");
   paymentStatus.textContent = "Guardando pago...";
@@ -382,6 +475,7 @@ paymentForm.addEventListener("submit", async (event) => {
       await DentalAPI.post("/api/payments", {
         ...common,
         patient_treatment_id: Number(formData.get("patient_treatment_id")) || null,
+        procedure_allocations: paymentAllocation.singleParts(),
         amount: Number(formData.get("amount"))
       });
     } else {
@@ -391,6 +485,7 @@ paymentForm.addEventListener("submit", async (event) => {
       await DentalAPI.post("/api/payments/batch", { ...common, allocations });
     }
     paymentStatus.textContent = "Pago guardado.";
+    paymentFormGuard.setBusy(false); paymentFormGuard.markClean();
     paymentForm.reset();
     paymentAllocation.setMode("single");
     paymentForm.querySelector(".payment-notes-details").open = false;
@@ -399,7 +494,7 @@ paymentForm.addEventListener("submit", async (event) => {
   } catch (error) {
     paymentStatus.textContent = error.message;
     submitButton.disabled = false;
-  }
+  } finally { paymentFormGuard.setBusy(false); }
 });
 
 paymentsTable.addEventListener("click", async (event) => {
@@ -418,11 +513,27 @@ paymentsTable.addEventListener("click", async (event) => {
   }
   const editButton = event.target.closest("[data-edit-payment]");
   if (editButton) {
-    if (window.UnsavedEdits.hasChanges()) {
+    if (window.UnsavedEdits.hasChanges({ only: "payment-editor" })) {
       editButton.closest("[data-payment-row]").querySelector("[data-payment-message]").textContent = "Guarda o cancela el otro pago antes de editar este.";
       return;
     }
     const row = editButton.closest("[data-payment-row]");
+    const payment = historyPayments().find((item) => Number(item.id) === Number(row.dataset.paymentRow));
+    const treatment = treatments.find((item) => Number(item.id) === Number(payment.patient_treatment_id));
+    editButton.disabled = true;
+    let related;
+    try {
+      related = paymentSummary && treatment ? await DentalAPI.get(`/api/payments?patient_treatment_id=${treatment.id}`) : payments;
+    } catch (error) { row.querySelector("[data-payment-message]").textContent = error.message; editButton.disabled = false; return; }
+    if (!row.isConnected) return;
+    editButton.disabled = false;
+    const editor = document.createElement("div");
+    editor.dataset.paymentProcedureEdit = "";
+    editor.innerHTML = ProcedurePayments.render(treatment, related.filter((item) => Number(item.id) !== Number(payment.id)), {
+      initial: ProcedurePayments.parse(payment.procedure_allocations_json)
+    });
+    row.append(editor);
+    ProcedurePayments.update(editor, Number(payment.amount));
     row.querySelectorAll("[data-payment-readonly]").forEach((item) => { item.hidden = true; });
     row.querySelectorAll("[data-payment-amount], [data-payment-method]").forEach((item) => { item.hidden = false; item.disabled = false; });
     row.querySelector("[data-save-payment]").hidden = false;
@@ -432,12 +543,13 @@ paymentsTable.addEventListener("click", async (event) => {
     return;
   }
   if (event.target.closest("[data-cancel-payment-edit]")) {
-    if (!window.UnsavedEdits.confirmDiscard()) return;
+    if (!window.UnsavedEdits.confirmDiscard({ only: "payment-editor" })) return;
     renderPayments();
     return;
   }
   const button = event.target.closest("[data-save-payment]");
   if (!button) return;
+  if (!paymentFormGuard.confirmDiscard()) return;
   const paymentId = button.dataset.savePayment;
   const row = button.closest("[data-payment-row]");
   const message = row.querySelector("[data-payment-message]");
@@ -453,6 +565,7 @@ paymentsTable.addEventListener("click", async (event) => {
   try {
     await DentalAPI.put(`/api/payments/${paymentId}`, {
       amount: Number(row.querySelector("[data-payment-amount]").value || 0),
+      procedure_allocations: ProcedurePayments.read(row, Number(row.querySelector("[data-payment-amount]").value || 0)),
       method: row.querySelector("[data-payment-method]").value
     });
     message.textContent = "Pago actualizado.";
@@ -467,7 +580,14 @@ paymentsTable.addEventListener("click", async (event) => {
 function updatePaymentDirty(event) {
   const row = event.target.closest("[data-payment-row]");
   if (!row) return;
+  const payment = historyPayments().find((item) => Number(item.id) === Number(row.dataset.paymentRow));
+  let partsChanged = false;
+  try {
+    partsChanged = JSON.stringify(ProcedurePayments.read(row, Number(row.querySelector("[data-payment-amount]").value || 0))) !== JSON.stringify(ProcedurePayments.parse(payment.procedure_allocations_json));
+  } catch { partsChanged = true; }
+  ProcedurePayments.update(row, Number(row.querySelector("[data-payment-amount]").value || 0));
   row.dataset.unsavedPayment = String(
+    partsChanged ||
     row.querySelector("[data-payment-amount]").value !== row.dataset.originalAmount ||
     row.querySelector("[data-payment-method]").value !== row.dataset.originalMethod
   );

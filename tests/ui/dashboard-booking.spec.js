@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { choosePatient } = require('./booking-helpers');
 
 test('agenda una observación desde la semana sin tratamiento ni cobro', async ({ page }) => {
   const appointments = [];
@@ -19,7 +20,7 @@ test('agenda una observación desde la semana sin tratamiento ni cobro', async (
   await page.locator('.week-slot [data-calendar-book]').first().click();
   const dialog = page.locator('#calendarBookingDialog');
   await expect(dialog).toBeVisible();
-  await dialog.locator('select[name="patient_id"]').selectOption('1');
+  await choosePatient(dialog);
   await dialog.locator('select[name="booking_type"]').selectOption('observation');
   await expect(dialog.locator('[data-booking-treatment]')).toBeHidden();
   await dialog.getByRole('button', { name: 'Agendar cita' }).click();
@@ -40,7 +41,7 @@ test('agenda un tratamiento con varios procedimientos, piezas y descuentos desde
       return route.fulfill({ json: { id: 1, ...saved } });
     }
     if (path === '/api/patients') return route.fulfill({ json: [{ id: 1, first_name: 'Ana', last_name: 'Prueba' }] });
-    if (path === '/api/treatment-catalog') return route.fulfill({ json: [{ id: 2, name: 'Endodoncia', default_price: 85000 }] });
+    if (path === '/api/treatment-catalog') return route.fulfill({ json: [{ id: 2, name: 'Endodoncia', default_price: 85000 }, { id: 3, name: 'Resina', default_price: 30000 }] });
     if (path === '/api/appointments' || path === '/api/patient-treatments') return route.fulfill({ json: [] });
     return route.fulfill({ json: {} });
   });
@@ -48,13 +49,12 @@ test('agenda un tratamiento con varios procedimientos, piezas y descuentos desde
   await page.locator('[data-calendar-view="day"]').click();
   await page.locator('.day-row [data-calendar-book]').first().click();
   const dialog = page.locator('#calendarBookingDialog');
-  await dialog.locator('select[name="patient_id"]').selectOption('1');
+  await choosePatient(dialog);
   await dialog.locator('input[name="title"]').fill('Rehabilitación');
   await dialog.locator('select[name="catalog_id"]').selectOption('2');
   await dialog.locator('input[name="procedure_teeth"]').fill('4, 5');
   await dialog.getByRole('button', { name: 'Agregar procedimiento al tratamiento' }).click();
-  await dialog.locator('select[name="catalog_id"]').selectOption('');
-  await dialog.locator('input[name="procedure_name"]').fill('Resina');
+  await dialog.locator('select[name="catalog_id"]').selectOption('3');
   await dialog.locator('input[name="procedure_teeth"]').fill('6');
   await dialog.locator('input[name="procedure_price"]').fill('30000');
   await dialog.getByRole('button', { name: 'Agregar procedimiento al tratamiento' }).click();
@@ -75,7 +75,7 @@ test('agenda un tratamiento con varios procedimientos, piezas y descuentos desde
   expect(saved.new_treatment).toMatchObject({ title: 'Rehabilitación', total_discount_type: 'amount', total_discount_value: 5000 });
   expect(saved.new_treatment.procedures).toEqual([
     { name: 'Endodoncia', catalog_treatment_id: 2, tooth_code: '4,5', price: 85000, discount_type: 'percent', discount_value: '10' },
-    { name: 'Resina', catalog_treatment_id: null, tooth_code: '6,7', price: 30000, discount_type: 'amount', discount_value: 0 }
+    { name: 'Resina', catalog_treatment_id: 3, tooth_code: '6,7', price: 30000, discount_type: 'amount', discount_value: 0 }
   ]);
 });
 
@@ -89,15 +89,16 @@ test('impide crear un tratamiento sin presupuesto si el servidor sigue en una ve
     }
     if (path === '/api/health') return route.fulfill({ json: { ok: true } });
     if (path === '/api/patients') return route.fulfill({ json: [{ id: 1, first_name: 'Ana', last_name: 'Prueba' }] });
-    if (path === '/api/appointments' || path === '/api/patient-treatments' || path === '/api/treatment-catalog') return route.fulfill({ json: [] });
+    if (path === '/api/treatment-catalog') return route.fulfill({ json: [{ id: 3, name: 'Limpieza', default_price: 30000 }] });
+    if (path === '/api/appointments' || path === '/api/patient-treatments') return route.fulfill({ json: [] });
     return route.fulfill({ json: {} });
   });
   await page.goto('/index.html');
   await page.locator('.week-slot [data-calendar-book]').first().click();
   const dialog = page.locator('#calendarBookingDialog');
-  await dialog.locator('select[name="patient_id"]').selectOption('1');
+  await choosePatient(dialog);
   await dialog.locator('input[name="title"]').fill('Control y limpieza');
-  await dialog.locator('input[name="procedure_name"]').fill('Limpieza');
+  await dialog.locator('select[name="catalog_id"]').selectOption('3');
   await dialog.locator('input[name="procedure_price"]').fill('30000');
   await dialog.getByRole('button', { name: 'Agregar procedimiento al tratamiento' }).click();
   await dialog.getByRole('button', { name: 'Agendar cita' }).click();
@@ -124,7 +125,7 @@ test('reutiliza un tratamiento existente y diferencia visualmente las filas', as
   expect(colors[0]).not.toBe(colors[1]);
   await page.locator('.week-slot [data-calendar-book]').first().click();
   const dialog = page.locator('#calendarBookingDialog');
-  await dialog.locator('select[name="patient_id"]').selectOption('1');
+  await choosePatient(dialog);
   await dialog.locator('select[name="treatment_choice"]').selectOption('7');
   await expect(dialog.locator('[data-booking-procedure="0"]')).toContainText('Ortodoncia');
   await dialog.getByRole('button', { name: 'Agendar cita' }).click();
@@ -146,16 +147,17 @@ test('continúa un tratamiento y modifica sus procedimientos sin crear otro cobr
     if (path === '/api/patients') return route.fulfill({ json: [{ id: 1, first_name: 'Ana', last_name: 'Prueba' }] });
     if (path === '/api/patient-treatments') return route.fulfill({ json: [{ id: 7, patient_id: 1, title: 'Plan inicial', tooth_code: '4', status: 'in_progress', estimated_price: 80000, final_price: 80000,
       procedure_items_json: JSON.stringify([{ name: 'Endodoncia', catalog_treatment_id: null, tooth_code: '4', price: 80000, discount_type: 'amount', discount_value: 0 }]) }] });
-    if (path === '/api/appointments' || path === '/api/treatment-catalog') return route.fulfill({ json: [] });
+    if (path === '/api/treatment-catalog') return route.fulfill({ json: [{ id: 3, name: 'Resina', default_price: 20000 }] });
+    if (path === '/api/appointments') return route.fulfill({ json: [] });
     return route.fulfill({ json: {} });
   });
   await page.goto('/index.html');
   await page.locator('.week-slot [data-calendar-book]').first().click();
   const dialog = page.locator('#calendarBookingDialog');
-  await dialog.locator('select[name="patient_id"]').selectOption('1');
+  await choosePatient(dialog);
   await dialog.locator('select[name="treatment_choice"]').selectOption('7');
   await dialog.locator('input[name="title"]').fill('Plan integral');
-  await dialog.locator('input[name="procedure_name"]').fill('Resina');
+  await dialog.locator('select[name="catalog_id"]').selectOption('3');
   await dialog.locator('input[name="procedure_teeth"]').fill('5');
   await dialog.locator('input[name="procedure_price"]').fill('20000');
   await dialog.getByRole('button', { name: 'Agregar procedimiento al tratamiento' }).click();
@@ -192,7 +194,7 @@ test('busca por RUT sin puntuación y crea un paciente sin salir de nueva cita',
   const originalDate = await dialog.locator('input[name="booking_date"]').inputValue();
   await dialog.locator('input[name="patient_search"]').fill('123456789');
   await expect(dialog.locator('select[name="patient_id"] option')).toHaveCount(2);
-  await dialog.locator('select[name="patient_id"]').selectOption('1');
+  await choosePatient(dialog);
   await dialog.locator('input[name="patient_search"]').fill('María');
   await expect(dialog.locator('[data-booking-no-patients]')).toBeVisible();
   await dialog.getByRole('button', { name: 'Crear paciente nuevo' }).click();

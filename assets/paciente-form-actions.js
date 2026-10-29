@@ -85,9 +85,7 @@
           attachment.set("taken_at", data.appointment_date);
           attachment.set("notes", data.notes || "Adjunto desde agendamiento de cita");
           attachment.set("file", file);
-          const response = await fetch("/api/attachments", { method: "POST", body: attachment });
-          const payload = await response.json();
-          if (!response.ok) throw new Error(payload.error || "No se pudo guardar la radiografia.");
+          await DentalAPI.upload("/api/attachments", attachment);
         }
       }
 
@@ -117,12 +115,7 @@
       if (action === "attachment") {
         const formData = new FormData(form);
         formData.set("patient_id", patientId);
-        const response = await fetch("/api/attachments", {
-          method: "POST",
-          body: formData
-        });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "No se pudo guardar el adjunto.");
+        await DentalAPI.upload("/api/attachments", formData);
       }
 
       if (action === "payment") {
@@ -145,6 +138,7 @@
             ...data,
             patient_id: patientId,
             patient_treatment_id: data.patient_treatment_id ? Number(data.patient_treatment_id) : null,
+            procedure_allocations: form.paymentAllocation.singleParts(),
             amount: Number(data.amount || 0)
           });
         }

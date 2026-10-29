@@ -71,6 +71,7 @@
 .appointment-menu-actions [data-menu-action="finish"] { color: #fff; border-color: #21834f; background: #21834f; font-weight: 800; }
 .appointment-menu-actions [data-menu-action="finish"]:not(:disabled):hover { background: #17683e; border-color: #17683e; }
 .appointment-menu-actions [data-menu-action="missed"] { color: #a83229; border-color: #e8c1ba; background: var(--rose-soft, #fbefec); }
+.appointment-menu-actions [data-menu-action="missed"]:hover { color: #92271f; border-color: #d8968d; background: #f7e1dc; }
 .appointment-menu-actions [data-menu-action="reschedule"] { color: #795515; border-color: #e8d6a8; background: #fbf4df; }
 .appointment-menu-actions [data-menu-action="next"] { color: var(--teal-dark); border-color: #b8d9d2; background: var(--mint); }
 .appointment-menu-actions [data-menu-action="payment"] { color: #6941a5; border-color: #d8caeb; background: #f2edfa; }
@@ -117,6 +118,14 @@
   border: 1px solid var(--line); border-radius: 8px; background: var(--surface-strong); color: var(--ink);
 }
 .calendar-booking-treatment { display: grid; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.booking-extra-dates { grid-column: 1 / -1; display: grid; gap: 10px; min-width: 0; }
+.booking-extra-date { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; align-items: end; gap: 10px; margin-bottom: 8px; }
+.booking-extra-dates label, .booking-extra-date label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 700; }
+.dashboard-page .metric-card { padding: 14px 16px; gap: 5px; }
+.dashboard-page .metric-card strong { font-size: 1.7rem; }
+.today-followups-list details { display: grid; gap: 6px; }
+.today-followups-list summary { cursor: pointer; padding: 8px; color: var(--teal-dark); font-weight: 700; }
+.today-followups-list time { width: auto; min-width: 80px; }
 .calendar-booking-treatment > label { display: grid; gap: 5px; min-width: 0; font-size: .8rem; font-weight: 700; }
 .booking-procedure-picker { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-alt); }
 .booking-procedure-picker-fields { display: grid; grid-template-columns: minmax(150px, 1.4fr) minmax(140px, 1fr) minmax(125px, .8fr) auto; align-items: end; gap: 9px; }
@@ -145,6 +154,9 @@
 .calendar-booking-fields p { margin: 0; color: var(--muted); font-size: .83rem; }
 .calendar-booking-fields .time-occupied { color: #a83229; }
 .booking-patient-picker { display: grid; gap: 9px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.booking-patient-results { display: grid; gap: 5px; max-height: 180px; overflow-y: auto; }
+.booking-patient-results button { width: 100%; display: flex; justify-content: space-between; gap: 12px; text-align: left; }
+.booking-patient-results small { color: var(--muted); }
 .booking-patient-picker button { justify-self: start; }
 .booking-patient-picker p { margin: 0; color: var(--muted); font-size: .82rem; }
 .booking-patient-create { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-strong); }

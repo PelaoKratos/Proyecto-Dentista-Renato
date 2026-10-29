@@ -1,20 +1,57 @@
 const DentalAPI = (() => {
+  let pendingLogin = null;
+  function renewSession() {
+    if (pendingLogin) return pendingLogin;
+    pendingLogin = new Promise((resolve, reject) => {
+      const dialog = document.createElement("dialog");
+      dialog.className = "session-renew-dialog";
+      dialog.setAttribute("aria-labelledby", "sessionRenewTitle");
+      dialog.innerHTML = `<form><h2 id="sessionRenewTitle">Tu sesión venció</h2><p>Lo que estabas escribiendo sigue en el formulario. Ingresa tu contraseña para continuar y guardar.</p><label>Contraseña<input type="password" autocomplete="current-password" required /></label><p role="status" aria-live="polite"></p><div class="inline-actions"><button class="text-button" type="button">Volver al formulario</button><button class="text-button primary-action" type="submit">Continuar</button></div></form>`;
+      document.body.append(dialog);
+      const close = (authenticated) => {
+        dialog.querySelector("input").value = "";
+        dialog.close();
+        dialog.remove();
+        authenticated ? resolve() : reject(new Error("El formulario se conserva. Vuelve a guardar e ingresa tu contraseña para continuar."));
+      };
+      dialog.querySelector('button[type="button"]').addEventListener("click", () => close(false));
+      dialog.addEventListener("cancel", (event) => { event.preventDefault(); close(false); });
+      dialog.querySelector("form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const submit = dialog.querySelector('button[type="submit"]');
+        const status = dialog.querySelector('[role="status"]');
+        submit.disabled = true;
+        try {
+          const response = await fetch("/api/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({password: dialog.querySelector("input").value})});
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || "No se pudo renovar la sesión.");
+          close(true);
+        } catch (error) { status.textContent = error.message; submit.disabled = false; }
+      });
+      dialog.showModal();
+      dialog.querySelector("input").focus();
+    }).finally(() => { pendingLogin = null; });
+    return pendingLogin;
+  }
+
   async function request(path, options = {}) {
-    const response = await fetch(path, {
+    const multipart = options.body instanceof FormData;
+    const fetchOptions = {
+      ...options,
       headers: {
-        "Content-Type": "application/json",
+        ...(!multipart ? { "Content-Type": "application/json" } : {}),
         ...(options.headers || {})
-      },
-      ...options
-    });
+      }
+    };
+    let response = await fetch(path, fetchOptions);
+    if (response.status === 401 && !location.pathname.endsWith("/login.html") && !path.startsWith("/api/auth/")) {
+      await renewSession();
+      response = await fetch(path, fetchOptions);
+    }
 
     const contentType = response.headers.get("Content-Type") || "";
     const payload = contentType.includes("application/json") ? await response.json() : await response.text();
 
-    if (response.status === 401 && !location.pathname.endsWith("/login.html")) {
-      const next = encodeURIComponent(location.pathname + location.search);
-      location.assign("/login.html?next=" + next);
-    }
     if (!response.ok) {
       const message = typeof payload === "object" && payload.error ? payload.error : "No se pudo completar la accion.";
       throw new Error(message);
@@ -32,6 +69,10 @@ const DentalAPI = (() => {
       method: "POST",
       body: JSON.stringify(data)
     });
+  }
+
+  function upload(path, data) {
+    return request(path, { method: "POST", body: data });
   }
 
   function put(path, data) {
@@ -65,7 +106,8 @@ const DentalAPI = (() => {
 
   function date(value, options = {}) {
     if (!value) return "Sin fecha";
-    const safeValue = String(value).includes("T") ? value : String(value).replace(" ", "T");
+    const safeValue = /^\d{4}-\d{2}-\d{2}$/.test(String(value)) ? `${value}T12:00:00`
+      : String(value).includes("T") ? value : String(value).replace(" ", "T");
     const parsed = new Date(safeValue);
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toLocaleDateString("es-CL", options);
@@ -132,6 +174,7 @@ const DentalAPI = (() => {
     put,
     request,
     statusLabel,
-    time
+    time,
+    upload
   };
 })();
